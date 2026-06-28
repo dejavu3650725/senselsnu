@@ -19,7 +19,7 @@ const ClassAnalysis = ({ studentsData }) => {
           (searchName.includes(st.realName))
         );
       }
-      const officialName = matched ? matched.nickname : nom;
+      const officialName = matched ? `${matched.nickname} (${matched.realName})` : nom;
       nominationCounts[officialName] = (nominationCounts[officialName] || 0) + 1;
     });
   });
