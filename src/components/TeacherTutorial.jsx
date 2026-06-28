@@ -49,6 +49,16 @@ const TeacherTutorial = () => {
               </span>
             </div>
           </div>
+
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+            <CheckCircle size={24} color="var(--primary-color)" style={{ flexShrink: 0, marginTop: 4 }} />
+            <div>
+              <strong style={{ display: 'block', fontSize: '1.1rem', marginBottom: 4 }}>4. 초등학생 맞춤형 강력한 AI 안전 필터</strong>
+              <span style={{ color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                최고 수준의 안전 필터(BLOCK_LOW_AND_ABOVE)가 적용되어 증오, 폭력, 성인용 콘텐츠를 원천 차단합니다. 챗봇은 부적절한 대화 시도를 단호히 거절하도록 설계되었습니다.
+              </span>
+            </div>
+          </div>
         </div>
 
         <button 

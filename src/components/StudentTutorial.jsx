@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UserPlus, MessageCircle, Heart } from 'lucide-react';
+import { UserPlus, MessageCircle, Heart, Shield } from 'lucide-react';
 
 const StudentTutorial = ({ onComplete }) => {
   return (
@@ -36,6 +36,16 @@ const StudentTutorial = ({ onComplete }) => {
             <div>
               <strong style={{ display: 'block', fontSize: '1.1rem', marginBottom: 4 }}>3. 내 마음 상태 확인 & SOS 요청</strong>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.5, display: 'block' }}>대화하면서 내 마음이 얼마나 튼튼해졌는지 분석 받을 수 있어. 정말 힘들 땐 언제든 SOS 버튼을 눌러 선생님께만 살짝 도움을 청해봐!</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <div style={{ width: 50, height: 50, background: 'rgba(159, 122, 234, 0.1)', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}>
+              <Shield size={24} color="#9f7aea" />
+            </div>
+            <div>
+              <strong style={{ display: 'block', fontSize: '1.1rem', marginBottom: 4 }}>4. 나를 지켜주는 안전한 방패</strong>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.5, display: 'block' }}>챗봇은 유해한 단어나 나쁜 말을 모두 걸러내는 튼튼한 방패를 가지고 있어. 안심하고 학교 생활에 대해서만 이야기해 봐!</span>
             </div>
           </div>
         </div>
