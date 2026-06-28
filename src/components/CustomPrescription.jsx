@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { HeartPulse, Sparkles, Loader, AlertTriangle } from 'lucide-react';
+import { db } from '../firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 
 const CustomPrescription = ({ studentsData, teacherProfile }) => {
   const [prescriptions, setPrescriptions] = useState({});
@@ -25,7 +27,15 @@ const CustomPrescription = ({ studentsData, teacherProfile }) => {
       const data = await response.json();
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '처방을 불러오지 못했습니다.';
       
-      setPrescriptions(prev => ({ ...prev, [student.id]: text.replace(/\[NOMINATION:.*?\]/g, '') }));
+      const finalPrescription = text.replace(/\[NOMINATION:.*?\]/g, '');
+      setPrescriptions(prev => ({ ...prev, [student.id]: finalPrescription }));
+      
+      // 파이어베이스에 저장 (리포트에서 불러오기 위함)
+      try {
+        await updateDoc(doc(db, 'students', student.id), { aiPrescription: finalPrescription });
+      } catch (err) {
+        console.error("처방 저장 실패:", err);
+      }
     } catch (error) {
       console.error(error);
       setPrescriptions(prev => ({ ...prev, [student.id]: '에러가 발생했습니다.' }));
@@ -82,9 +92,9 @@ const CustomPrescription = ({ studentsData, teacherProfile }) => {
                 </button>
               </div>
 
-              {prescriptions[student.id] && (
+              {(prescriptions[student.id] || student.aiPrescription) && (
                 <div style={{ flex: 1, marginTop: '16px', padding: '20px', background: '#f8fafc', borderLeft: '4px solid var(--primary-color)', borderRadius: '0 12px 12px 0', color: '#4a5568', lineHeight: '1.7', whiteSpace: 'pre-wrap', fontSize: '0.95rem' }}>
-                  {prescriptions[student.id]}
+                  {prescriptions[student.id] || student.aiPrescription}
                 </div>
               )}
             </div>

@@ -1,11 +1,25 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, Download } from 'lucide-react';
 
 const Report = ({ studentsData, teacherProfile }) => {
+  const [customPlan, setCustomPlan] = useState('');
+
   const totalStudents = studentsData.length;
   const healthCount = studentsData.filter(s => s.mood === '건강').length;
   const normalCount = studentsData.filter(s => s.mood === '보통').length;
   const hardCount = studentsData.filter(s => s.mood === '힘듦').length;
+
+  useEffect(() => {
+    if (!customPlan) {
+      const atRiskWithPrescriptions = studentsData.filter(s => s.mood === '힘듦' && s.aiPrescription);
+      if (atRiskWithPrescriptions.length > 0) {
+        const planText = atRiskWithPrescriptions.map(s => 
+          `[${s.realName} 학생 집중 지도 계획]\n${s.aiPrescription}`
+        ).join('\n\n');
+        setCustomPlan(planText);
+      }
+    }
+  }, [studentsData, customPlan]);
 
   return (
     <div className="glass-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', flex: 1 }}>
@@ -43,8 +57,26 @@ const Report = ({ studentsData, teacherProfile }) => {
           일부 학생들의 경우 긍정적 피드백 교환이 적어 관심이 필요할 수 있으며, 이 부분은 맞춤 처방 탭에서 상세히 확인하여 지도하시기 바랍니다.
         </p>
 
-        <h3 style={{ color: '#4a5568', borderBottom: '2px solid var(--primary-color)', paddingBottom: '8px', marginTop: '32px' }}>3. 향후 지도 계획 (빈칸)</h3>
-        <div style={{ height: '150px', border: '1px dashed #cbd5e1', borderRadius: '8px', marginTop: '16px' }}></div>
+        <h3 style={{ color: '#4a5568', borderBottom: '2px solid var(--primary-color)', paddingBottom: '8px', marginTop: '32px' }}>3. 향후 지도 계획</h3>
+        <textarea 
+          value={customPlan}
+          onChange={(e) => setCustomPlan(e.target.value)}
+          placeholder="맞춤 처방에서 생성된 내용이 자동으로 불러와집니다. 자유롭게 텍스트를 수정하고 보완하여 리포트를 완성하세요."
+          style={{ 
+            width: '100%', 
+            minHeight: '200px', 
+            padding: '16px', 
+            borderRadius: '12px', 
+            border: '1px solid #cbd5e1', 
+            marginTop: '16px', 
+            fontSize: '0.95rem', 
+            lineHeight: '1.7', 
+            fontFamily: 'inherit', 
+            resize: 'vertical',
+            background: 'white',
+            color: '#4a5568'
+          }}
+        />
       </div>
     </div>
   );

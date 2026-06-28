@@ -4,14 +4,14 @@ import { Home, BarChart2, Smile, AlertCircle, FileText, BookOpen, Users, Setting
 const Sidebar = ({ activeMenu, setActiveMenu, teacherProfile }) => {
   const menuItems = [
     { name: '대시보드', icon: Home },
+    { name: '기본 설정', icon: UserCog, isModal: true },
+    { name: '챗봇 설정', icon: Settings, isModal: true },
     { name: '학생 관리', icon: Users },
     { name: '학급 분석', icon: BarChart2 },
     { name: '감정 트래커', icon: Smile },
     { name: '맞춤 처방', icon: AlertCircle },
     { name: '리포트', icon: FileText },
     { name: '에듀테크 리소스', icon: BookOpen },
-    { name: '챗봇 설정', icon: Settings, isModal: true },
-    { name: '기본 설정', icon: UserCog, isModal: true },
   ];
 
   return (
