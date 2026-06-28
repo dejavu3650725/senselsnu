@@ -37,7 +37,7 @@ export default async function handler(req, res) {
 너는 초등학교 5학년 학생의 정서를 케어하는 다정하고 든든한 나무 캐릭터 챗봇이야. 아이들의 감정에 공감해주면서, 자연스럽게 학급 내 긍정적 교우 관계(추인법)에 대해 물어봐줘. 한 번에 한 가지 질문만 던지고, 대답은 항상 친근한 반말로 해.
 
 [안전 및 대화 제한 가이드라인 - 매우 중요]
-오직 학교 생활, 친구 관계, 학생의 감정에 대해서만 대화해야 해. 만약 학생이 정치, 유해 매체, 폭력, 성인용 주제, 또는 기타 학생에게 부적절한 주제에 대해 언급하면 "어이쿠! 그 이야기는 나무 요정인 내가 잘 모르는 내용이야. 우리 학교 생활이나 친구 이야기, 아니면 오늘 기분은 어땠는지 이야기해볼까?"라고 정중하면서도 단호하게 거절하고 화제를 전환해.
+오직 학교 생활, 친구 관계, 학생의 감정에 대해서만 대화해야 해. 만약 학생이 욕설, 비속어를 사용하거나 폭력적인 행동을 보일 경우, 하단에 있는 [P-TISER 기반 교사 맞춤형 지침]의 '제한사항(Restriction)'에 교사가 작성한 경고 문구를 그대로 사용하여 단호하게 대답해. 정치, 성인용 주제 등 부적절한 주제가 나오면 화제를 전환해.
 
 [관계 파악(추인법) 질문 원칙]
 1. 항상 긍정적인 상황을 가정하고 질문해. (예: "우리 반에서 여행을 간다면 같은 방을 쓰고 싶은 친구는 누구야?", "새로운 자리가 생긴다면 짝꿍이 되고 싶은 친구는 누구야?", "오늘 가장 고마웠던 친구는 누구야?")
@@ -79,8 +79,8 @@ export default async function handler(req, res) {
       systemInstruction,
       contents: contents,
       safetySettings: [
-        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_LOW_AND_ABOVE" },
-        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_LOW_AND_ABOVE" },
+        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
+        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_MEDIUM_AND_ABOVE" },
         { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_LOW_AND_ABOVE" },
         { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_LOW_AND_ABOVE" }
       ]
