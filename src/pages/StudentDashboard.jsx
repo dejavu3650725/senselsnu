@@ -45,8 +45,9 @@ const StudentDashboard = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
 
-  // 상태 추가: 프로필 수정 모달
+  // 상태 추가: 프로필 수정 모달 및 비속어 차단 모달
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isBanned, setIsBanned] = useState(false);
 
   // 교사가 설정한 P-TISER 및 SEL 학교급
   const [ptiser, setPtiser] = useState(null);
@@ -196,6 +197,16 @@ const StudentDashboard = () => {
   const handleSend = async () => {
     if (input.trim() === '') return;
     
+    // 비속어 자체 필터링
+    const badWords = ['시발', '씨발', '병신', '개새끼', '존나', '미친', '좆', '새끼', '뒤져', '욕나오네'];
+    const hasBadWord = badWords.some(word => input.includes(word));
+    
+    if (hasBadWord) {
+      setIsBanned(true);
+      setInput('');
+      return;
+    }
+
     const userMsg = input;
     const newMessages = [...messages, { id: Date.now(), sender: 'user', text: userMsg }];
     setMessages(newMessages);
@@ -455,6 +466,26 @@ const StudentDashboard = () => {
               style={{ width: '100%', padding: '12px', background: '#e2e8f0', color: '#4a5568', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
             >
               닫기
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 비속어 경고 모달 */}
+      {isBanned && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
+          <div className="glass-card" style={{ background: 'white', padding: '40px', borderRadius: '24px', width: '90%', maxWidth: '400px', textAlign: 'center', animation: 'slideUp 0.3s ease-out' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🚨</div>
+            <h2 style={{ marginTop: 0, color: '#e53e3e', fontSize: '1.8rem' }}>경고</h2>
+            <p style={{ color: '#4a5568', fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '32px' }}>
+              적절하지 않은 언어 사용은 금지됩니다.<br/>
+              <b>바른 언어를 사용하시겠습니까?</b>
+            </p>
+            <button 
+              onClick={() => setIsBanned(false)}
+              style={{ width: '100%', padding: '16px', background: '#e53e3e', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.2s' }}
+            >
+              네, 바른 말을 쓰겠습니다
             </button>
           </div>
         </div>
