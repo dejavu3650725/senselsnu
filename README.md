@@ -1,16 +1,36 @@
-# React + Vite
+# 🌟 SEN SEL (센셀) - 교실 속 보이지 않는 마음을 읽는 AI 정서 레이더
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+![SEN SEL Hero](https://github.com/dejavu3650725/senselsnu/assets/hero.png) <!-- 예시 이미지 경로입니다 -->
 
-Currently, two official plugins are available:
+**학생들의 정서 건강과 교우 관계를 실시간으로 파악하고 교사에게 맞춤형 지도 계획을 제공하는 웹 서비스입니다.**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## 💡 기획 의도 (Why SEN SEL?)
+교실 현장에서 교사는 수십 명의 학생들을 동시에 관리합니다. 겉으로 밝아 보이는 아이가 속으로는 고립감을 느끼거나, 교우 관계에서 남모를 어려움을 겪고 있을 때 이를 조기에 발견하기란 쉽지 않습니다. 
+기존의 종이 설문조사는 형식적인 답변이 나오기 쉽습니다. 그래서 저희는 **"아이들이 가장 편하게 속마음을 털어놓을 수 있는 'AI 챗봇'을 활용해 학급의 정서 데이터를 자연스럽게 수집하면 어떨까?"**라는 아이디어에서 출발했습니다.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## ✨ 핵심 기능 (Key Features)
 
-## Expanding the Oxlint configuration
+### 1. 💬 자연스러운 데이터 수집 (학생용 AI 챗봇)
+- 학생들은 귀여운 나무 캐릭터 챗봇과 일상적인 수다를 떱니다.
+- 구글 Gemini AI가 대화의 맥락을 분석하여 학생의 **현재 기분(건강/보통/힘듦)**과 **교우 관계(긍정적 지목)** 데이터를 자동으로 추출해 냅니다.
+- '퍼지 매칭' 알고리즘을 적용하여 아이들이 친구 이름을 "수안이", "이수안", "수안이랑" 등으로 다양하게 입력해도 정확하게 한 명의 학생으로 매핑합니다.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+### 2. 🌌 실시간 학급 관계망 & 감정 시각화 (교사용 대시보드)
+- 학생들의 데이터는 즉각적으로 교사용 대시보드에 연동됩니다.
+- **별자리 테마의 소시오그램(Sociogram):** 긍정적 지목을 주고받은 학생들 사이에 빛나는 화살표가 실시간으로 연결되며, 인기가 많은 학생일수록 별의 크기가 커집니다.
+- **학급 감정 신호등:** 학급 전체의 감정 상태를 통계 및 직관적인 파이 차트로 한눈에 파악할 수 있습니다.
+
+### 3. 🚨 위기 학생 AI 맞춤 처방 및 리포트 자동화
+- 기분이 '힘듦' 상태인 학생(고립 위험군)을 자동으로 분류하여 대시보드에 띄워줍니다.
+- 선생님이 미리 설정해 둔 **SEL(사회정서학습) 가이드라인**을 바탕으로, AI가 해당 학생을 어떻게 지도하면 좋을지 동료 베테랑 교사처럼 구체적인 **맞춤 처방**을 제공합니다.
+- 추출된 처방은 **'학급 정서 종합 리포트'**에 자동으로 연동되어 들어오며, 교사가 직접 텍스트를 수정하고 보완하여 곧바로 PDF로 인쇄해 학급 일지로 활용할 수 있습니다.
+
+## 🛠️ 기술 스택 (Tech Stack)
+- **Frontend:** React (Vite), react-force-graph-2d (관계망 시각화), Recharts
+- **Backend & Database:** Firebase (Firestore 실시간 DB, Authentication)
+- **AI Integration:** Google Gemini API (대화 분석 및 처방 생성)
+
+## 🎯 기대 효과
+**SEN SEL**은 교사의 업무 부담을 획기적으로 줄여주는 동시에, 학급 내 정서적 사각지대를 없애줍니다. 데이터를 기반으로 한 따뜻하고 정확한 개입을 통해 **'모든 아이들이 심리적으로 안전함을 느끼는 교실'**을 만들어가는 것이 이 프로젝트의 최종 목표입니다.
