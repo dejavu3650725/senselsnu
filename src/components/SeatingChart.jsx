@@ -485,9 +485,20 @@ const SeatingChart = ({ studentsData, classCode, classLabel }) => {
           </span>
         )}
       </div>
-      <p className="no-print" style={{ color: '#718096', marginBottom: '20px', fontSize: '1.05rem', paddingLeft: '52px' }}>
+      <p className="no-print" style={{ color: '#718096', marginBottom: '8px', fontSize: '1.05rem', paddingLeft: '52px' }}>
         아래 명단의 학생을 좌석으로 <b>드래그</b>하여 배치하세요. 좌석끼리 드래그하면 자리가 서로 바뀝니다. (클릭으로 선택 → 좌석 클릭도 가능)
       </p>
+      <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center', marginBottom: '20px', paddingLeft: '52px', fontSize: '0.85rem', color: '#718096' }}>
+        <span>이름 색:</span>
+        <span style={{ fontWeight: 'bold', color: '#2b6cb0' }}>■ 파랑 = 남학생</span>
+        <span style={{ fontWeight: 'bold', color: '#b83280' }}>■ 분홍 = 여학생</span>
+        <span style={{ color: '#a0aec0' }}>(회색이면 성별 미지정 → [학생 관리]에서 클릭으로 지정)</span>
+        <span style={{ marginLeft: '8px' }}>좌석 테두리:</span>
+        <span style={{ color: '#48bb78', fontWeight: 'bold' }}>🟢 건강</span>
+        <span style={{ color: '#d69e2e', fontWeight: 'bold' }}>🟡 보통</span>
+        <span style={{ color: '#e53e3e', fontWeight: 'bold' }}>🔴 힘듦</span>
+        <span style={{ color: '#805ad5', fontWeight: 'bold' }}>┅ 점선 = 모둠</span>
+      </div>
 
       {/* 툴바 */}
       <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center', marginBottom: '20px' }}>

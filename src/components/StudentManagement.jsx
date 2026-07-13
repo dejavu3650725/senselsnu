@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Trash2, Users, UserPlus, ClipboardList, X } from 'lucide-react';
 import { db } from '../firebase';
-import { doc, deleteDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, deleteDoc, updateDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 // 학생 등록 시 무작위로 부여할 기본 아바타 목록
 const DEFAULT_AVATARS = [
@@ -118,6 +118,16 @@ const StudentManagement = ({ studentsData, classCode }) => {
     }
   };
 
+  // 명단에서 성별 직접 변경 (기존에 성별 없이 등록된 학생도 여기서 지정 가능)
+  const handleSetGender = async (studentId, gender) => {
+    try {
+      await updateDoc(doc(db, 'students', studentId), { gender });
+    } catch (error) {
+      console.error('Error updating gender:', error);
+      alert('성별 변경 중 오류가 발생했습니다.');
+    }
+  };
+
   const handleDelete = async (studentId, studentName) => {
     if (window.confirm(`${studentName} 학생을 정말 삭제하시겠습니까? (관련 대화 내역도 모두 삭제됩니다)`)) {
       try {
@@ -145,6 +155,7 @@ const StudentManagement = ({ studentsData, classCode }) => {
       </div>
       <p style={{ color: '#718096', marginBottom: '24px', fontSize: '1.05rem', paddingLeft: '52px' }}>
         학생을 미리 등록하거나 삭제할 수 있습니다. 미리 등록된 실명으로 학생이 입장하면 데이터가 자동으로 연결됩니다.
+        성별은 추가할 때 선택하거나, 아래 명단의 <b>👦남/👧여 버튼을 클릭</b>해서 언제든 지정·변경할 수 있습니다.
       </p>
 
       {/* 학생 추가 폼 */}
@@ -166,7 +177,8 @@ const StudentManagement = ({ studentsData, classCode }) => {
           placeholder="닉네임 (선택, 미입력 시 실명)"
           style={{ ...inputStyle, flex: '1 1 200px' }}
         />
-        <div style={{ display: 'flex', gap: '6px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '4px 6px 4px 12px' }}>
+          <span style={{ fontSize: '0.9rem', color: '#718096', fontWeight: 'bold' }}>성별</span>
           <button
             onClick={() => setNewGender('남')}
             style={{
@@ -235,17 +247,30 @@ const StudentManagement = ({ studentsData, classCode }) => {
                   <td style={{ padding: '16px 20px', fontSize: '1.5rem' }}>{student.avatar || '👤'}</td>
                   <td style={{ padding: '16px 20px', fontWeight: 'bold', color: '#2d3748' }}>{student.realName}</td>
                   <td style={{ padding: '16px 20px' }}>
-                    {student.gender === '남' || student.gender === '여' ? (
-                      <span style={{
-                        padding: '4px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold',
-                        background: student.gender === '남' ? '#ebf8ff' : '#fff5f7',
-                        color: student.gender === '남' ? '#2b6cb0' : '#b83280'
-                      }}>
-                        {student.gender === '남' ? '👦 남' : '👧 여'}
-                      </span>
-                    ) : (
-                      <span style={{ color: '#cbd5e1' }}>-</span>
-                    )}
+                    <div style={{ display: 'flex', gap: '4px' }} title="클릭해서 성별을 지정/변경할 수 있습니다">
+                      <button
+                        onClick={() => handleSetGender(student.id, '남')}
+                        style={{
+                          padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer',
+                          border: student.gender === '남' ? '1.5px solid #2b6cb0' : '1px solid #e2e8f0',
+                          background: student.gender === '남' ? '#ebf8ff' : 'white',
+                          color: student.gender === '남' ? '#2b6cb0' : '#cbd5e1'
+                        }}
+                      >
+                        👦 남
+                      </button>
+                      <button
+                        onClick={() => handleSetGender(student.id, '여')}
+                        style={{
+                          padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer',
+                          border: student.gender === '여' ? '1.5px solid #b83280' : '1px solid #e2e8f0',
+                          background: student.gender === '여' ? '#fff5f7' : 'white',
+                          color: student.gender === '여' ? '#b83280' : '#cbd5e1'
+                        }}
+                      >
+                        👧 여
+                      </button>
+                    </div>
                   </td>
                   <td style={{ padding: '16px 20px', color: '#4a5568' }}>{student.nickname}</td>
                   <td style={{ padding: '16px 20px' }}>
