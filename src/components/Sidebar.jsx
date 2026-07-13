@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, BarChart2, Smile, AlertCircle, FileText, BookOpen, Users, Settings, UserCog } from 'lucide-react';
+import { Home, BarChart2, Smile, AlertCircle, FileText, BookOpen, Users, Settings, UserCog, LayoutGrid, HeartHandshake } from 'lucide-react';
 
 const Sidebar = ({ activeMenu, setActiveMenu, teacherProfile }) => {
   const menuItems = [
@@ -7,6 +7,8 @@ const Sidebar = ({ activeMenu, setActiveMenu, teacherProfile }) => {
     { name: '기본 설정', icon: UserCog, isModal: true },
     { name: '챗봇 설정', icon: Settings, isModal: true },
     { name: '학생 관리', icon: Users },
+    { name: '자리 배치', icon: LayoutGrid },
+    { name: '관계 신호', icon: HeartHandshake },
     { name: '학급 분석', icon: BarChart2 },
     { name: '감정 트래커', icon: Smile },
     { name: '맞춤 처방', icon: AlertCircle },

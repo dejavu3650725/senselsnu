@@ -15,6 +15,8 @@ import CustomPrescription from '../components/CustomPrescription';
 import Report from '../components/Report';
 import EdutechResource from '../components/EdutechResource';
 import StudentManagement from '../components/StudentManagement';
+import SeatingChart from '../components/SeatingChart';
+import RelationshipWatch from '../components/RelationshipWatch';
 import { db, auth } from '../firebase';
 import { collection, onSnapshot, query, orderBy, where, doc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -111,7 +113,9 @@ const TeacherDashboard = () => {
           {activeMenu === '학급 분석' && <ClassAnalysis studentsData={studentsData} />}
           {activeMenu === '감정 트래커' && <EmotionTracker studentsData={studentsData} />}
           {activeMenu === '맞춤 처방' && <CustomPrescription studentsData={studentsData} teacherProfile={teacherProfile} />}
-          {activeMenu === '학생 관리' && <StudentManagement studentsData={studentsData} />}
+          {activeMenu === '학생 관리' && <StudentManagement studentsData={studentsData} classCode={currentClassCode} />}
+          {activeMenu === '자리 배치' && <SeatingChart studentsData={studentsData} classCode={currentClassCode} classLabel={teacherProfile.className} />}
+          {activeMenu === '관계 신호' && <RelationshipWatch studentsData={studentsData} />}
           {activeMenu === '리포트' && <Report studentsData={studentsData} teacherProfile={teacherProfile} />}
           {activeMenu === '에듀테크 리소스' && <EdutechResource />}
         </div>

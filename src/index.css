@@ -313,10 +313,25 @@ body {
   100% { box-shadow: 0 0 0 0 rgba(74, 144, 226, 0); }
 }
 
+/* Print-only elements (인쇄할 때만 표시 - 자리 배치도 제목/범례 등) */
+.print-only {
+  display: none;
+}
+
 /* Print Layout */
 @media print {
   .no-print, .sidebar, .topbar, .teacher-tutorial, .chat-widget, .header-row {
     display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  /* 좌석 색상(기분/모둠/성별)이 인쇄물에도 그대로 나오도록 보정 */
+  #print-area, #print-area * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
   
   body, html, #root, .app-container, .main-layout, .dashboard-content, .glass-card {

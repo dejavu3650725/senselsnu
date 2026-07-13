@@ -35,7 +35,8 @@ const StudentDashboard = () => {
   // 로그인(설정) 관련 상태
   const [realName, setRealName] = useState('');
   const [nickname, setNickname] = useState('');
-  const [mood, setMood] = useState('보통'); 
+  const [gender, setGender] = useState('');
+  const [mood, setMood] = useState('보통');
   const [avatar, setAvatar] = useState('🐻');
   const [studentDocId, setStudentDocId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -106,6 +107,7 @@ const StudentDashboard = () => {
         const userData = querySnapshot.docs[0].data();
         if (userData.nickname) setNickname(userData.nickname);
         if (userData.avatar) setAvatar(userData.avatar);
+        if (userData.gender) setGender(userData.gender);
       }
     } catch (error) {
       console.error("Failed to check existing student", error);
@@ -116,6 +118,10 @@ const StudentDashboard = () => {
   const handleSetupComplete = async () => {
     if (!realName.trim() || !nickname.trim()) {
       setSetupError("실명과 닉네임을 모두 입력해주세요!");
+      return;
+    }
+    if (gender !== '남' && gender !== '여') {
+      setSetupError("성별(남/여)을 선택해주세요!");
       return;
     }
     
@@ -149,6 +155,7 @@ const StudentDashboard = () => {
           nickname: nickname,
           mood: mood,
           avatar: avatar,
+          gender: gender,
           lastActive: serverTimestamp()
         });
 
@@ -168,11 +175,14 @@ const StudentDashboard = () => {
           nickname: nickname,
           mood: mood,
           avatar: avatar,
+          gender: gender,
           classCode: studentClassCode,
           createdAt: serverTimestamp(),
           lastActive: serverTimestamp(),
           messages: [],
-          nominations: [] // 동료 추인 데이터 배열
+          nominations: [], // 동료 추인(긍정 지목) 데이터 배열
+          conflicts: [], // 갈등 신호 (학생이 자발적으로 언급한 경우만)
+          lonelySignals: [] // 외로움 신호 발생 시각 목록
         });
         
         setStudentDocId(newDocRef.id);
@@ -265,43 +275,55 @@ const StudentDashboard = () => {
       const data = await response.json();
       const rawBotText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '앗, 뭐라고 말해야 할지 모르겠어.';
       
-      // [NOMINATION: 닉네임] 태그 파싱
-      let cleanBotText = rawBotText;
+      // [NOMINATION] / [CONFLICT] / [LONELY] 태그 파싱
+      // - NOMINATION: 긍정적 지목 (추인법)
+      // - CONFLICT: 학생이 자발적으로 언급한 갈등 신호
+      // - LONELY: 외로움/고립감 신호
       const nominationMatch = rawBotText.match(/\[NOMINATION:\s*(.*?)\]/);
-      let nominatedNickname = null;
-      if (nominationMatch) {
-        let rawNomination = nominationMatch[1].trim();
-        cleanBotText = rawBotText.replace(/\[NOMINATION:\s*.*?\]/g, '').trim();
+      const conflictMatches = [...rawBotText.matchAll(/\[CONFLICT:\s*(.*?)\]/g)];
+      const isLonelySignal = /\[LONELY\]/.test(rawBotText);
+      const cleanBotText = rawBotText
+        .replace(/\[NOMINATION:\s*.*?\]/g, '')
+        .replace(/\[CONFLICT:\s*.*?\]/g, '')
+        .replace(/\[LONELY\]/g, '')
+        .trim();
 
+      let nominatedNickname = null;
+      let conflictNicknames = [];
+
+      if (nominationMatch || conflictMatches.length > 0) {
+        // 현재 학급의 학생 목록 불러와서 퍼지 매칭
+        const allStudents = [];
         try {
-          // 현재 학급의 학생 목록 불러와서 퍼지 매칭
           const q = query(collection(db, 'students'), where('classCode', '==', studentClassCode));
           const querySnapshot = await getDocs(q);
-          const allStudents = [];
           querySnapshot.forEach(doc => allStudents.push(doc.data()));
+        } catch (e) {
+          console.error('학생 목록 조회 에러:', e);
+        }
 
-          let matchedStudent = allStudents.find(s => s.nickname === rawNomination || s.realName === rawNomination);
-          
-          if (!matchedStudent) {
-            // 조사 제거나 부분 일치로 찾기 ('수안이', '이수안', '수안')
-            const searchName = rawNomination.replace(/[은는이가랑하고의]$/g, '').trim();
-            matchedStudent = allStudents.find(s => 
-              (s.nickname && s.nickname.includes(searchName)) || 
+        // 조사 제거·부분 일치 퍼지 매칭 ('수안이', '이수안', '수안')
+        const fuzzyMatch = (rawName) => {
+          if (!rawName) return null;
+          let matched = allStudents.find(s => s.nickname === rawName || s.realName === rawName);
+          if (!matched) {
+            const searchName = rawName.replace(/[은는이가랑하고의]$/g, '').trim();
+            matched = allStudents.find(s =>
+              (s.nickname && s.nickname.includes(searchName)) ||
               (s.realName && s.realName.includes(searchName)) ||
-              (searchName.includes(s.nickname)) ||
-              (searchName.includes(s.realName))
+              (s.nickname && searchName.includes(s.nickname)) ||
+              (s.realName && searchName.includes(s.realName))
             );
           }
-          
-          if (matchedStudent) {
-            nominatedNickname = matchedStudent.nickname; // 통합된 공식 닉네임으로 통일하여 저장
-          } else {
-            nominatedNickname = rawNomination; // 매칭 실패 시 원본 그대로 저장
-          }
-        } catch (e) {
-          console.error("퍼지 매칭 에러:", e);
-          nominatedNickname = rawNomination;
+          return matched ? matched.nickname : rawName; // 매칭 실패 시 원본 그대로 저장
+        };
+
+        if (nominationMatch) {
+          nominatedNickname = fuzzyMatch(nominationMatch[1].trim());
         }
+        conflictNicknames = [...new Set(
+          conflictMatches.map(m => fuzzyMatch(m[1].trim())).filter(Boolean)
+        )];
       }
 
       setMessages(prev => [...prev, { id: Date.now(), sender: 'bot', text: cleanBotText }]);
@@ -313,6 +335,12 @@ const StudentDashboard = () => {
         };
         if (nominatedNickname) {
           updates.nominations = arrayUnion(nominatedNickname);
+        }
+        if (conflictNicknames.length > 0) {
+          updates.conflicts = arrayUnion(...conflictNicknames); // 갈등 신호 저장
+        }
+        if (isLonelySignal) {
+          updates.lonelySignals = arrayUnion(new Date().toISOString()); // 외로움 신호 저장
         }
         await updateDoc(doc(db, 'students', studentDocId), updates);
       }
@@ -368,6 +396,32 @@ const StudentDashboard = () => {
               style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none' }}
             />
             <p style={{ margin: '8px 0 0 0', fontSize: '0.8rem', color: '#a0aec0' }}>* 이전에 쓰던 실명을 입력하면 내 데이터가 그대로 복원됩니다!</p>
+          </div>
+
+          <div style={{ marginBottom: '20px', textAlign: 'left' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold', color: 'var(--text-main)' }}>나는</label>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => setGender('남')}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem',
+                  border: gender === '남' ? '2px solid #2b6cb0' : '1px solid #e2e8f0',
+                  background: gender === '남' ? '#ebf8ff' : 'white', color: '#2b6cb0'
+                }}
+              >
+                👦 남자
+              </button>
+              <button
+                onClick={() => setGender('여')}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem',
+                  border: gender === '여' ? '2px solid #b83280' : '1px solid #e2e8f0',
+                  background: gender === '여' ? '#fff5f7' : 'white', color: '#b83280'
+                }}
+              >
+                👧 여자
+              </button>
+            </div>
           </div>
 
           <div style={{ marginBottom: '20px', textAlign: 'left' }}>
