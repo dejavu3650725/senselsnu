@@ -56,6 +56,15 @@ const TeacherSetup = () => {
         }
       });
 
+      // 1-1) 데모 학급은 누가 만들었든 모든 교사 계정에 공용으로 표시 (시연용)
+      if (!seen.has(DEMO_CLASS_CODE)) {
+        const demoSnap = await getDoc(doc(db, 'classes', DEMO_CLASS_CODE));
+        if (demoSnap.exists()) {
+          seen.add(DEMO_CLASS_CODE);
+          list.push({ ...demoSnap.data(), shared: demoSnap.data().teacherUid !== u.uid });
+        }
+      }
+
       // 2) 기존 단일 학급(teachers 문서) 하위 호환
       const tSnap = await getDoc(doc(db, 'teachers', u.uid));
       if (tSnap.exists()) {
@@ -88,17 +97,21 @@ const TeacherSetup = () => {
 
   // 학급 입장 (classes 문서가 없던 기존 학급이면 자동 생성해서 이관)
   const enterClass = async (cls) => {
-    try {
-      await setDoc(doc(db, 'classes', cls.classCode), {
-        classCode: cls.classCode,
-        className: cls.className || cls.classCode,
-        teacherUid: user.uid,
-        teacherName: teacherName || '',
-        isDemo: cls.classCode === DEMO_CLASS_CODE,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-    } catch (e) {
-      console.error('classes doc sync failed:', e);
+    // 다른 선생님 소유의 공용 데모 학급이면 소유 정보를 덮어쓰지 않고 그대로 입장
+    const isOthersClass = cls.teacherUid && cls.teacherUid !== user.uid;
+    if (!isOthersClass) {
+      try {
+        await setDoc(doc(db, 'classes', cls.classCode), {
+          classCode: cls.classCode,
+          className: cls.className || cls.classCode,
+          teacherUid: user.uid,
+          teacherName: teacherName || '',
+          isDemo: cls.classCode === DEMO_CLASS_CODE,
+          updatedAt: serverTimestamp()
+        }, { merge: true });
+      } catch (e) {
+        console.error('classes doc sync failed:', e);
+      }
     }
     sessionStorage.setItem('currentClassCode', cls.classCode);
     navigate('/teacher');
