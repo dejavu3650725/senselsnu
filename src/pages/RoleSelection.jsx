@@ -14,21 +14,9 @@ const RoleSelection = () => {
   // 선생님 구글 로그인 핸들러
   const handleTeacherLogin = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      
-      // 선생님 프로필 확인
-      const docRef = doc(db, 'teachers', user.uid);
-      const docSnap = await getDoc(docRef);
-      
-      if (docSnap.exists() && docSnap.data().classCode) {
-        // 이미 학급이 있는 경우
-        sessionStorage.setItem('currentClassCode', docSnap.data().classCode);
-        navigate('/teacher');
-      } else {
-        // 학급 생성이 필요한 경우
-        navigate('/teacher-setup');
-      }
+      await signInWithPopup(auth, googleProvider);
+      // 다중 학급 지원: 로그인 후 항상 학급 관리 화면에서 학급을 선택/생성
+      navigate('/teacher-setup');
     } catch (error) {
       console.error("Google Sign In Error", error);
       alert("로그인 중 오류가 발생했습니다.");
@@ -44,10 +32,19 @@ const RoleSelection = () => {
 
     setIsVerifying(true);
     try {
-      const q = query(collection(db, 'teachers'), where('classCode', '==', classCodeInput.trim()));
-      const querySnapshot = await getDocs(q);
-      
-      if (!querySnapshot.empty) {
+      // 1) 새 구조: classes/{학급코드} 문서 확인
+      const code = classCodeInput.trim();
+      const classSnap = await getDoc(doc(db, 'classes', code));
+      let isValid = classSnap.exists();
+
+      // 2) 하위 호환: 기존 teachers 컬렉션의 classCode 확인
+      if (!isValid) {
+        const q = query(collection(db, 'teachers'), where('classCode', '==', code));
+        const querySnapshot = await getDocs(q);
+        isValid = !querySnapshot.empty;
+      }
+
+      if (isValid) {
         // 유효한 학급 코드
         sessionStorage.setItem('studentClassCode', classCodeInput.trim());
         navigate('/student');

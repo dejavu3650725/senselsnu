@@ -73,17 +73,30 @@ const StudentDashboard = () => {
     const fetchChatbotSettings = async () => {
       if (!studentClassCode) return;
       try {
-        const q = query(collection(db, 'teachers'), where('classCode', '==', studentClassCode));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          const teacherDoc = querySnapshot.docs[0];
-          if (teacherDoc.data().ptiser) {
-            setPtiser(teacherDoc.data().ptiser);
-          } else if (teacherDoc.data().customPrompt) {
-            setPtiser({ information: teacherDoc.data().customPrompt }); // 구버전 호환
+        let teacherData = null;
+
+        // 1) 새 구조: classes/{학급코드} → 담당 교사 문서에서 설정 로드 (다중 학급 지원)
+        const classSnap = await getDoc(doc(db, 'classes', studentClassCode));
+        if (classSnap.exists() && classSnap.data().teacherUid) {
+          const tSnap = await getDoc(doc(db, 'teachers', classSnap.data().teacherUid));
+          if (tSnap.exists()) teacherData = tSnap.data();
+        }
+
+        // 2) 하위 호환: 기존 teachers 컬렉션에서 classCode로 검색
+        if (!teacherData) {
+          const q = query(collection(db, 'teachers'), where('classCode', '==', studentClassCode));
+          const querySnapshot = await getDocs(q);
+          if (!querySnapshot.empty) teacherData = querySnapshot.docs[0].data();
+        }
+
+        if (teacherData) {
+          if (teacherData.ptiser) {
+            setPtiser(teacherData.ptiser);
+          } else if (teacherData.customPrompt) {
+            setPtiser({ information: teacherData.customPrompt }); // 구버전 호환
           }
-          if (teacherDoc.data().selLevel) {
-            setSelLevel(teacherDoc.data().selLevel);
+          if (teacherData.selLevel) {
+            setSelLevel(teacherData.selLevel);
           }
         }
       } catch (error) {

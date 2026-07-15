@@ -9,14 +9,26 @@
  * 3. 대화 내용 원문, 학번, 사진 등은 전송하지 않는다.
  */
 
+// AI 엔드포인트 자동 선택: VERTEX_API_KEY 우선, 없으면 GEMINI_API_KEY
+const getAiEndpoint = () => {
+  if (process.env.VERTEX_API_KEY) {
+    return `https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.5-flash:generateContent?key=${process.env.VERTEX_API_KEY}`;
+  }
+  if (process.env.GEMINI_API_KEY) {
+    return `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+  }
+  return null;
+};
+
 export default async function handler(req, res) {
   // 자가진단: 브라우저 주소창에서 /api/gemini-seating 을 열면(GET) 함수 상태를 보여줌
   if (req.method === 'GET') {
     return res.status(200).json({
       ok: true,
       service: 'gemini-seating',
-      keyConfigured: !!process.env.GEMINI_API_KEY,
-      hint: 'keyConfigured가 false면 GEMINI_API_KEY 환경 변수를 등록하고 재배포하세요.'
+      keyConfigured: !!(process.env.VERTEX_API_KEY || process.env.GEMINI_API_KEY),
+      provider: process.env.VERTEX_API_KEY ? 'vertex-ai' : (process.env.GEMINI_API_KEY ? 'gemini-developer-api' : 'none'),
+      hint: 'keyConfigured가 false면 VERTEX_API_KEY(권장) 또는 GEMINI_API_KEY 환경 변수를 등록하고 재배포하세요.'
     });
   }
 
@@ -24,9 +36,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
+  const aiEndpoint = getAiEndpoint();
+  if (!aiEndpoint) {
+    return res.status(500).json({ error: 'VERTEX_API_KEY 또는 GEMINI_API_KEY가 설정되지 않았습니다.' });
   }
 
   try {
@@ -88,7 +100,7 @@ ${studentLines}
     };
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      aiEndpoint,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

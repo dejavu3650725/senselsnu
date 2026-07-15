@@ -18,14 +18,27 @@
 
 import { selData } from '../src/data/selData.js';
 
+// AI 엔드포인트 자동 선택:
+// - VERTEX_API_KEY가 있으면 → Vertex AI (익스프레스 모드/기업용, 아동 대상 서비스 운영 경로)
+// - 없으면 → 기존 Gemini Developer API (GEMINI_API_KEY)
+const getAiEndpoint = () => {
+  if (process.env.VERTEX_API_KEY) {
+    return `https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-2.5-flash:generateContent?key=${process.env.VERTEX_API_KEY}`;
+  }
+  if (process.env.GEMINI_API_KEY) {
+    return `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+  }
+  return null;
+};
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'GEMINI_API_KEY is not configured.' });
+  const aiEndpoint = getAiEndpoint();
+  if (!aiEndpoint) {
+    return res.status(500).json({ error: 'VERTEX_API_KEY 또는 GEMINI_API_KEY가 설정되지 않았습니다.' });
   }
 
   try {
@@ -94,7 +107,7 @@ export default async function handler(req, res) {
     };
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      aiEndpoint,
       {
         method: 'POST',
         headers: {
