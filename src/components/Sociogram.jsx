@@ -1,6 +1,10 @@
 import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
+import { forceCollide, forceX, forceY } from 'd3-force-3d';
 import { X } from 'lucide-react';
+
+// 별 표시 크기: 받은 지목 수에 따라 커지되 상한을 둬서 라벨을 가리지 않게
+const starSizeOf = (node) => 7 + Math.min(12, (node.received || 0) * 2);
 
 // 5꼭짓점 별 그리기 함수
 function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
@@ -76,7 +80,7 @@ const Sociogram = ({ studentsData = [] }) => {
         avatar: student.avatar || '👤',
         mood: student.mood || '알 수 없음',
         color,
-        val: 10,
+        val: 4,
         received: 0, // 받은 지목 수 (아래에서 집계)
         nominations: student.nominations || [],
         conflicts: student.conflicts || [],
@@ -111,7 +115,7 @@ const Sociogram = ({ studentsData = [] }) => {
           linkKeySet.add(key);
           rawLinks.push({ source: sourceNode.id, target: target.id });
           // 지목을 많이 받을수록 별이 커지고, 받은 지목 수 집계
-          target.val = (target.val || 10) + 4;
+          target.val = (target.val || 4) + 2;
           target.received = (target.received || 0) + 1;
         }
       });
@@ -177,6 +181,20 @@ const Sociogram = ({ studentsData = [] }) => {
     if (!selectedId) return true;
     return endId(l.source) === selectedId || endId(l.target) === selectedId;
   }, [selectedId]);
+
+  // 물리 엔진 튜닝: 노드끼리 밀어내기 + 라벨 공간 확보(충돌 방지) + 고립 학생이 너무 멀리 날아가지 않게 중심으로 살짝 당김
+  useEffect(() => {
+    const fg = fgRef.current;
+    if (!fg) return;
+    const charge = fg.d3Force('charge');
+    if (charge) charge.strength(-260);
+    const linkForce = fg.d3Force('link');
+    if (linkForce) linkForce.distance(l => (l.mutual ? 85 : 125));
+    fg.d3Force('collide', forceCollide(node => starSizeOf(node) + 28));
+    fg.d3Force('x', forceX(0).strength(0.05));
+    fg.d3Force('y', forceY(0).strength(0.06));
+    if (fg.d3ReheatSimulation) fg.d3ReheatSimulation();
+  }, [graphData]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -314,26 +332,26 @@ const Sociogram = ({ studentsData = [] }) => {
             }}
             linkColor={l => {
               const active = isLinkActive(l);
-              if (l.mutual) return active ? '#ffd700' : 'rgba(255, 215, 0, 0.15)';
-              return active ? 'rgba(148, 163, 184, 0.75)' : 'rgba(148, 163, 184, 0.12)';
+              if (l.mutual) return active ? '#ffd700' : 'rgba(255, 215, 0, 0.12)';
+              return active ? 'rgba(203, 213, 225, 0.9)' : 'rgba(148, 163, 184, 0.08)';
             }}
-            linkWidth={l => (l.mutual ? 2.5 : 1.2)}
-            linkCurvature={l => (l.mutual ? 0.25 : 0)}
-            linkDirectionalArrowLength={l => (isLinkActive(l) ? 7 : 3)}
-            linkDirectionalArrowRelPos={0.9}
+            linkWidth={l => (l.mutual ? 2.8 : 1.8)}
+            linkCurvature={l => (l.mutual ? 0.22 : 0)}
+            linkDirectionalArrowLength={l => (isLinkActive(l) ? 9 : 3)}
+            linkDirectionalArrowRelPos={0.88}
             linkDirectionalArrowColor={l => (l.mutual ? '#ffd700' : 'rgba(255, 255, 255, 0.9)')}
             linkDirectionalParticles={l => (l.mutual && isLinkActive(l) ? 3 : 0)}
             linkDirectionalParticleWidth={2.5}
             linkDirectionalParticleColor={() => '#ffd700'}
             linkDirectionalParticleSpeed={0.005}
             nodeCanvasObject={(node, ctx, globalScale) => {
-              const size = (node.val || 5) * 1.2;
+              const size = starSizeOf(node);
               const dimmed = highlight && !highlight.has(node.id);
-              ctx.globalAlpha = dimmed ? 0.25 : 1;
+              ctx.globalAlpha = dimmed ? 0.2 : 1;
 
               // 야광 별
               ctx.shadowColor = node.color;
-              ctx.shadowBlur = (dimmed ? 5 : 15) * globalScale;
+              ctx.shadowBlur = (dimmed ? 4 : 12) * globalScale;
               ctx.fillStyle = node.color;
               drawStar(ctx, node.x, node.y, 5, size, size / 2.5);
               ctx.fill();
@@ -346,22 +364,32 @@ const Sociogram = ({ studentsData = [] }) => {
                 ctx.stroke();
               }
 
-              // 실명 라벨 (성별 색상)
+              ctx.shadowBlur = 0;
+
+              // 실명 라벨 (성별 색상) - 어두운 반투명 배경을 깔아 선과 겹쳐도 읽히게
               const label = `${node.avatar} ${node.realName}`;
-              const fontSize = 14 / globalScale;
+              const fontSize = Math.max(12 / globalScale, 3);
               ctx.font = `700 ${fontSize}px Sans-Serif`;
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
-              ctx.shadowBlur = 0;
+              const labelY = node.y + size + fontSize * 0.95;
+              const textWidth = ctx.measureText(label).width;
+              ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+              ctx.fillRect(node.x - textWidth / 2 - 3, labelY - fontSize * 0.65, textWidth + 6, fontSize * 1.3);
               ctx.fillStyle = genderLabelColor(node.gender);
-              ctx.fillText(label, node.x, node.y + size + fontSize * 1.1);
+              ctx.fillText(label, node.x, labelY);
 
               // 닉네임 보조 라벨 (실명과 다를 때만, 작게)
               if (node.name && node.name !== node.realName) {
-                const subSize = 10 / globalScale;
+                const subSize = 9 / globalScale;
+                const subY = labelY + fontSize * 0.7 + subSize * 0.75;
                 ctx.font = `400 ${subSize}px Sans-Serif`;
-                ctx.fillStyle = 'rgba(148, 163, 184, 0.85)';
-                ctx.fillText(`(${node.name})`, node.x, node.y + size + fontSize * 1.1 + subSize * 1.3);
+                const subLabel = `(${node.name})`;
+                const subWidth = ctx.measureText(subLabel).width;
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+                ctx.fillRect(node.x - subWidth / 2 - 2, subY - subSize * 0.65, subWidth + 4, subSize * 1.3);
+                ctx.fillStyle = 'rgba(148, 163, 184, 0.9)';
+                ctx.fillText(subLabel, node.x, subY);
               }
 
               ctx.globalAlpha = 1;
@@ -372,7 +400,7 @@ const Sociogram = ({ studentsData = [] }) => {
               containerRef.current.style.cursor = node ? 'pointer' : 'default';
             }}
             onEngineStop={() => {
-              if (fgRef.current) fgRef.current.zoomToFit(400, 50);
+              if (fgRef.current) fgRef.current.zoomToFit(400, 60);
             }}
           />
         ) : (
