@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Sociogram from '../components/Sociogram';
@@ -18,7 +18,7 @@ import StudentManagement from '../components/StudentManagement';
 import SeatingChart from '../components/SeatingChart';
 import RelationshipWatch from '../components/RelationshipWatch';
 import { db, auth } from '../firebase';
-import { collection, onSnapshot, query, orderBy, where, doc, getDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, where, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 
 const TeacherDashboard = () => {
@@ -87,6 +87,50 @@ const TeacherDashboard = () => {
     loadTeacherProfile();
   }, [currentUser]);
 
+  // ===== 긴급 알림(Red Alert) 프로토콜 =====
+  // 학생 문서의 alerts 중 교사가 아직 확인하지 않은(alertsAckedAt 이후) 위기 신호 집계
+  const urgentAlerts = [];
+  studentsData.forEach(s => {
+    const ackedAt = s.alertsAckedAt || '';
+    (s.alerts || []).forEach(a => {
+      if (a && a.timestamp && (!ackedAt || a.timestamp > ackedAt)) {
+        urgentAlerts.push({ studentId: s.id, name: s.realName, avatar: s.avatar, reason: a.reason || '위기 신호 감지', timestamp: a.timestamp });
+      }
+    });
+  });
+  urgentAlerts.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+
+  // 새 긴급 알림 도착 시 브라우저 푸시 알림 (권한이 허용된 경우)
+  const prevAlertCountRef = useRef(0);
+  useEffect(() => {
+    if (
+      urgentAlerts.length > prevAlertCountRef.current &&
+      typeof Notification !== 'undefined' &&
+      Notification.permission === 'granted'
+    ) {
+      const latest = urgentAlerts[0];
+      try {
+        new Notification('🚨 SEN-SEL 긴급 알림', { body: `${latest.name} 학생: ${latest.reason}` });
+      } catch (e) { /* 일부 브라우저 미지원 */ }
+    }
+    prevAlertCountRef.current = urgentAlerts.length;
+  }, [urgentAlerts.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 긴급 알림 확인 처리
+  const handleAckAlert = async (studentId) => {
+    try {
+      await updateDoc(doc(db, 'students', studentId), { alertsAckedAt: new Date().toISOString() });
+    } catch (error) {
+      console.error('Failed to acknowledge alert:', error);
+    }
+  };
+
+  const formatAlertTime = (iso) => {
+    try {
+      return new Date(iso).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    } catch { return ''; }
+  };
+
   return (
     <div className="app-container">
       <TeacherTutorial />
@@ -103,6 +147,44 @@ const TeacherDashboard = () => {
         />
         
         <div className="dashboard-content">
+          {/* 🚨 긴급 알림(Red Alert) 배너 - 어떤 메뉴에서든 최상단 표시 */}
+          {urgentAlerts.length > 0 && (
+            <div style={{ marginBottom: '20px', background: '#fff5f5', border: '2px solid #e53e3e', borderRadius: '16px', padding: '16px 20px', boxShadow: '0 4px 16px rgba(229, 62, 62, 0.25)', animation: 'pulse-ring 2s infinite' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
+                <div style={{ fontWeight: 'bold', color: '#c53030', fontSize: '1.1rem' }}>
+                  🚨 긴급 알림 ({urgentAlerts.length}건) — 위기 신호가 감지되었습니다. 즉시 확인해주세요.
+                </div>
+                {typeof Notification !== 'undefined' && Notification.permission === 'default' && (
+                  <button
+                    onClick={() => Notification.requestPermission()}
+                    style={{ padding: '6px 12px', borderRadius: '10px', border: '1px solid #e53e3e', background: 'white', color: '#c53030', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    🔔 브라우저 푸시 알림 켜기
+                  </button>
+                )}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {urgentAlerts.map((a, idx) => (
+                  <div key={`${a.studentId}-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'white', border: '1px solid #feb2b2', borderRadius: '12px', padding: '10px 14px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '1.4rem' }}>{a.avatar || '👤'}</span>
+                    <b style={{ color: '#2d3748' }}>{a.name}</b>
+                    <span style={{ color: '#c53030', fontWeight: 600 }}>{a.reason}</span>
+                    <span style={{ color: '#a0aec0', fontSize: '0.85rem' }}>{formatAlertTime(a.timestamp)}</span>
+                    <button
+                      onClick={() => handleAckAlert(a.studentId)}
+                      style={{ marginLeft: 'auto', padding: '8px 16px', borderRadius: '10px', border: 'none', background: '#e53e3e', color: 'white', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer' }}
+                    >
+                      확인 완료
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <p style={{ margin: '10px 0 0 0', fontSize: '0.8rem', color: '#9c4221' }}>
+                💡 [확인 완료]를 누르면 해당 학생의 현재 알림이 해제됩니다. 학생의 대화 내역과 [맞춤 처방] 메뉴에서 후속 지도를 이어가세요.
+              </p>
+            </div>
+          )}
+
           <div className="header-row" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginBottom: '24px' }}>
             <h1 className="dashboard-title" style={{ margin: 0 }}>
               {(activeClass?.className || teacherProfile.className || '우리 반')} 관계망 및 정서 건강

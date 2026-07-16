@@ -143,12 +143,13 @@ export const generateDemoStudents = () => [
   {
     realName: '홍아린', nickname: '조용한 별', gender: '여', avatar: '⭐', mood: '힘듦',
     nominations: [], conflicts: [], lonelySignals: [hoursAgo(70), hoursAgo(45)],
+    alerts: [{ reason: '지속적인 따돌림 피해 호소', timestamp: hoursAgo(44) }], // 긴급 알림(Red Alert) 시연용
     messages: [
       msg('bot', '조용한 별, 만나서 반가워! 요즘 학교에서 마음이 불편했던 순간이 있었어?', 70),
       msg('user', '쉬는 시간에 같이 놀 친구가 없어. 다들 자기들끼리만 놀아.', 70),
       msg('bot', '혼자라고 느껴져서 많이 외로웠겠다. 그 마음 이야기해줘서 정말 고마워. 나무가 항상 네 편이 되어줄게.', 69),
-      msg('user', '오늘도 점심시간에 혼자 있었어.', 45),
-      msg('bot', '그랬구나. 네 마음이 얼마나 쓸쓸했을지 느껴져. 선생님도 네 이야기를 들으면 꼭 도와주고 싶어하실 거야.', 44),
+      msg('user', '오늘도 점심시간에 혼자 있었어. 애들이 나만 계속 빼놓고 놀아.', 45),
+      msg('bot', '그랬구나. 계속 혼자 남겨지는 기분이 얼마나 힘들었을까. 분명히 말해줄게, 그건 네 잘못이 아니야. 이 이야기를 담임 선생님께 꼭 말씀드려보자. 선생님은 네 편이 되어주실 거야.', 44),
     ],
   },
   {

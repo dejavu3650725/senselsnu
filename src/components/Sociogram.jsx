@@ -1,54 +1,53 @@
-import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
-import ForceGraph2D from 'react-force-graph-2d';
-import { forceCollide, forceX, forceY } from 'd3-force-3d';
+import React, { useState, useMemo } from 'react';
 import { X } from 'lucide-react';
 
-// 별 표시 크기: 받은 지목 수에 따라 커지되 상한을 둬서 라벨을 가리지 않게
-const starSizeOf = (node) => 7 + Math.min(12, (node.received || 0) * 2);
+/**
+ * 학생 관계망 소시오그램 (원형 배치)
+ * - 학생 전원을 원 둘레에 고정 배치 → 겹침 없이 항상 한 화면에 전체 학급이 보임
+ * - 라벨은 실명만 표시 (성별 색상: 파랑=남, 분홍=여)
+ * - 금색 굵은 선 = 서로 지목(쌍방), 회색 화살표 = 한쪽 지목 (지목한 학생 → 받은 학생)
+ * - 별 클릭 시 해당 학생의 관계만 강조 + 우측 상세 패널
+ */
 
-// 5꼭짓점 별 그리기 함수
-function drawStar(ctx, cx, cy, spikes, outerRadius, innerRadius) {
-  let rot = Math.PI / 2 * 3;
-  let x = cx;
-  let y = cy;
-  let step = Math.PI / spikes;
-
-  ctx.beginPath();
-  ctx.moveTo(cx, cy - outerRadius);
-  for (let i = 0; i < spikes; i++) {
-    x = cx + Math.cos(rot) * outerRadius;
-    y = cy + Math.sin(rot) * outerRadius;
-    ctx.lineTo(x, y);
-    rot += step;
-
-    x = cx + Math.cos(rot) * innerRadius;
-    y = cy + Math.sin(rot) * innerRadius;
-    ctx.lineTo(x, y);
-    rot += step;
-  }
-  ctx.lineTo(cx, cy - outerRadius);
-  ctx.closePath();
-}
-
-// 성별에 따른 이름 색상 (어두운 우주 배경 위에서 잘 보이는 밝은 톤)
+// 성별에 따른 이름 색상 (어두운 배경 위 밝은 톤)
 const genderLabelColor = (gender) => {
-  if (gender === '남') return '#7cc4ff'; // 밝은 파랑
-  if (gender === '여') return '#ff9ecf'; // 밝은 분홍
+  if (gender === '남') return '#7cc4ff';
+  if (gender === '여') return '#ff9ecf';
   return 'rgba(255, 255, 255, 0.9)';
 };
 
-// 링크 양 끝 id 추출 (그래프 초기화 후에는 source/target이 객체로 바뀜)
-const endId = (end) => (typeof end === 'object' && end !== null ? end.id : end);
+// 기분에 따른 별 색상
+const moodColor = (mood) => {
+  if (mood === '보통') return '#fbbf24';
+  if (mood === '힘듦') return '#f87171';
+  return '#60a5fa';
+};
+
+// SVG 별(5꼭짓점) 폴리곤 좌표 생성
+const starPoints = (cx, cy, outerR, innerR) => {
+  const pts = [];
+  let rot = -Math.PI / 2;
+  const step = Math.PI / 5;
+  for (let i = 0; i < 5; i++) {
+    pts.push(`${cx + Math.cos(rot) * outerR},${cy + Math.sin(rot) * outerR}`);
+    rot += step;
+    pts.push(`${cx + Math.cos(rot) * innerR},${cy + Math.sin(rot) * innerR}`);
+    rot += step;
+  }
+  return pts.join(' ');
+};
+
+const VIEW_W = 760;
+const VIEW_H = 560;
+const CX = VIEW_W / 2;
+const CY = VIEW_H / 2 + 6;
+const RADIUS = Math.min(VIEW_W, VIEW_H) / 2 - 78; // 라벨 공간 확보
 
 const Sociogram = ({ studentsData = [] }) => {
-  const fgRef = useRef();
-  const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-  const containerRef = useRef(null);
-  const [selectedId, setSelectedId] = useState(null); // 클릭한 학생 (상세 패널)
+  const [selectedId, setSelectedId] = useState(null);
 
-  // 학생 데이터 기반으로 동적 그래프 데이터 생성
-  const graphData = useMemo(() => {
-    // 닉네임 기준으로 중복 제거 (동일 닉네임은 단일 별로 통합)
+  const { nodes, links } = useMemo(() => {
+    // 닉네임 기준 중복 제거 (동일 닉네임은 최신 데이터로 통합)
     const uniqueStudentsMap = new Map();
     studentsData.forEach(student => {
       const name = student.nickname || '알 수 없음';
@@ -58,42 +57,28 @@ const Sociogram = ({ studentsData = [] }) => {
         const existing = uniqueStudentsMap.get(name);
         const existingTime = existing.lastActive?.toMillis ? existing.lastActive.toMillis() : 0;
         const newTime = student.lastActive?.toMillis ? student.lastActive.toMillis() : 0;
-        if (newTime > existingTime) {
-          uniqueStudentsMap.set(name, student);
-        }
+        if (newTime > existingTime) uniqueStudentsMap.set(name, student);
       }
     });
 
-    const uniqueStudents = Array.from(uniqueStudentsMap.values());
+    const nodeList = Array.from(uniqueStudentsMap.values()).map(student => ({
+      id: student.nickname || student.id,
+      name: student.nickname || '알 수 없음',
+      realName: student.realName || student.nickname || '알 수 없음',
+      gender: student.gender || '',
+      mood: student.mood || '알 수 없음',
+      received: 0,
+      nominations: student.nominations || [],
+      conflicts: student.conflicts || [],
+      lonelyCount: (student.lonelySignals || []).length
+    }));
 
-    const nodes = uniqueStudents.map((student) => {
-      // 기분에 따라 별 색상 (좋음=파랑, 보통=노랑, 힘듦=빨강)
-      let color = '#60a5fa';
-      if (student.mood === '보통') color = '#fbbf24';
-      if (student.mood === '힘듦') color = '#f87171';
-
-      return {
-        id: student.nickname || student.id,
-        name: student.nickname || '알 수 없음',
-        realName: student.realName || student.nickname || '알 수 없음',
-        gender: student.gender || '',
-        avatar: student.avatar || '👤',
-        mood: student.mood || '알 수 없음',
-        color,
-        val: 4,
-        received: 0, // 받은 지목 수 (아래에서 집계)
-        nominations: student.nominations || [],
-        conflicts: student.conflicts || [],
-        lonelyCount: (student.lonelySignals || []).length
-      };
-    });
-
-    // 퍼지 매칭으로 지목 대상 노드 찾기
+    // 퍼지 매칭
     const findTarget = (targetNickname) => {
-      let target = nodes.find(n => n.name === targetNickname || n.id === targetNickname || n.realName === targetNickname);
+      let target = nodeList.find(n => n.name === targetNickname || n.realName === targetNickname);
       if (!target) {
         const searchName = targetNickname.replace(/[은는이가랑하고의]$/g, '').trim();
-        target = nodes.find(n =>
+        target = nodeList.find(n =>
           (n.name && n.name.includes(searchName)) ||
           (n.realName && n.realName.includes(searchName)) ||
           (n.name && searchName.includes(n.name)) ||
@@ -103,310 +88,312 @@ const Sociogram = ({ studentsData = [] }) => {
       return target;
     };
 
-    // 지목(추인) 데이터 → 방향 있는 링크 생성
-    const linkKeySet = new Set(); // "sourceId>targetId"
-    const rawLinks = [];
-    nodes.forEach(sourceNode => {
-      (sourceNode.nominations || []).forEach(targetNickname => {
-        const target = findTarget(targetNickname);
-        if (target && target.id !== sourceNode.id) {
-          const key = `${sourceNode.id}>${target.id}`;
-          if (linkKeySet.has(key)) return; // 중복 지목은 1개 링크로
-          linkKeySet.add(key);
-          rawLinks.push({ source: sourceNode.id, target: target.id });
-          // 지목을 많이 받을수록 별이 커지고, 받은 지목 수 집계
-          target.val = (target.val || 4) + 2;
-          target.received = (target.received || 0) + 1;
+    // 방향 링크 수집
+    const keySet = new Set();
+    nodeList.forEach(src => {
+      (src.nominations || []).forEach(nick => {
+        const target = findTarget(nick);
+        if (target && target.id !== src.id) {
+          const key = `${src.id}>${target.id}`;
+          if (keySet.has(key)) return;
+          keySet.add(key);
+          target.received += 1;
         }
       });
     });
 
-    // 상호(쌍방) 지목 판별
-    const links = rawLinks.map(l => ({
-      ...l,
-      mutual: linkKeySet.has(`${l.target}>${l.source}`)
-    }));
-
-    return { nodes, links };
-  }, [studentsData]);
-
-  // 선택된 학생의 관계 요약 (상세 패널용)
-  const selectedInfo = useMemo(() => {
-    if (!selectedId) return null;
-    const node = graphData.nodes.find(n => n.id === selectedId);
-    if (!node) return null;
-
-    const nodeById = new Map(graphData.nodes.map(n => [n.id, n]));
-    const outgoing = [];
-    const incoming = [];
-    graphData.links.forEach(l => {
-      const s = endId(l.source);
-      const t = endId(l.target);
-      if (s === selectedId) outgoing.push(nodeById.get(t));
-      if (t === selectedId) incoming.push(nodeById.get(s));
-    });
-    const outIds = new Set(outgoing.map(n => n?.id));
-    const mutual = incoming.filter(n => n && outIds.has(n.id));
-    const mutualIds = new Set(mutual.map(n => n.id));
-
-    // 갈등 신호 상대 (실명으로 변환)
-    const conflictNames = (node.conflicts || [])
-      .map(nick => graphData.nodes.find(n => n.name === nick || n.realName === nick))
-      .filter(Boolean)
-      .map(n => n.realName);
-
-    return {
-      node,
-      outgoing: outgoing.filter(Boolean).filter(n => !mutualIds.has(n.id)),
-      incoming: incoming.filter(Boolean).filter(n => !mutualIds.has(n.id)),
-      mutual,
-      conflictNames
-    };
-  }, [selectedId, graphData]);
-
-  // 선택 시 연결된 링크/노드 강조를 위한 집합
-  const highlight = useMemo(() => {
-    if (!selectedId) return null;
-    const nodeIds = new Set([selectedId]);
-    graphData.links.forEach(l => {
-      const s = endId(l.source);
-      const t = endId(l.target);
-      if (s === selectedId) nodeIds.add(t);
-      if (t === selectedId) nodeIds.add(s);
-    });
-    return nodeIds;
-  }, [selectedId, graphData]);
-
-  const isLinkActive = useCallback((l) => {
-    if (!selectedId) return true;
-    return endId(l.source) === selectedId || endId(l.target) === selectedId;
-  }, [selectedId]);
-
-  // 물리 엔진 튜닝: 노드끼리 밀어내기 + 라벨 공간 확보(충돌 방지) + 고립 학생이 너무 멀리 날아가지 않게 중심으로 살짝 당김
-  useEffect(() => {
-    const fg = fgRef.current;
-    if (!fg) return;
-    const charge = fg.d3Force('charge');
-    if (charge) charge.strength(-260);
-    const linkForce = fg.d3Force('link');
-    if (linkForce) linkForce.distance(l => (l.mutual ? 85 : 125));
-    fg.d3Force('collide', forceCollide(node => starSizeOf(node) + 28));
-    fg.d3Force('x', forceX(0).strength(0.05));
-    fg.d3Force('y', forceY(0).strength(0.06));
-    if (fg.d3ReheatSimulation) fg.d3ReheatSimulation();
-  }, [graphData]);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const resizeObserver = new ResizeObserver(entries => {
-      for (let entry of entries) {
-        setDimensions({
-          width: entry.contentRect.width,
-          height: entry.contentRect.height
-        });
+    // 상호/일방 링크 정리 (상호는 1개의 금색 선으로 통합)
+    const linkList = [];
+    const mutualDone = new Set();
+    keySet.forEach(key => {
+      const [s, t] = key.split('>');
+      const isMutual = keySet.has(`${t}>${s}`);
+      if (isMutual) {
+        const pairKey = [s, t].sort().join('|');
+        if (mutualDone.has(pairKey)) return;
+        mutualDone.add(pairKey);
+        linkList.push({ source: s, target: t, mutual: true });
+      } else {
+        linkList.push({ source: s, target: t, mutual: false });
       }
     });
-    resizeObserver.observe(containerRef.current);
 
-    return () => resizeObserver.disconnect();
-  }, []);
+    // 원 둘레 배치 순서: 연결된 학생끼리 이웃하도록 탐욕적 정렬 (긴 선 최소화)
+    const adj = new Map();
+    const addAdj = (a, b) => {
+      if (!adj.has(a)) adj.set(a, new Set());
+      adj.get(a).add(b);
+    };
+    linkList.forEach(l => { addAdj(l.source, l.target); addAdj(l.target, l.source); });
+
+    const remaining = new Set(nodeList.map(n => n.id));
+    const order = [];
+    while (remaining.size > 0) {
+      let pick = null;
+      if (order.length > 0) {
+        const last = order[order.length - 1];
+        const nbrs = [...(adj.get(last) || [])].filter(id => remaining.has(id));
+        if (nbrs.length > 0) {
+          nbrs.sort((a, b) => (adj.get(b)?.size || 0) - (adj.get(a)?.size || 0));
+          pick = nbrs[0];
+        }
+      }
+      if (!pick) {
+        pick = [...remaining].sort((a, b) => (adj.get(b)?.size || 0) - (adj.get(a)?.size || 0))[0];
+      }
+      order.push(pick);
+      remaining.delete(pick);
+    }
+
+    // 원 위 좌표 계산
+    const nodeById = new Map(nodeList.map(n => [n.id, n]));
+    const n = order.length;
+    order.forEach((id, i) => {
+      const angle = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+      const node = nodeById.get(id);
+      node.angle = angle;
+      node.x = CX + Math.cos(angle) * RADIUS;
+      node.y = CY + Math.sin(angle) * RADIUS;
+    });
+
+    return { nodes: nodeList, links: linkList };
+  }, [studentsData]);
+
+  const nodeById = useMemo(() => new Map(nodes.map(n => [n.id, n])), [nodes]);
+
+  // 선택된 학생 관계 요약 (상세 패널)
+  const selectedInfo = useMemo(() => {
+    if (!selectedId) return null;
+    const node = nodeById.get(selectedId);
+    if (!node) return null;
+    const outgoing = [];
+    const incoming = [];
+    const mutual = [];
+    links.forEach(l => {
+      if (l.mutual) {
+        if (l.source === selectedId) mutual.push(nodeById.get(l.target));
+        else if (l.target === selectedId) mutual.push(nodeById.get(l.source));
+      } else {
+        if (l.source === selectedId) outgoing.push(nodeById.get(l.target));
+        if (l.target === selectedId) incoming.push(nodeById.get(l.source));
+      }
+    });
+    const conflictNames = (node.conflicts || [])
+      .map(nick => nodes.find(n => n.name === nick || n.realName === nick))
+      .filter(Boolean)
+      .map(n => n.realName);
+    return { node, outgoing: outgoing.filter(Boolean), incoming: incoming.filter(Boolean), mutual: mutual.filter(Boolean), conflictNames };
+  }, [selectedId, links, nodes, nodeById]);
+
+  const isLinkActive = (l) => !selectedId || l.source === selectedId || l.target === selectedId;
+  const isNodeActive = (id) => {
+    if (!selectedId) return true;
+    if (id === selectedId) return true;
+    return links.some(l => (l.source === selectedId && l.target === id) || (l.target === selectedId && l.source === id));
+  };
+
+  // 별 크기: 받은 지목 수 비례 (상한)
+  const starSize = (node) => 7 + Math.min(9, node.received * 1.6);
+
+  // 선의 양 끝을 별 크기만큼 안쪽으로 당김
+  const linkEnds = (l) => {
+    const s = nodeById.get(l.source);
+    const t = nodeById.get(l.target);
+    if (!s || !t) return null;
+    const dx = t.x - s.x;
+    const dy = t.y - s.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    const ux = dx / dist;
+    const uy = dy / dist;
+    const sOff = starSize(s) + 3;
+    const tOff = starSize(t) + 6;
+    return {
+      x1: s.x + ux * sOff, y1: s.y + uy * sOff,
+      x2: t.x - ux * tOff, y2: t.y - uy * tOff,
+      s, t
+    };
+  };
+
+  // 라벨 위치: 원 바깥쪽
+  const labelPos = (node) => {
+    const lx = CX + Math.cos(node.angle) * (RADIUS + 20);
+    const ly = CY + Math.sin(node.angle) * (RADIUS + 20);
+    const c = Math.cos(node.angle);
+    const anchor = c > 0.35 ? 'start' : c < -0.35 ? 'end' : 'middle';
+    return { lx, ly, anchor };
+  };
 
   const rowStyle = { display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' };
   const chip = (n, borderColor) => (
     <span key={n.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 8px', borderRadius: '10px', border: `1px solid ${borderColor}`, fontSize: '0.78rem', color: genderLabelColor(n.gender), background: 'rgba(255,255,255,0.06)' }}>
-      {n.avatar} {n.realName}
+      {n.realName}
     </span>
   );
 
   return (
     <div className="glass-card widget sociogram-widget" style={{ padding: 0, overflow: 'hidden', background: '#0f172a', position: 'relative' }}>
-      <div className="widget-title" style={{ position: 'absolute', top: 20, left: 20, zIndex: 10, color: 'white', textShadow: '0 0 10px rgba(255,255,255,0.5)' }}>
-        우주 속의 학생 관계망 (별자리 테마)
-        <div style={{ fontSize: '0.75rem', fontWeight: 'normal', color: '#94a3b8', marginTop: '4px' }}>
-          별을 클릭하면 그 학생의 관계가 자세히 보여요
+      <div className="widget-title" style={{ position: 'absolute', top: 16, left: 20, zIndex: 10, color: 'white', textShadow: '0 0 10px rgba(255,255,255,0.5)' }}>
+        학생 관계망 소시오그램
+        <div style={{ fontSize: '0.72rem', fontWeight: 'normal', color: '#94a3b8', marginTop: '3px' }}>
+          별을 클릭하면 그 학생의 관계만 강조됩니다
         </div>
       </div>
 
-      {/* 범례 */}
-      <div className="glass-panel" style={{ position: 'absolute', bottom: 20, left: 20, padding: '12px', fontSize: '0.8rem', zIndex: 10, background: 'rgba(15, 23, 42, 0.75)', border: '1px solid rgba(255,255,255,0.1)', color: '#cbd5e1' }}>
-        <div style={{ fontWeight: 600, marginBottom: '8px', color: 'white' }}>관계망 읽는 법</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-          <span style={{ color: '#7cc4ff', fontWeight: 'bold' }}>이름</span>=남 ·
-          <span style={{ color: '#ff9ecf', fontWeight: 'bold' }}>이름</span>=여
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-          <div style={{ width: '12px', height: '12px', background: '#60a5fa', boxShadow: '0 0 8px #60a5fa', clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' }}></div> 좋음
-          <div style={{ width: '12px', height: '12px', background: '#fbbf24', boxShadow: '0 0 8px #fbbf24', clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' }}></div> 보통
-          <div style={{ width: '12px', height: '12px', background: '#f87171', boxShadow: '0 0 8px #f87171', clipPath: 'polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%)' }}></div> 힘듦
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-          <div style={{ width: '20px', height: '2px', background: '#ffd700', boxShadow: '0 0 6px #ffd700' }}></div> 금색 곡선 = 서로 지목 (쌍방)
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-          <div style={{ width: '20px', height: '1px', background: 'rgba(148,163,184,0.8)' }}></div> 회색 직선+화살표 = 한쪽 지목 (지목한 학생 → 받은 학생)
-        </div>
-        <div style={{ color: '#94a3b8' }}>별이 클수록 친구들에게 많이 지목받은 학생</div>
+      {/* 컴팩트 범례 */}
+      <div style={{ position: 'absolute', bottom: 12, left: 20, zIndex: 10, display: 'flex', flexWrap: 'wrap', gap: '14px', fontSize: '0.75rem', color: '#cbd5e1', background: 'rgba(15,23,42,0.75)', padding: '6px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)' }}>
+        <span><b style={{ color: '#7cc4ff' }}>파랑</b>=남 <b style={{ color: '#ff9ecf' }}>분홍</b>=여</span>
+        <span>별색: <b style={{ color: '#60a5fa' }}>좋음</b> <b style={{ color: '#fbbf24' }}>보통</b> <b style={{ color: '#f87171' }}>힘듦</b></span>
+        <span><b style={{ color: '#ffd700' }}>― 금색</b>=서로 지목</span>
+        <span style={{ color: '#94a3b8' }}>→ 회색 화살표=한쪽 지목</span>
+        <span style={{ color: '#94a3b8' }}>별 클수록 지목 많이 받음</span>
       </div>
 
-      {/* 학생 상세 패널 (별 클릭 시) */}
+      {/* 학생 상세 패널 */}
       {selectedInfo && (
-        <div className="glass-panel" style={{ position: 'absolute', top: 20, right: 20, width: '250px', maxHeight: 'calc(100% - 40px)', overflowY: 'auto', padding: '16px', zIndex: 20, background: 'rgba(15, 23, 42, 0.92)', border: '1px solid rgba(255,255,255,0.15)', color: '#e2e8f0' }}>
+        <div className="glass-panel" style={{ position: 'absolute', top: 16, right: 16, width: '235px', maxHeight: 'calc(100% - 32px)', overflowY: 'auto', padding: '14px', zIndex: 20, background: 'rgba(15, 23, 42, 0.94)', border: '1px solid rgba(255,255,255,0.15)', color: '#e2e8f0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <div style={{ fontSize: '1.5rem' }}>{selectedInfo.node.avatar}</div>
               <div style={{ fontWeight: 'bold', fontSize: '1.05rem', color: genderLabelColor(selectedInfo.node.gender) }}>
                 {selectedInfo.node.realName}
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'normal', marginLeft: '6px' }}>
-                  {selectedInfo.node.gender ? (selectedInfo.node.gender === '남' ? '남' : '여') : ''}
-                </span>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'normal', marginLeft: '6px' }}>{selectedInfo.node.gender}</span>
               </div>
-              <div style={{ fontSize: '0.78rem', color: '#94a3b8' }}>({selectedInfo.node.name}) · 기분: {selectedInfo.node.mood}</div>
+              <div style={{ fontSize: '0.76rem', color: '#94a3b8' }}>기분: {selectedInfo.node.mood} · 받은 지목 {selectedInfo.node.received}회
+                {selectedInfo.node.lonelyCount > 0 && <span style={{ color: '#7cc4ff' }}> · 💧외로움 {selectedInfo.node.lonelyCount}회</span>}
+              </div>
             </div>
             <button onClick={() => setSelectedId(null)} style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0 }}>
               <X size={18} />
             </button>
           </div>
 
-          <div style={{ marginTop: '10px', fontSize: '0.8rem', color: '#cbd5e1' }}>
-            ⭐ 받은 지목 <b style={{ color: 'white' }}>{selectedInfo.node.received}</b>회
-            {selectedInfo.node.lonelyCount > 0 && (
-              <span style={{ marginLeft: '8px', color: '#7cc4ff' }}>💧 외로움 신호 {selectedInfo.node.lonelyCount}회</span>
-            )}
-          </div>
-
-          <div style={{ marginTop: '12px' }}>
-            <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#ffd700' }}>💛 서로 지목한 친구 ({selectedInfo.mutual.length})</div>
+          <div style={{ marginTop: '10px' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#ffd700' }}>💛 서로 지목 ({selectedInfo.mutual.length})</div>
             <div style={rowStyle}>
               {selectedInfo.mutual.length > 0 ? selectedInfo.mutual.map(n => chip(n, 'rgba(255,215,0,0.5)')) : <span style={{ fontSize: '0.75rem', color: '#64748b' }}>없음</span>}
             </div>
           </div>
-
-          <div style={{ marginTop: '10px' }}>
-            <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#93c5fd' }}>→ 내가 지목한 친구 ({selectedInfo.outgoing.length})</div>
+          <div style={{ marginTop: '8px' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#93c5fd' }}>→ 내가 지목 ({selectedInfo.outgoing.length})</div>
             <div style={rowStyle}>
               {selectedInfo.outgoing.length > 0 ? selectedInfo.outgoing.map(n => chip(n, 'rgba(147,197,253,0.4)')) : <span style={{ fontSize: '0.75rem', color: '#64748b' }}>없음</span>}
             </div>
           </div>
-
-          <div style={{ marginTop: '10px' }}>
-            <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#86efac' }}>← 나를 지목한 친구 ({selectedInfo.incoming.length})</div>
+          <div style={{ marginTop: '8px' }}>
+            <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#86efac' }}>← 나를 지목 ({selectedInfo.incoming.length})</div>
             <div style={rowStyle}>
               {selectedInfo.incoming.length > 0 ? selectedInfo.incoming.map(n => chip(n, 'rgba(134,239,172,0.4)')) : <span style={{ fontSize: '0.75rem', color: '#64748b' }}>없음</span>}
             </div>
           </div>
 
           {selectedInfo.conflictNames.length > 0 && (
-            <div style={{ marginTop: '10px', padding: '8px 10px', borderRadius: '10px', background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.4)' }}>
-              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#f87171' }}>⚡ 갈등 신호</div>
-              <div style={{ fontSize: '0.78rem', color: '#fca5a5', marginTop: '2px' }}>{selectedInfo.conflictNames.join(', ')} 학생과의 갈등을 언급했습니다</div>
+            <div style={{ marginTop: '8px', padding: '7px 9px', borderRadius: '10px', background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.4)' }}>
+              <div style={{ fontSize: '0.78rem', fontWeight: 'bold', color: '#f87171' }}>⚡ 갈등 신호: {selectedInfo.conflictNames.join(', ')}</div>
             </div>
           )}
-
           {selectedInfo.mutual.length === 0 && selectedInfo.outgoing.length === 0 && selectedInfo.incoming.length === 0 && (
-            <div style={{ marginTop: '10px', padding: '8px 10px', borderRadius: '10px', background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.4)', fontSize: '0.78rem', color: '#c4b5fd' }}>
-              🏝 아직 관계망에 연결되지 않은 학생입니다 (고립 위험 관찰 필요)
+            <div style={{ marginTop: '8px', padding: '7px 9px', borderRadius: '10px', background: 'rgba(167,139,250,0.12)', border: '1px solid rgba(167,139,250,0.4)', fontSize: '0.76rem', color: '#c4b5fd' }}>
+              🏝 관계망에 연결되지 않은 학생 (고립 위험 관찰 필요)
             </div>
           )}
         </div>
       )}
 
-      <div ref={containerRef} style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        {dimensions.width > 0 && graphData.nodes.length > 0 ? (
-          <ForceGraph2D
-            ref={fgRef}
-            width={dimensions.width}
-            height={dimensions.height}
-            graphData={graphData}
-            backgroundColor="#0f172a"
-            nodeRelSize={2}
-            nodeVal={node => node.val}
-            nodeColor={node => node.color}
-            nodeLabel={node => `${node.realName} (${node.name}) · 받은 지목 ${node.received}회`}
-            linkLabel={l => {
-              const s = graphData.nodes.find(n => n.id === endId(l.source));
-              const t = graphData.nodes.find(n => n.id === endId(l.target));
-              if (!s || !t) return '';
-              return l.mutual
-                ? `💛 ${s.realName} ↔ ${t.realName} (서로 지목)`
-                : `${s.realName} → ${t.realName} 지목`;
-            }}
-            linkColor={l => {
-              const active = isLinkActive(l);
-              if (l.mutual) return active ? '#ffd700' : 'rgba(255, 215, 0, 0.12)';
-              return active ? 'rgba(203, 213, 225, 0.9)' : 'rgba(148, 163, 184, 0.08)';
-            }}
-            linkWidth={l => (l.mutual ? 2.8 : 1.8)}
-            linkCurvature={l => (l.mutual ? 0.22 : 0)}
-            linkDirectionalArrowLength={l => (isLinkActive(l) ? 9 : 3)}
-            linkDirectionalArrowRelPos={0.88}
-            linkDirectionalArrowColor={l => (l.mutual ? '#ffd700' : 'rgba(255, 255, 255, 0.9)')}
-            linkDirectionalParticles={l => (l.mutual && isLinkActive(l) ? 3 : 0)}
-            linkDirectionalParticleWidth={2.5}
-            linkDirectionalParticleColor={() => '#ffd700'}
-            linkDirectionalParticleSpeed={0.005}
-            nodeCanvasObject={(node, ctx, globalScale) => {
-              const size = starSizeOf(node);
-              const dimmed = highlight && !highlight.has(node.id);
-              ctx.globalAlpha = dimmed ? 0.2 : 1;
+      {nodes.length === 0 ? (
+        <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#cbd5e1' }}>
+          학생 데이터가 없습니다. (학생이 대화하면 별이 생성됩니다)
+        </div>
+      ) : (
+        <svg
+          viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+          preserveAspectRatio="xMidYMid meet"
+          style={{ width: '100%', height: '100%', display: 'block' }}
+          onClick={() => setSelectedId(null)}
+        >
+          <defs>
+            <marker id="arrowGray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(203,213,225,0.95)" />
+            </marker>
+            <marker id="arrowGold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#ffd700" />
+            </marker>
+            <filter id="starGlow" x="-80%" y="-80%" width="260%" height="260%">
+              <feGaussianBlur stdDeviation="2.4" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
 
-              // 야광 별
-              ctx.shadowColor = node.color;
-              ctx.shadowBlur = (dimmed ? 4 : 12) * globalScale;
-              ctx.fillStyle = node.color;
-              drawStar(ctx, node.x, node.y, 5, size, size / 2.5);
-              ctx.fill();
+          {/* 배경 장식 별 */}
+          {[[60, 80], [700, 60], [90, 480], [680, 500], [380, 40], [40, 280], [720, 300]].map(([x, y], i) => (
+            <circle key={i} cx={x} cy={y} r={1.2} fill="rgba(255,255,255,0.35)" />
+          ))}
 
-              // 선택된 별은 흰 테두리로 강조
-              if (selectedId === node.id) {
-                ctx.shadowBlur = 0;
-                ctx.strokeStyle = 'white';
-                ctx.lineWidth = 1.5 / globalScale;
-                ctx.stroke();
-              }
+          {/* 관계선 */}
+          {links.map((l, idx) => {
+            const ends = linkEnds(l);
+            if (!ends) return null;
+            const active = isLinkActive(l);
+            const stroke = l.mutual
+              ? (active ? '#ffd700' : 'rgba(255,215,0,0.08)')
+              : (active ? 'rgba(203,213,225,0.55)' : 'rgba(148,163,184,0.06)');
+            return (
+              <g key={idx}>
+                <line
+                  x1={ends.x1} y1={ends.y1} x2={ends.x2} y2={ends.y2}
+                  stroke={stroke}
+                  strokeWidth={l.mutual ? 2.6 : 1.4}
+                  markerEnd={active ? (l.mutual ? 'url(#arrowGold)' : 'url(#arrowGray)') : undefined}
+                  markerStart={active && l.mutual ? 'url(#arrowGold)' : undefined}
+                >
+                  <title>
+                    {l.mutual
+                      ? `💛 ${ends.s.realName} ↔ ${ends.t.realName} (서로 지목)`
+                      : `${ends.s.realName} → ${ends.t.realName} 지목`}
+                  </title>
+                </line>
+              </g>
+            );
+          })}
 
-              ctx.shadowBlur = 0;
-
-              // 실명 라벨 (성별 색상) - 어두운 반투명 배경을 깔아 선과 겹쳐도 읽히게
-              const label = `${node.avatar} ${node.realName}`;
-              const fontSize = Math.max(12 / globalScale, 3);
-              ctx.font = `700 ${fontSize}px Sans-Serif`;
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              const labelY = node.y + size + fontSize * 0.95;
-              const textWidth = ctx.measureText(label).width;
-              ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
-              ctx.fillRect(node.x - textWidth / 2 - 3, labelY - fontSize * 0.65, textWidth + 6, fontSize * 1.3);
-              ctx.fillStyle = genderLabelColor(node.gender);
-              ctx.fillText(label, node.x, labelY);
-
-              // 닉네임 보조 라벨 (실명과 다를 때만, 작게)
-              if (node.name && node.name !== node.realName) {
-                const subSize = 9 / globalScale;
-                const subY = labelY + fontSize * 0.7 + subSize * 0.75;
-                ctx.font = `400 ${subSize}px Sans-Serif`;
-                const subLabel = `(${node.name})`;
-                const subWidth = ctx.measureText(subLabel).width;
-                ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
-                ctx.fillRect(node.x - subWidth / 2 - 2, subY - subSize * 0.65, subWidth + 4, subSize * 1.3);
-                ctx.fillStyle = 'rgba(148, 163, 184, 0.9)';
-                ctx.fillText(subLabel, node.x, subY);
-              }
-
-              ctx.globalAlpha = 1;
-            }}
-            onNodeClick={node => setSelectedId(prev => (prev === node.id ? null : node.id))}
-            onBackgroundClick={() => setSelectedId(null)}
-            onNodeHover={node => {
-              containerRef.current.style.cursor = node ? 'pointer' : 'default';
-            }}
-            onEngineStop={() => {
-              if (fgRef.current) fgRef.current.zoomToFit(400, 60);
-            }}
-          />
-        ) : (
-          <div style={{ color: '#cbd5e1' }}>학생 데이터가 없습니다. (학생이 대화하면 별이 생성됩니다)</div>
-        )}
-      </div>
+          {/* 학생 별 + 실명 라벨 */}
+          {nodes.map(node => {
+            const size = starSize(node);
+            const { lx, ly, anchor } = labelPos(node);
+            const active = isNodeActive(node.id);
+            return (
+              <g
+                key={node.id}
+                opacity={active ? 1 : 0.18}
+                style={{ cursor: 'pointer' }}
+                onClick={(e) => { e.stopPropagation(); setSelectedId(prev => (prev === node.id ? null : node.id)); }}
+              >
+                <title>{`${node.realName} · 기분 ${node.mood} · 받은 지목 ${node.received}회`}</title>
+                <polygon
+                  points={starPoints(node.x, node.y, size, size / 2.4)}
+                  fill={moodColor(node.mood)}
+                  filter="url(#starGlow)"
+                  stroke={selectedId === node.id ? 'white' : 'none'}
+                  strokeWidth={selectedId === node.id ? 1.5 : 0}
+                />
+                <text
+                  x={lx} y={ly}
+                  textAnchor={anchor}
+                  dominantBaseline="middle"
+                  fill={genderLabelColor(node.gender)}
+                  fontSize="13.5"
+                  fontWeight="700"
+                  fontFamily="'Inter', sans-serif"
+                  style={{ paintOrder: 'stroke', stroke: 'rgba(15,23,42,0.85)', strokeWidth: 3 }}
+                >
+                  {node.realName}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      )}
     </div>
   );
 };

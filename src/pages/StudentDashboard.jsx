@@ -53,6 +53,8 @@ const StudentDashboard = () => {
   // 교사가 설정한 P-TISER 및 SEL 학교급
   const [ptiser, setPtiser] = useState(null);
   const [selLevel, setSelLevel] = useState('');
+  // 학급 친구 닉네임 명단 (LLM이 문맥 추론으로 공식 닉네임에 매핑할 수 있도록 전달)
+  const [roster, setRoster] = useState([]);
 
   // 스크롤 자동 내리기
   const scrollToBottom = () => {
@@ -101,6 +103,20 @@ const StudentDashboard = () => {
         }
       } catch (error) {
         console.error("Failed to fetch chatbot settings", error);
+      }
+
+      // 학급 닉네임 명단 로드 (실명 제외, 닉네임만)
+      try {
+        const rq = query(collection(db, 'students'), where('classCode', '==', studentClassCode));
+        const rSnap = await getDocs(rq);
+        const nicks = [];
+        rSnap.forEach(d => {
+          const nick = d.data().nickname;
+          if (nick) nicks.push(nick);
+        });
+        setRoster([...new Set(nicks)].slice(0, 60));
+      } catch (error) {
+        console.error("Failed to fetch class roster", error);
       }
     };
     fetchChatbotSettings();
@@ -280,7 +296,7 @@ const StudentDashboard = () => {
       const response = await fetch('/api/gemini-counseling', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: history, ptiser: ptiser, selLevel: selLevel })
+        body: JSON.stringify({ contents: history, ptiser: ptiser, selLevel: selLevel, roster: roster })
       });
 
       if (!response.ok) throw new Error('API Error');
@@ -288,17 +304,20 @@ const StudentDashboard = () => {
       const data = await response.json();
       const rawBotText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '앗, 뭐라고 말해야 할지 모르겠어.';
       
-      // [NOMINATION] / [CONFLICT] / [LONELY] 태그 파싱
+      // [NOMINATION] / [CONFLICT] / [LONELY] / [ALERT] 태그 파싱
       // - NOMINATION: 긍정적 지목 (추인법)
       // - CONFLICT: 학생이 자발적으로 언급한 갈등 신호
       // - LONELY: 외로움/고립감 신호
+      // - ALERT: 위기 신호 (학교폭력·자해 암시 등) → 교사 대시보드 긴급 알림
       const nominationMatch = rawBotText.match(/\[NOMINATION:\s*(.*?)\]/);
       const conflictMatches = [...rawBotText.matchAll(/\[CONFLICT:\s*(.*?)\]/g)];
       const isLonelySignal = /\[LONELY\]/.test(rawBotText);
+      const alertMatch = rawBotText.match(/\[ALERT:?\s*(.*?)\]/);
       const cleanBotText = rawBotText
         .replace(/\[NOMINATION:\s*.*?\]/g, '')
         .replace(/\[CONFLICT:\s*.*?\]/g, '')
         .replace(/\[LONELY\]/g, '')
+        .replace(/\[ALERT:?\s*.*?\]/g, '')
         .trim();
 
       let nominatedNickname = null;
@@ -315,7 +334,14 @@ const StudentDashboard = () => {
           console.error('학생 목록 조회 에러:', e);
         }
 
-        // 조사 제거·부분 일치 퍼지 매칭 ('수안이', '이수안', '수안')
+        // 한글 음절 → 초성 변환 ("정민" → "ㅈㅁ")
+        const CHO = ['ㄱ', 'ㄲ', 'ㄴ', 'ㄷ', 'ㄸ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅃ', 'ㅅ', 'ㅆ', 'ㅇ', 'ㅈ', 'ㅉ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+        const toChosung = (str) => [...String(str)].map(ch => {
+          const code = ch.charCodeAt(0) - 0xac00;
+          return (code >= 0 && code < 11172) ? CHO[Math.floor(code / 588)] : ch;
+        }).join('');
+
+        // 고도화 퍼지 매칭: 완전 일치 → 조사 제거·부분 일치 → 초성 일치 ("ㅈㅁ이" → 정민)
         const fuzzyMatch = (rawName) => {
           if (!rawName) return null;
           let matched = allStudents.find(s => s.nickname === rawName || s.realName === rawName);
@@ -327,6 +353,16 @@ const StudentDashboard = () => {
               (s.nickname && searchName.includes(s.nickname)) ||
               (s.realName && searchName.includes(s.realName))
             );
+          }
+          if (!matched) {
+            // 초성 매칭: "ㅈㅁ이", "ㅈㅁ" 처럼 초성으로 부른 경우 학급 명단과 교차 검증
+            const chosungQuery = rawName.replace(/[^ㄱ-ㅎ]/g, '');
+            if (chosungQuery.length >= 2) {
+              matched = allStudents.find(s =>
+                toChosung(s.realName || '').includes(chosungQuery) ||
+                toChosung(s.nickname || '').includes(chosungQuery)
+              );
+            }
           }
           return matched ? matched.nickname : rawName; // 매칭 실패 시 원본 그대로 저장
         };
@@ -354,6 +390,13 @@ const StudentDashboard = () => {
         }
         if (isLonelySignal) {
           updates.lonelySignals = arrayUnion(new Date().toISOString()); // 외로움 신호 저장
+        }
+        if (alertMatch) {
+          // 위기 신호(긴급 알림) 저장 → 교사 대시보드에 실시간 Red Alert 표시
+          updates.alerts = arrayUnion({
+            reason: (alertMatch[1] || '위기 신호 감지').trim(),
+            timestamp: new Date().toISOString()
+          });
         }
         await updateDoc(doc(db, 'students', studentDocId), updates);
       }

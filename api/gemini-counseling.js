@@ -42,8 +42,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    // 프론트엔드에서 전달받은 대화 내역, P-TISER 설정, 그리고 SEL 학교급
-    const { contents, ptiser, customPrompt, selLevel } = req.body;
+    // 프론트엔드에서 전달받은 대화 내역, P-TISER 설정, SEL 학교급, 학급 닉네임 명단
+    const { contents, ptiser, customPrompt, selLevel, roster } = req.body;
+
+    // 학급 닉네임 명단 (개인정보 보호: 실명이 아닌 닉네임만 전달받음)
+    const safeRoster = Array.isArray(roster)
+      ? roster.filter(n => typeof n === 'string' && n.trim()).slice(0, 60)
+      : [];
 
     // [Gemini 프롬프트 기본 원칙]
     const baseText = `
@@ -56,6 +61,13 @@ export default async function handler(req, res) {
 1. 항상 긍정적인 상황을 가정하고 질문해. (예: "우리 반에서 여행을 간다면 같은 방을 쓰고 싶은 친구는 누구야?", "새로운 자리가 생긴다면 짝꿍이 되고 싶은 친구는 누구야?", "오늘 가장 고마웠던 친구는 누구야?")
 2. 절대 부정적인 질문("가장 싫은 애는 누구야?", "싸운 친구가 있니?")을 던지지 마.
 3. 상대방의 대답을 듣고 따뜻하게 공감해 준 뒤, 적절한 타이밍에 다른 긍정적 관계 질문으로 넘어가.
+
+[위기 신호 대응 원칙 - 무엇보다 최우선]
+1. 학생이 학교폭력 피해, 지속적인 따돌림, 자해·자살에 대한 생각, 가정 내 위험 등 심각한 위기를 직접 말하거나 암시하면, 절대 가볍게 넘기지 말고 따뜻하게 공감하며 "네 잘못이 아니야", "너는 혼자가 아니야"라는 메시지를 분명히 전해.
+2. 그리고 담임 선생님이나 믿을 수 있는 어른에게 꼭 이야기하도록 부드럽지만 분명하게 권해줘.
+3. 자해 방법 등 위험한 정보에 대한 질문에는 어떤 경우에도 절대 답하지 마.
+4. 위기 신호가 감지되면 응답 텍스트 맨 끝에 [ALERT: 사유 한 줄 요약] 태그를 반드시 추가해. (예: [ALERT: 지속적인 따돌림 피해 호소]) 이 태그는 학생에게 보이지 않고 담임 선생님에게 긴급 알림으로 전달돼.
+5. 단순한 투정이나 일회성 짜증에는 ALERT를 남발하지 마. 심각성이 느껴질 때만 사용해.
 
 [갈등·고립 신호 파악 원칙 - 매우 중요]
 1. 갈등 상대를 직접 캐묻는 부정적 질문("싫은 친구는 누구야?", "누구랑 싸웠어?")은 여전히 절대 금지야.
@@ -75,6 +87,12 @@ export default async function handler(req, res) {
     `;
 
     let finalSystemText = baseText;
+
+    // 학급 명단 기반 닉네임 추론: 학생이 실명·초성·별명 일부로 친구를 불러도
+    // LLM이 문맥으로 추론해 명단의 '공식 닉네임'으로 변환하여 태그를 달도록 함
+    if (safeRoster.length > 0) {
+      finalSystemText += `\n\n[학급 친구 닉네임 명단]\n${safeRoster.join(', ')}\n[명단 매핑 원칙 - 매우 중요] [NOMINATION]과 [CONFLICT] 태그에는 반드시 위 명단에 있는 닉네임을 정확히 그대로 적어. 학생이 친구를 실명, 초성(예: "ㅈㅁ이"), 별명 일부, 조사가 붙은 형태(예: "정민이랑")로 부르더라도 대화의 문맥을 통해 위 명단의 누구인지 추론한 뒤, 명단의 공식 닉네임으로 변환해서 태그에 적어야 해. 명단에서 도저히 특정할 수 없으면 태그를 달지 마.`;
+    }
 
     if (selLevel && selData[selLevel]) {
       finalSystemText += `\n\n[한국형 사회정서교육(SEL) 기반 지침]\n다음은 네가 상담을 진행할 때 기반으로 삼아야 할 공식 SEL 교육과정 매뉴얼이야. 이 매뉴얼의 내용을 숙지하고 학생의 발달 단계와 상황에 맞게 자연스럽게 적용해줘:\n${selData[selLevel]}`;
