@@ -9,6 +9,8 @@
  * 3. 대화 내용 원문, 학번, 사진 등은 전송하지 않는다.
  */
 
+import { verifyRequest } from './_auth.js';
+
 // AI 엔드포인트 자동 선택: VERTEX_API_KEY 우선, 없으면 GEMINI_API_KEY
 const getAiEndpoint = () => {
   if (process.env.VERTEX_API_KEY) {
@@ -120,6 +122,10 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // 인증: 교사(구글 로그인) 전용
+  const authResult = await verifyRequest(req, { teacherOnly: true });
+  if (!authResult.ok) return res.status(authResult.status).json({ error: authResult.error });
 
   const aiEndpoint = getAiEndpoint();
   if (!aiEndpoint) {

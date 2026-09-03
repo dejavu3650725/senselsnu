@@ -12,6 +12,7 @@
  */
 
 import { selData } from '../src/data/selData.js';
+import { verifyRequest } from './_auth.js';
 
 const getAiEndpoint = () => {
   if (process.env.VERTEX_API_KEY) {
@@ -101,6 +102,10 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // 인증: 교사(구글 로그인) 전용
+  const authResult = await verifyRequest(req, { teacherOnly: true });
+  if (!authResult.ok) return res.status(authResult.status).json({ error: authResult.error });
 
   const aiEndpoint = getAiEndpoint();
   if (!aiEndpoint) {

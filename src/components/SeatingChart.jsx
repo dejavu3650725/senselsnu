@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { LayoutGrid, Save, Shuffle, RotateCcw, X, Plus, Minus, Printer, Sparkles, Layers, CheckCircle2, AlertCircle, MinusCircle, ChevronDown, ChevronUp, Loader } from 'lucide-react';
 import { db } from '../firebase';
+import { apiPost } from '../utils/apiClient';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { generateSeating, evaluateSeating, scoreFromChecks, DEFAULT_POLICY, POLICY_LABELS } from '../utils/seatingEngine';
 
@@ -403,11 +404,7 @@ const SeatingChart = ({ studentsData, classCode, classLabel }) => {
         return { id: anonById.get(sid), row: r, col: c };
       });
       const checks = Object.values(proposal.checks).map(c => ({ label: c.label, value: c.value, total: c.total, status: c.status }));
-      const res = await fetch('/api/gemini-seating', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'review', rows, cols, students, assignments, checks, policy: proposal.policy, score: proposal.score }),
-      });
+      const res = await apiPost('/api/gemini-seating', { mode: 'review', rows, cols, students, assignments, checks, policy: proposal.policy, score: proposal.score });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `AI 검토 응답 오류 (HTTP ${res.status})`);
       const dz = (text) => String(text || '').replace(/S(\d+)(?![0-9])/g, (m, num) => {

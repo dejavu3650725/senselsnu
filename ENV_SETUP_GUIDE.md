@@ -119,3 +119,26 @@ vercel dev              # .env.local의 GEMINI_API_KEY까지 자동으로 읽어
 
 **Q. `import.meta.env.VITE_...`가 undefined예요.**
 → ① 변수 이름이 `VITE_`로 시작하는지 ② 파일 이름이 `.env.local`(오타 주의)인지 ③ dev 서버를 재시작했는지 확인하세요.
+
+---
+
+## 5. 보안 설정 (Firestore 규칙 · API 인증)
+
+### 5-1. Firebase Authentication에서 '익명' 로그인 켜기 (필수)
+학생은 학급 코드로 입장할 때 자동으로 **익명 로그인**됩니다. Firebase 콘솔 → Authentication → 로그인 방법 → **익명** → 사용 설정.
+(교사용 Google 로그인은 기존대로 유지)
+
+### 5-2. Firestore 보안 규칙 배포
+저장소의 `firestore.rules`를 배포합니다. 방법 A(CLI):
+
+```bash
+npm i -g firebase-tools
+firebase login
+firebase use --add            # 이 프로젝트의 Firebase 프로젝트 ID 선택
+firebase deploy --only firestore:rules
+```
+
+방법 B(콘솔): Firebase 콘솔 → Firestore Database → 규칙 탭 → `firestore.rules` 내용 붙여넣기 → 게시.
+
+### 5-3. API 인증에 필요한 환경 변수
+`/api/*` 함수는 `VITE_FIREBASE_API_KEY`로 Firebase ID 토큰을 검증합니다. Vercel 환경 변수에 이미 등록된 값이 그대로 사용되므로 **추가 설정은 없습니다.** (로컬 `vercel dev`에서도 `.env.local`의 값이 사용됩니다)

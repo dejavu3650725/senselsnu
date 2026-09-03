@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { HeartPulse, Sparkles, Loader, RefreshCw, ChevronDown, ChevronUp, Users, ShieldAlert, Target, ClipboardCheck, MessageCircle } from 'lucide-react';
 import { db } from '../firebase';
+import { apiPost } from '../utils/apiClient';
 import { doc, updateDoc } from 'firebase/firestore';
 import { assessClass, buildAnonymizedProfile, deanonymizeText, CASEL } from '../utils/studentSignals';
 
@@ -75,15 +76,11 @@ const CustomPrescription = ({ studentsData, teacherProfile, focusStudentId }) =>
       if (!built) throw new Error('학생 데이터를 찾을 수 없습니다.');
       const { profile, idByAnon } = built;
 
-      const res = await fetch('/api/gemini-prescription', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          profile,
-          selLevel: teacherProfile?.selLevel || '',
-          avoidStrategies: collectAvoid(student.id),
-          teacherNote: notes[student.id] || '',
-        }),
+      const res = await apiPost('/api/gemini-prescription', {
+        profile,
+        selLevel: teacherProfile?.selLevel || '',
+        avoidStrategies: collectAvoid(student.id),
+        teacherNote: notes[student.id] || '',
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.prescription) throw new Error(data.error || `처방 생성 실패 (HTTP ${res.status})`);

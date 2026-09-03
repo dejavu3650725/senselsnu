@@ -4,6 +4,7 @@ import { Shield, BookOpen, Users, X, Key } from 'lucide-react';
 import { auth, googleProvider, db } from '../firebase';
 import { signInWithPopup } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { ensureStudentSession } from '../utils/apiClient';
 
 const RoleSelection = () => {
   const navigate = useNavigate();
@@ -32,21 +33,27 @@ const RoleSelection = () => {
 
     setIsVerifying(true);
     try {
-      // 1) 새 구조: classes/{학급코드} 문서 확인
       const code = classCodeInput.trim();
+      // 0) 보안 규칙상 읽기에는 로그인이 필요 → 학생은 익명 로그인
+      await ensureStudentSession(null);
+
+      // 1) 새 구조: classes/{학급코드} 문서 확인
       const classSnap = await getDoc(doc(db, 'classes', code));
       let isValid = classSnap.exists();
 
-      // 2) 하위 호환: 기존 teachers 컬렉션의 classCode 확인
+      // 2) 하위 호환: 기존 teachers 컬렉션의 classCode 확인 (규칙상 교사만 조회 가능 → 실패 시 무시)
       if (!isValid) {
-        const q = query(collection(db, 'teachers'), where('classCode', '==', code));
-        const querySnapshot = await getDocs(q);
-        isValid = !querySnapshot.empty;
+        try {
+          const q = query(collection(db, 'teachers'), where('classCode', '==', code));
+          const querySnapshot = await getDocs(q);
+          isValid = !querySnapshot.empty;
+        } catch { /* 권한 없음 → 무효 처리 */ }
       }
 
       if (isValid) {
-        // 유효한 학급 코드
-        sessionStorage.setItem('studentClassCode', classCodeInput.trim());
+        // 유효한 학급 코드 → 학생 세션에 학급 기록 (규칙이 이 학급 데이터만 허용)
+        await ensureStudentSession(code);
+        sessionStorage.setItem('studentClassCode', code);
         navigate('/student');
       } else {
         alert("존재하지 않는 학급 코드입니다. 선생님께 다시 확인해주세요.");

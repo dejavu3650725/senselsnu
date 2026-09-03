@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import StudentTutorial from '../components/StudentTutorial';
 import { db } from '../firebase';
 import { collection, addDoc, updateDoc, doc, arrayUnion, serverTimestamp, getDocs, getDoc, query, where } from 'firebase/firestore';
+import { apiPost, ensureStudentSession } from '../utils/apiClient';
 
 const AVATAR_LIST = [
   '🐻', '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐼', '🐨', '🐯',
@@ -74,6 +75,8 @@ const StudentDashboard = () => {
     // 해당 학급 선생님의 커스텀 프롬프트 불러오기
     const fetchChatbotSettings = async () => {
       if (!studentClassCode) return;
+      // 새로고침/직접 진입 시에도 익명 로그인 + 학급 세션 보장 (보안 규칙 통과용)
+      try { await ensureStudentSession(studentClassCode); } catch (e) { console.error('Student session error', e); }
       try {
         let teacherData = null;
 
@@ -293,11 +296,7 @@ const StudentDashboard = () => {
 
       const history = formattedHistory;
 
-      const response = await fetch('/api/gemini-counseling', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: history, ptiser: ptiser, selLevel: selLevel, roster: roster })
-      });
+      const response = await apiPost('/api/gemini-counseling', { contents: history, ptiser: ptiser, selLevel: selLevel, roster: roster });
 
       if (!response.ok) throw new Error('API Error');
 

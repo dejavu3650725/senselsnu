@@ -17,6 +17,7 @@
  */
 
 import { selData } from '../src/data/selData.js';
+import { verifyRequest } from './_auth.js';
 
 // AI 엔드포인트 자동 선택:
 // - VERTEX_API_KEY가 있으면 → Vertex AI (익스프레스 모드/기업용, 아동 대상 서비스 운영 경로)
@@ -35,6 +36,10 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  // 인증: 학급 코드로 입장한 학생(익명 로그인) 또는 교사(구글 로그인)만 호출 가능
+  const authResult = await verifyRequest(req);
+  if (!authResult.ok) return res.status(authResult.status).json({ error: authResult.error });
 
   const aiEndpoint = getAiEndpoint();
   if (!aiEndpoint) {
