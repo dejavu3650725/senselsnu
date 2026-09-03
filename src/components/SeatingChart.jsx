@@ -658,7 +658,7 @@ const SeatingChart = ({ studentsData, classCode, classLabel }) => {
           </div>
 
           {/* 좌석 그리드 */}
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '12px', marginBottom: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, gap: '12px', marginBottom: '24px' }}>
             {Array.from({ length: totalSeats }).map((_, idx) => {
               const r = Math.floor(idx / cols);
               const c = idx % cols;
@@ -717,11 +717,6 @@ const SeatingChart = ({ studentsData, classCode, classLabel }) => {
                       <span style={{ fontWeight: 'bold', color: genderNameColor(student.gender), fontSize: '0.9rem', textAlign: 'center', wordBreak: 'keep-all' }}>
                         {student.realName}
                       </span>
-                      {student.nickname && student.nickname !== student.realName && (
-                        <span style={{ color: '#a0aec0', fontSize: '0.72rem', textAlign: 'center', wordBreak: 'keep-all', lineHeight: 1.2 }}>
-                          ({student.nickname})
-                        </span>
-                      )}
                       <button
                         className="no-print"
                         onClick={(e) => { e.stopPropagation(); unassignStudent(student.id); setSelectedStudentId(null); }}
@@ -898,7 +893,7 @@ const SeatingChart = ({ studentsData, classCode, classLabel }) => {
             <div style={{ marginBottom: '16px' }}>
               <div style={{ fontWeight: 'bold', color: '#4a5568', marginBottom: '8px', fontSize: '0.95rem' }}>🪑 배치안 미리보기 <span style={{ fontWeight: 'normal', color: '#a0aec0', fontSize: '0.78rem' }}>· 짝꿍은 묶여 표시 · 테두리=기분 · 이름색=성별</span></div>
               <div style={{ background: '#2d3748', color: 'white', textAlign: 'center', padding: '5px', borderRadius: '8px', marginBottom: '8px', fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '2px' }}>칠판 · 교탁 (앞)</div>
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, columnGap: '0', rowGap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`, columnGap: '0', rowGap: '8px' }}>
                 {Array.from({ length: rows * cols }).map((_, idx) => {
                   const r = Math.floor(idx / cols);
                   const c = idx % cols;
