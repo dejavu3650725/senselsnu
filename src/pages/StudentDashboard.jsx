@@ -54,6 +54,8 @@ const StudentDashboard = () => {
   // 교사가 설정한 P-TISER 및 SEL 학교급
   const [ptiser, setPtiser] = useState(null);
   const [selLevel, setSelLevel] = useState('');
+  const [chatConfig, setChatConfig] = useState(null); // 교사 챗봇 설정(프리셋)
+  const [studentMeta, setStudentMeta] = useState({ nominations: [], conflictsCount: 0, lonelyCount: 0, sessionsCount: 1 }); // 학생 맞춤 대화용 이력
   // 학급 친구 닉네임 명단 (LLM이 문맥 추론으로 공식 닉네임에 매핑할 수 있도록 전달)
   const [roster, setRoster] = useState([]);
 
@@ -103,6 +105,7 @@ const StudentDashboard = () => {
           if (teacherData.selLevel) {
             setSelLevel(teacherData.selLevel);
           }
+          if (teacherData.chatConfig) setChatConfig(teacherData.chatConfig);
         }
       } catch (error) {
         console.error("Failed to fetch chatbot settings", error);
@@ -181,6 +184,14 @@ const StudentDashboard = () => {
         
         // 과거 대화 내역 불러오기
         const pastMessages = userData.messages || [];
+        // 학생 맞춤 대화용 이력 (지목한 친구·갈등·외로움·누적 대화 일수)
+        const days = new Set(pastMessages.filter(m => m.sender === 'user' && m.timestamp).map(m => String(m.timestamp).slice(0, 10)));
+        setStudentMeta({
+          nominations: userData.nominations || [],
+          conflictsCount: (userData.conflicts || []).length,
+          lonelyCount: (userData.lonelySignals || []).length,
+          sessionsCount: days.size + 1,
+        });
         
         // 상태 업데이트 (닉네임, 기분 갱신, 아바타 갱신)
         await updateDoc(doc(db, 'students', userDoc.id), {
@@ -296,7 +307,19 @@ const StudentDashboard = () => {
 
       const history = formattedHistory;
 
-      const response = await apiPost('/api/gemini-counseling', { contents: history, ptiser: ptiser, selLevel: selLevel, roster: roster });
+      // 오늘 세션의 학생 메시지 수(현재 포함) — 서버가 대화 단계를 정하는 데 사용
+      const today = new Date().toISOString().slice(0, 10);
+      const turnCount = newMessages.filter(m => m.sender === 'user' && (!m.timestamp || String(m.timestamp).slice(0, 10) === today)).length;
+      const studentContext = {
+        nickname,
+        mood,
+        turnCount,
+        sessionsCount: studentMeta.sessionsCount,
+        nominations: studentMeta.nominations,
+        conflictsCount: studentMeta.conflictsCount,
+        lonelyCount: studentMeta.lonelyCount,
+      };
+      const response = await apiPost('/api/gemini-counseling', { contents: history, ptiser, selLevel, roster, chatConfig, studentContext });
 
       if (!response.ok) throw new Error('API Error');
 
@@ -399,6 +422,13 @@ const StudentDashboard = () => {
         }
         await updateDoc(doc(db, 'students', studentDocId), updates);
       }
+      // 다음 턴 맥락 갱신
+      setStudentMeta(prev => ({
+        ...prev,
+        nominations: nominatedNickname && !prev.nominations.includes(nominatedNickname) ? [...prev.nominations, nominatedNickname] : prev.nominations,
+        conflictsCount: prev.conflictsCount + conflictNicknames.length,
+        lonelyCount: prev.lonelyCount + (isLonelySignal ? 1 : 0),
+      }));
     } catch (error) {
       console.error(error);
       setMessages(prev => [...prev, { id: Date.now(), sender: 'bot', text: '앗, 내가 잠깐 생각 정리 중이야. 🍃' }]);
