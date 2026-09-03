@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { LayoutGrid, Save, Shuffle, RotateCcw, X, Plus, Minus, Printer, Sparkles, Layers } from 'lucide-react';
+import { LayoutGrid, Save, Shuffle, RotateCcw, X, Plus, Minus, Printer, Sparkles, Layers, CheckCircle2, AlertCircle, MinusCircle, ChevronDown, ChevronUp, Loader } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { generateSeating, evaluateSeating, scoreFromChecks, DEFAULT_POLICY, POLICY_LABELS } from '../utils/seatingEngine';
 
 const DEFAULT_ROWS = 4;
 const DEFAULT_COLS = 6;
@@ -48,10 +49,18 @@ const SeatingChart = ({ studentsData, classCode, classLabel }) => {
   const [isDirty, setIsDirty] = useState(false);
   const dragSourceRef = useRef(null); // { studentId, fromKey|null }
 
-  // AI 자리 배치 제안 상태
+  // 스마트 자리 배치 제안 상태 (규칙 엔진 + AI 검토)
   const [isAiLoading, setIsAiLoading] = useState(false);
-  const [aiProposal, setAiProposal] = useState(null); // { seats, rationale, highlights, placedCount }
+  const [aiProposal, setAiProposal] = useState(null); // { seats, checks, reasons, score, currentScore, unplaced, policy }
+  const [aiReview, setAiReview] = useState(null);     // { rationale, highlights, concerns, tips }
+  const [isReviewLoading, setIsReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState('');
   const [aiError, setAiError] = useState('');
+  const [policy, setPolicy] = useState(DEFAULT_POLICY);
+  const [isPolicyOpen, setIsPolicyOpen] = useState(false);
+  const [showReasons, setShowReasons] = useState(false);
+  const [showCurrentCheck, setShowCurrentCheck] = useState(false);
+  const [savedSeatsSnapshot, setSavedSeatsSnapshot] = useState(null); // 직전 저장 배치 (짝꿍 반복 회피용)
 
   // 모둠 지정 상태
   const [groups, setGroups] = useState({}); // { "row_col": 모둠번호 }
@@ -73,8 +82,9 @@ const SeatingChart = ({ studentsData, classCode, classLabel }) => {
           const data = snap.data();
           if (data.rows) setRows(data.rows);
           if (data.cols) setCols(data.cols);
-          if (data.seats) setSeats(data.seats);
+          if (data.seats) { setSeats(data.seats); setSavedSeatsSnapshot(data.seats); }
           if (data.groups) setGroups(data.groups);
+          if (data.policy) setPolicy({ ...DEFAULT_POLICY, ...data.policy });
         }
       } catch (error) {
         console.error('Failed to load seating chart:', error);
@@ -96,8 +106,11 @@ const SeatingChart = ({ studentsData, classCode, classLabel }) => {
         cols,
         seats,
         groups,
+        policy,
+        previousSeats: savedSeatsSnapshot || null,
         updatedAt: serverTimestamp()
       });
+      setSavedSeatsSnapshot(seats);
       setIsDirty(false);
     } catch (error) {
       console.error('Failed to save seating chart:', error);
@@ -313,126 +326,108 @@ const SeatingChart = ({ studentsData, classCode, classLabel }) => {
     }
   };
 
-  // ===== AI 자리 배치 제안 =====
-  // 개인정보 보호: 실명/닉네임 대신 익명 ID(S1, S2...)로 변환한 데이터만 서버로 전송합니다.
-  const handleAiPropose = async () => {
+  // ===== 현재 배치 점검 (실시간) =====
+  const currentEval = evaluateSeating(validSeats, { rows, cols, studentsData, previousSeats: savedSeatsSnapshot, policy });
+  const currentScore = studentsData.length > 0 && Object.keys(validSeats).length > 0 ? scoreFromChecks(currentEval.checks) : null;
+
+  // ===== 익명화 (개인정보 보호: 실명/닉네임 대신 S1, S2... 로 변환해 서버 전송) =====
+  const buildAnonymizedStudents = () => {
+    const anonById = new Map();
+    const idByAnon = new Map();
+    studentsData.forEach((s, i) => { anonById.set(s.id, `S${i + 1}`); idByAnon.set(`S${i + 1}`, s.id); });
+    const anonByNickname = new Map(studentsData.filter(s => s.nickname).map(s => [s.nickname, anonById.get(s.id)]));
+    const receivedCount = {};
+    studentsData.forEach(s => {
+      (s.nominations || []).forEach(nick => {
+        const anon = anonByNickname.get(nick);
+        if (anon && anon !== anonById.get(s.id)) receivedCount[anon] = (receivedCount[anon] || 0) + 1;
+      });
+    });
+    const students = studentsData.map(s => {
+      const myAnon = anonById.get(s.id);
+      return {
+        id: myAnon,
+        mood: s.mood || '보통',
+        gender: s.gender === '남' || s.gender === '여' ? s.gender : '미상',
+        chosen: [...new Set((s.nominations || []).map(n => anonByNickname.get(n)).filter(a => a && a !== myAnon))],
+        received: receivedCount[myAnon] || 0,
+        conflictWith: [...new Set((s.conflicts || []).map(n => anonByNickname.get(n)).filter(a => a && a !== myAnon))],
+        lonely: (s.lonelySignals || []).length,
+      };
+    });
+    return { students, anonById, idByAnon };
+  };
+
+  // ===== 스마트 자리 배치 제안: 1) 규칙 엔진 최적화 → 2) AI 검토 의견 =====
+  const handleSmartPropose = () => {
     if (studentsData.length === 0) {
       alert('등록된 학생이 없습니다. [학생 관리]에서 먼저 학생을 추가해주세요.');
       return;
     }
+    setIsPolicyOpen(false);
     setIsAiLoading(true);
     setAiError('');
     setAiProposal(null);
+    setAiReview(null);
+    setReviewError('');
+    setShowReasons(false);
+
+    // 렌더 후 계산 (UI 멈춤 방지)
+    setTimeout(() => {
+      try {
+        // 서로 다른 시드로 여러 번 탐색 후 최선안 선택
+        let best = null;
+        for (let k = 0; k < 4; k++) {
+          const r = generateSeating({ rows, cols, studentsData, previousSeats: savedSeatsSnapshot, policy, iterations: 6000, seed: Date.now() + k * 7919 });
+          if (!best || r.cost < best.cost) best = r;
+        }
+        const proposal = { ...best, score: scoreFromChecks(best.checks), currentScore };
+        setAiProposal(proposal);
+        setIsAiLoading(false);
+        requestAiReview(proposal);
+      } catch (error) {
+        console.error('Seating engine failed:', error);
+        setAiError(error.message || '배치 계산 중 오류가 발생했습니다.');
+        setIsAiLoading(false);
+      }
+    }, 30);
+  };
+
+  const requestAiReview = async (proposal) => {
+    setIsReviewLoading(true);
+    setReviewError('');
     try {
-      // 1) 실명/닉네임 → 익명 ID 매핑 생성
-      const anonById = new Map();
-      const idByAnon = new Map();
-      studentsData.forEach((s, i) => {
-        const anon = `S${i + 1}`;
-        anonById.set(s.id, anon);
-        idByAnon.set(anon, s.id);
+      const { students, anonById, idByAnon } = buildAnonymizedStudents();
+      const assignments = Object.entries(proposal.seats).map(([k, sid]) => {
+        const [r, c] = k.split('_').map(Number);
+        return { id: anonById.get(sid), row: r, col: c };
       });
-      const anonByNickname = new Map(
-        studentsData.filter(s => s.nickname).map(s => [s.nickname, anonById.get(s.id)])
-      );
-
-      // 2) 받은 지목 수 집계 (닉네임 → 익명 ID 변환)
-      const receivedCount = {};
-      studentsData.forEach(s => {
-        (s.nominations || []).forEach(nick => {
-          const anon = anonByNickname.get(nick);
-          if (anon && anon !== anonById.get(s.id)) {
-            receivedCount[anon] = (receivedCount[anon] || 0) + 1;
-          }
-        });
-      });
-
-      // 3) 익명화된 분석용 데이터 구성 (기분 + 관계만 전송, 이름/대화내용 미포함)
-      const students = studentsData.map(s => {
-        const myAnon = anonById.get(s.id);
-        return {
-          id: myAnon,
-          mood: s.mood || '보통',
-          gender: s.gender === '남' || s.gender === '여' ? s.gender : '미상',
-          chosen: [...new Set(
-            (s.nominations || [])
-              .map(nick => anonByNickname.get(nick))
-              .filter(anon => anon && anon !== myAnon)
-          )],
-          received: receivedCount[myAnon] || 0,
-          // 갈등 신호 상대 (익명 ID) 및 외로움 신호 횟수
-          conflictWith: [...new Set(
-            (s.conflicts || [])
-              .map(nick => anonByNickname.get(nick))
-              .filter(anon => anon && anon !== myAnon)
-          )],
-          lonely: (s.lonelySignals || []).length
-        };
-      });
-
+      const checks = Object.values(proposal.checks).map(c => ({ label: c.label, value: c.value, total: c.total, status: c.status }));
       const res = await fetch('/api/gemini-seating', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows, cols, students })
+        body: JSON.stringify({ mode: 'review', rows, cols, students, assignments, checks, policy: proposal.policy, score: proposal.score }),
       });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        if (res.status === 404) {
-          throw new Error('AI 배치 API(/api/gemini-seating)를 서버에서 찾을 수 없습니다. 새 api 파일이 포함되도록 다시 배포해주세요. (로컬 테스트는 npm run dev가 아닌 "vercel dev"로 실행해야 /api가 동작합니다)');
-        }
-        if (res.status === 500 && errData.error && String(errData.error).includes('GEMINI_API_KEY')) {
-          throw new Error('서버에 GEMINI_API_KEY가 설정되지 않았습니다. Vercel > Settings > Environment Variables 등록 후 재배포해주세요.');
-        }
-        throw new Error(errData.error || `AI 서버 응답 오류가 발생했습니다. (HTTP ${res.status})`);
-      }
-      const data = await res.json();
-
-      // 4) 응답 검증: 좌석 범위 확인, 중복 좌석/중복 학생 제거, 익명 ID → 실제 학생 복원
-      const proposedSeats = {};
-      const usedStudents = new Set();
-      (data.assignments || []).forEach(a => {
-        const studentId = idByAnon.get(a.id);
-        const r = Number(a.row);
-        const c = Number(a.col);
-        if (!studentId || usedStudents.has(studentId)) return;
-        if (!Number.isInteger(r) || !Number.isInteger(c) || r < 0 || r >= rows || c < 0 || c >= cols) return;
-        const key = seatKey(r, c);
-        if (proposedSeats[key]) return;
-        proposedSeats[key] = studentId;
-        usedStudents.add(studentId);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `AI 검토 응답 오류 (HTTP ${res.status})`);
+      const dz = (text) => String(text || '').replace(/S(\d+)(?![0-9])/g, (m, num) => {
+        const st = studentById(idByAnon.get(`S${num}`));
+        return st ? st.realName : m;
       });
-
-      if (Object.keys(proposedSeats).length === 0) {
-        throw new Error('AI가 유효한 배치안을 생성하지 못했습니다. 다시 시도해주세요.');
-      }
-
-      // 근거 문장 속 익명 ID를 실명으로 치환하는 함수
-      const deanonymize = (text) => {
-        if (!text) return '';
-        return String(text).replace(/S(\d+)/g, (m, num) => {
-          const st = studentById(idByAnon.get(`S${num}`));
-          return st ? st.realName : m;
-        });
-      };
-
-      const highlights = (data.highlights || [])
-        .map(h => {
+      setAiReview({
+        rationale: dz(data.rationale),
+        highlights: (data.highlights || []).map(h => {
           const st = studentById(idByAnon.get(h.id));
-          return st ? { name: st.realName, avatar: st.avatar, reason: deanonymize(h.reason) } : null;
-        })
-        .filter(Boolean);
-
-      setAiProposal({
-        seats: proposedSeats,
-        rationale: deanonymize(data.rationale),
-        highlights,
-        placedCount: Object.keys(proposedSeats).length
+          return st ? { name: st.realName, avatar: st.avatar, reason: dz(h.reason) } : null;
+        }).filter(Boolean),
+        concerns: (data.concerns || []).map(dz),
+        tips: (data.tips || []).map(dz),
       });
     } catch (error) {
-      console.error('AI seating proposal failed:', error);
-      setAiError(error.message || 'AI 배치 제안 중 오류가 발생했습니다.');
+      console.error('AI review failed:', error);
+      setReviewError(error.message || 'AI 검토 의견을 불러오지 못했습니다. (배치안은 규칙 엔진 결과로 그대로 사용 가능)');
     } finally {
-      setIsAiLoading(false);
+      setIsReviewLoading(false);
     }
   };
 
@@ -441,7 +436,10 @@ const SeatingChart = ({ studentsData, classCode, classLabel }) => {
     setSeats(aiProposal.seats);
     markDirty();
     setAiProposal(null);
+    setAiReview(null);
   };
+
+  const closeProposal = () => { setAiProposal(null); setAiReview(null); };
 
   const changeGrid = (which, delta) => {
     if (which === 'rows') {
@@ -520,9 +518,9 @@ const SeatingChart = ({ studentsData, classCode, classLabel }) => {
           <Shuffle size={16} /> 랜덤 섞기
         </button>
         <button
-          onClick={handleAiPropose}
+          onClick={() => setIsPolicyOpen(true)}
           disabled={isAiLoading}
-          title="학생들의 정서·교우관계 데이터를 분석해 AI가 자리 배치를 제안합니다"
+          title="배치 원칙을 고른 뒤, 규칙 엔진이 최적 배치를 찾고 AI가 근거를 검토합니다"
           style={{
             padding: '10px 18px', borderRadius: '10px', border: 'none',
             background: isAiLoading ? '#a0aec0' : 'linear-gradient(90deg, #805ad5, #4a90e2)',
@@ -532,7 +530,7 @@ const SeatingChart = ({ studentsData, classCode, classLabel }) => {
             boxShadow: '0 4px 12px rgba(128, 90, 213, 0.3)'
           }}
         >
-          <Sparkles size={16} /> {isAiLoading ? 'AI 분석 중...' : 'AI 배치 제안'}
+          <Sparkles size={16} /> {isAiLoading ? '최적 배치 계산 중...' : '스마트 배치 제안'}
         </button>
         <button onClick={handleClearAll} style={toolbarBtn()} title="모든 좌석 비우기">
           <RotateCcw size={16} /> 전체 비우기
@@ -578,6 +576,23 @@ const SeatingChart = ({ studentsData, classCode, classLabel }) => {
         <div className="no-print" style={{ marginBottom: '16px', padding: '12px 16px', background: '#fffaf0', border: '2px solid #dd6b20', borderRadius: '12px', color: '#9c4221', fontSize: '0.92rem', fontWeight: 600, lineHeight: 1.6 }}>
           ⚠️ 갈등 신호가 있는 학생들이 인접해 있어요: <b>{conflictAdjacencyWarnings.join(' · ')}</b>
           <span style={{ fontWeight: 'normal', color: '#b7791f' }}> — 자리를 조정하는 것을 권장합니다. (자세한 내용은 [관계 신호] 메뉴 참고)</span>
+        </div>
+      )}
+
+      {/* 현재 배치 점검표 */}
+      {currentScore !== null && (
+        <div className="no-print" style={{ marginBottom: '16px', border: '1px solid #e2e8f0', borderRadius: '12px', background: 'white', overflow: 'hidden' }}>
+          <button onClick={() => setShowCurrentCheck(v => !v)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 16px', background: 'transparent', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+            <ScoreBadge score={currentScore} />
+            <span style={{ fontWeight: 'bold', color: '#2d3748', fontSize: '0.92rem' }}>현재 배치 점검표</span>
+            <span style={{ color: '#a0aec0', fontSize: '0.8rem' }}>(선택한 배치 원칙 기준 · 실시간)</span>
+            <span style={{ marginLeft: 'auto', color: '#a0aec0', display: 'flex' }}>{showCurrentCheck ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</span>
+          </button>
+          {showCurrentCheck && (
+            <div style={{ padding: '0 16px 14px 16px' }}>
+              <CheckList checks={currentEval.checks} />
+            </div>
+          )}
         </div>
       )}
 
@@ -786,111 +801,249 @@ const SeatingChart = ({ studentsData, classCode, classLabel }) => {
         </>
       )}
 
-      {/* AI 배치 제안 모달 */}
-      {aiProposal && (
-        <div className="no-print" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-          <div style={{ background: 'white', padding: '32px', borderRadius: '24px', width: '92%', maxWidth: '560px', maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-              <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.4rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Sparkles size={22} color="#805ad5" /> AI 자리 배치 제안
+      {/* 배치 원칙 선택 모달 */}
+      {isPolicyOpen && (
+        <div className="no-print" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }} onClick={() => setIsPolicyOpen(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'white', padding: '28px', borderRadius: '24px', width: '92%', maxWidth: '560px', maxHeight: '88vh', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.3rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Sparkles size={20} color="#805ad5" /> 배치 원칙 선택
               </h3>
-              <button onClick={() => setAiProposal(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#a0aec0' }}>
-                <X size={24} />
-              </button>
+              <button onClick={() => setIsPolicyOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#a0aec0' }}><X size={22} /></button>
             </div>
-            <p style={{ color: '#a0aec0', fontSize: '0.85rem', margin: '0 0 20px 0' }}>
-              학생 {aiProposal.placedCount}명 배치안 · 정서 상태와 교우관계 데이터를 분석했습니다 (실명은 익명 처리 후 분석)
+            <p style={{ color: '#718096', fontSize: '0.85rem', margin: '0 0 16px 0', lineHeight: 1.6 }}>
+              선택한 원칙을 우선순위(갈등 분리 → 힘듦 앞줄 → 고립 지지자 → 짝꿍 구성 → 상호 지목 → 분산)에 따라 규칙 엔진이 수천 번 교환하며 최적안을 찾고, AI가 그 근거를 검토합니다. 학생 데이터는 익명 처리됩니다.
             </p>
 
-            {/* 전체 배치 근거 */}
-            <div style={{ background: '#faf5ff', border: '1px solid #e9d8fd', borderRadius: '16px', padding: '18px 20px', marginBottom: '16px' }}>
-              <div style={{ fontWeight: 'bold', color: '#553c9a', marginBottom: '8px', fontSize: '0.95rem' }}>📋 전체 배치 원칙</div>
-              <p style={{ margin: 0, color: '#4a5568', fontSize: '0.95rem', lineHeight: 1.7 }}>
-                {aiProposal.rationale || '배치 근거가 제공되지 않았습니다.'}
-              </p>
+            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px', marginBottom: '12px' }}>
+              <div style={{ fontWeight: 'bold', color: '#2d3748', fontSize: '0.92rem', marginBottom: '4px' }}>{POLICY_LABELS.pairMode.label}</div>
+              <div style={{ fontSize: '0.78rem', color: '#718096', marginBottom: '10px' }}>{POLICY_LABELS.pairMode.desc}</div>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                {Object.entries(POLICY_LABELS.pairMode.options).map(([val, label]) => (
+                  <button key={val} onClick={() => setPolicy(p => ({ ...p, pairMode: val }))} style={{ flex: 1, padding: '9px 6px', borderRadius: '10px', border: policy.pairMode === val ? '2px solid #805ad5' : '1px solid #e2e8f0', background: policy.pairMode === val ? '#faf5ff' : 'white', color: policy.pairMode === val ? '#553c9a' : '#4a5568', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer' }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* 배치안 미리보기 (실명 표시) */}
-            <div style={{ marginBottom: '16px' }}>
-              <div style={{ fontWeight: 'bold', color: '#4a5568', marginBottom: '10px', fontSize: '0.95rem' }}>🪑 배치안 미리보기</div>
-              <div style={{ background: '#2d3748', color: 'white', textAlign: 'center', padding: '5px', borderRadius: '8px', marginBottom: '8px', fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '2px' }}>
-                칠판 · 교탁 (앞)
+            {['separateConflicts', 'strugglingFront', 'supporterForIsolated', 'mutualNear', 'avoidPreviousDeskmate', 'spreadGender'].map(k => (
+              <label key={k} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '10px 12px', borderRadius: '12px', border: '1px solid #edf2f7', marginBottom: '8px', cursor: k === 'separateConflicts' ? 'not-allowed' : 'pointer', background: policy[k] ? 'white' : '#f7fafc', opacity: k === 'separateConflicts' ? 0.9 : 1 }}>
+                <input type="checkbox" checked={!!policy[k]} disabled={k === 'separateConflicts'} onChange={e => setPolicy(p => ({ ...p, [k]: e.target.checked }))} style={{ marginTop: '3px' }} />
+                <div>
+                  <div style={{ fontWeight: 'bold', color: '#2d3748', fontSize: '0.9rem' }}>
+                    {POLICY_LABELS[k].label}
+                    {k === 'separateConflicts' && <span style={{ marginLeft: '6px', fontSize: '0.7rem', color: '#c53030', background: '#fff5f5', border: '1px solid #feb2b2', padding: '1px 6px', borderRadius: '8px' }}>필수</span>}
+                    {k === 'avoidPreviousDeskmate' && !savedSeatsSnapshot && <span style={{ marginLeft: '6px', fontSize: '0.7rem', color: '#a0aec0' }}>(저장된 이전 배치 없음)</span>}
+                  </div>
+                  <div style={{ fontSize: '0.78rem', color: '#718096', lineHeight: 1.5 }}>{POLICY_LABELS[k].desc}</div>
+                </div>
+              </label>
+            ))}
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+              <button onClick={() => setIsPolicyOpen(false)} style={{ flex: 1, padding: '13px', background: '#edf2f7', color: '#4a5568', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}>취소</button>
+              <button onClick={handleSmartPropose} style={{ flex: 2, padding: '13px', background: 'linear-gradient(90deg, #805ad5, #4a90e2)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                <Sparkles size={16} /> 이 원칙으로 배치안 만들기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 계산 중 오버레이 */}
+      {isAiLoading && (
+        <div className="no-print" style={{ position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.7)', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', zIndex: 1000, gap: '10px', color: '#553c9a', fontWeight: 'bold' }}>
+          <Loader size={32} />
+          최적 배치를 탐색하는 중입니다… (약 1~2초)
+        </div>
+      )}
+
+      {/* 스마트 배치 제안 모달 */}
+      {aiProposal && (
+        <div className="no-print" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ background: 'white', padding: '28px 32px', borderRadius: '24px', width: '94%', maxWidth: '860px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.4rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Sparkles size={22} color="#805ad5" /> 스마트 자리 배치 제안
+              </h3>
+              <button onClick={closeProposal} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#a0aec0' }}><X size={24} /></button>
+            </div>
+            <p style={{ color: '#a0aec0', fontSize: '0.85rem', margin: '0 0 18px 0' }}>
+              학생 {Object.keys(aiProposal.seats).length}명 배치 · {POLICY_LABELS.pairMode.options[aiProposal.policy.pairMode]} 기준 · 규칙 엔진 최적화 + AI 검토
+              {aiProposal.unplaced.length > 0 && <span style={{ color: '#c05621' }}> · 좌석 부족으로 {aiProposal.unplaced.length}명 미배치</span>}
+            </p>
+
+            {/* 점수 비교 + 점검표 */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1.4fr)', gap: '16px', marginBottom: '16px' }}>
+              <div style={{ background: '#faf5ff', border: '1px solid #e9d8fd', borderRadius: '16px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px', justifyContent: 'center' }}>
+                <div style={{ fontWeight: 'bold', color: '#553c9a', fontSize: '0.9rem' }}>📊 배치 적합도</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#a0aec0' }}>현재</div>
+                    <ScoreBadge score={aiProposal.currentScore} size="lg" />
+                  </div>
+                  <span style={{ color: '#a0aec0', fontSize: '1.2rem' }}>→</span>
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.72rem', color: '#a0aec0' }}>제안</div>
+                    <ScoreBadge score={aiProposal.score} size="lg" />
+                  </div>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: '#718096', lineHeight: 1.5 }}>갈등 분리 50 · 짝꿍 15 · 고립 지지 15 · 힘듦 앞줄 12 · 상호 지목 8점 가중</div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: '5px' }}>
+              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px 16px' }}>
+                <div style={{ fontWeight: 'bold', color: '#2d3748', fontSize: '0.9rem', marginBottom: '8px' }}>✅ 원칙별 점검표</div>
+                <CheckList checks={aiProposal.checks} />
+              </div>
+            </div>
+
+            {/* 미리보기 */}
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontWeight: 'bold', color: '#4a5568', marginBottom: '8px', fontSize: '0.95rem' }}>🪑 배치안 미리보기 <span style={{ fontWeight: 'normal', color: '#a0aec0', fontSize: '0.78rem' }}>· 짝꿍은 묶여 표시 · 테두리=기분 · 이름색=성별</span></div>
+              <div style={{ background: '#2d3748', color: 'white', textAlign: 'center', padding: '5px', borderRadius: '8px', marginBottom: '8px', fontSize: '0.75rem', fontWeight: 'bold', letterSpacing: '2px' }}>칠판 · 교탁 (앞)</div>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, columnGap: '0', rowGap: '8px' }}>
                 {Array.from({ length: rows * cols }).map((_, idx) => {
                   const r = Math.floor(idx / cols);
                   const c = idx % cols;
                   const sid = aiProposal.seats[seatKey(r, c)];
                   const st = sid ? studentById(sid) : null;
                   const colors = st ? moodColor(st.mood) : null;
+                  const isLeft = c % 2 === 0 && c + 1 < cols;
+                  const isRight = c % 2 === 1;
+                  const flags = st ? (aiProposal.reasons.get(sid) || []) : [];
+                  const hasWarn = flags.some(f => f.kind !== 'ok');
                   return (
-                    <div
-                      key={`preview-${r}-${c}`}
-                      title={st ? `${st.realName}${st.nickname && st.nickname !== st.realName ? ` (${st.nickname})` : ''} · ${st.mood || '보통'}` : `빈 자리 ${r + 1}-${c + 1}`}
-                      style={{
-                        minHeight: '46px', borderRadius: '8px', padding: '4px 2px',
-                        border: st ? `1.5px solid ${colors.border}` : '1.5px dashed #e2e8f0',
-                        background: st ? colors.bg : '#f8fafc',
-                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px'
-                      }}
-                    >
-                      {st ? (
-                        <>
-                          <span style={{ fontSize: '0.95rem', lineHeight: 1 }}>{st.avatar || '👤'}</span>
-                          <span style={{ fontWeight: 'bold', color: genderNameColor(st.gender), fontSize: '0.68rem', textAlign: 'center', wordBreak: 'keep-all', lineHeight: 1.15 }}>
-                            {st.realName}
-                          </span>
-                        </>
-                      ) : (
-                        <span style={{ color: '#cbd5e1', fontSize: '0.6rem' }}>{r + 1}-{c + 1}</span>
-                      )}
+                    <div key={`preview-${r}-${c}`} style={{ padding: isLeft ? '0 1px 0 4px' : isRight ? '0 4px 0 1px' : '0 4px' }}>
+                      <div
+                        title={st ? `${st.realName} · ${st.mood || '보통'}\n${flags.map(f => f.text).join('\n')}` : `빈 자리 ${r + 1}-${c + 1}`}
+                        style={{
+                          minHeight: '50px', padding: '4px 2px',
+                          borderRadius: isLeft ? '10px 3px 3px 10px' : isRight ? '3px 10px 10px 3px' : '10px',
+                          border: st ? `1.5px solid ${colors.border}` : '1.5px dashed #e2e8f0',
+                          background: st ? colors.bg : '#f8fafc',
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1px', position: 'relative'
+                        }}
+                      >
+                        {st ? (
+                          <>
+                            <span style={{ fontSize: '0.95rem', lineHeight: 1 }}>{st.avatar || '👤'}</span>
+                            <span style={{ fontWeight: 'bold', color: genderNameColor(st.gender), fontSize: '0.7rem', textAlign: 'center', wordBreak: 'keep-all', lineHeight: 1.15 }}>{st.realName}</span>
+                            {hasWarn && <span style={{ position: 'absolute', top: 2, right: 3, fontSize: '0.6rem' }}>⚠</span>}
+                          </>
+                        ) : (
+                          <span style={{ color: '#cbd5e1', fontSize: '0.6rem' }}>{r + 1}-{c + 1}</span>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
               </div>
-              <p style={{ margin: '8px 0 0 0', color: '#a0aec0', fontSize: '0.78rem' }}>
-                테두리 색 = 학생 기분 상태 (🟢건강 · 🟡보통 · 🔴힘듦) · 이름 위에 마우스를 올리면 닉네임도 보입니다
-              </p>
             </div>
 
-            {/* 학생별 주요 배치 근거 */}
-            {aiProposal.highlights.length > 0 && (
-              <div style={{ marginBottom: '20px' }}>
-                <div style={{ fontWeight: 'bold', color: '#4a5568', marginBottom: '10px', fontSize: '0.95rem' }}>💡 주요 학생 배치 근거</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {aiProposal.highlights.map((h, idx) => (
-                    <div key={idx} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '12px 14px' }}>
-                      <span style={{ fontSize: '1.3rem', lineHeight: 1 }}>{h.avatar || '👤'}</span>
-                      <div>
-                        <span style={{ fontWeight: 'bold', color: '#2d3748', fontSize: '0.9rem' }}>{h.name}</span>
-                        <p style={{ margin: '4px 0 0 0', color: '#718096', fontSize: '0.88rem', lineHeight: 1.6 }}>{h.reason}</p>
+            {/* 학생별 배치 근거 (규칙 엔진) */}
+            <div style={{ marginBottom: '16px', border: '1px solid #e2e8f0', borderRadius: '14px', overflow: 'hidden' }}>
+              <button onClick={() => setShowReasons(v => !v)} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: '#f8fafc', border: 'none', cursor: 'pointer', fontWeight: 'bold', color: '#2d3748', fontSize: '0.9rem', textAlign: 'left' }}>
+                🧾 학생별 배치 근거 ({aiProposal.reasons.size}명)
+                <span style={{ marginLeft: 'auto', color: '#a0aec0', display: 'flex' }}>{showReasons ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</span>
+              </button>
+              {showReasons && (
+                <div style={{ padding: '10px 14px', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '8px' }}>
+                  {[...aiProposal.reasons.entries()].map(([sid, list]) => {
+                    const st = studentById(sid);
+                    if (!st) return null;
+                    const pk = Object.keys(aiProposal.seats).find(k => aiProposal.seats[k] === sid);
+                    const [pr, pc] = pk ? pk.split('_').map(Number) : [null, null];
+                    return (
+                      <div key={sid} style={{ fontSize: '0.8rem', background: 'white', border: '1px solid #edf2f7', borderRadius: '10px', padding: '8px 10px' }}>
+                        <div style={{ fontWeight: 'bold', color: genderNameColor(st.gender) }}>{st.avatar} {st.realName} <span style={{ color: '#a0aec0', fontWeight: 'normal' }}>{pk ? `${pr + 1}줄 ${pc + 1}번` : ''}</span></div>
+                        {list.map((f, i) => (
+                          <div key={i} style={{ color: f.kind === 'bad' ? '#c53030' : f.kind === 'warn' ? '#c05621' : '#4a5568', lineHeight: 1.45 }}>· {f.text}</div>
+                        ))}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
+              )}
+            </div>
+
+            {/* AI 검토 의견 */}
+            <div style={{ background: '#faf5ff', border: '1px solid #e9d8fd', borderRadius: '16px', padding: '16px 18px', marginBottom: '18px' }}>
+              <div style={{ fontWeight: 'bold', color: '#553c9a', marginBottom: '8px', fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                🤖 AI 검토 의견 {isReviewLoading && <span style={{ fontSize: '0.78rem', fontWeight: 'normal', color: '#805ad5', display: 'flex', alignItems: 'center', gap: '4px' }}><Loader size={13} /> 근거를 작성하는 중…</span>}
               </div>
-            )}
+              {reviewError && <div style={{ fontSize: '0.82rem', color: '#c05621' }}>⚠️ {reviewError}</div>}
+              {aiReview && (
+                <>
+                  <p style={{ margin: '0 0 10px 0', color: '#4a5568', fontSize: '0.92rem', lineHeight: 1.7 }}>{aiReview.rationale}</p>
+                  {aiReview.highlights.length > 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '8px', marginBottom: '10px' }}>
+                      {aiReview.highlights.map((h, idx) => (
+                        <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: 'white', border: '1px solid #e9d8fd', borderRadius: '10px', padding: '8px 10px' }}>
+                          <span style={{ fontSize: '1.1rem', lineHeight: 1 }}>{h.avatar || '👤'}</span>
+                          <div>
+                            <span style={{ fontWeight: 'bold', color: '#2d3748', fontSize: '0.85rem' }}>{h.name}</span>
+                            <p style={{ margin: '2px 0 0 0', color: '#718096', fontSize: '0.82rem', lineHeight: 1.5 }}>{h.reason}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {aiReview.concerns.length > 0 && (
+                    <div style={{ fontSize: '0.84rem', color: '#9c4221', background: '#fffaf0', border: '1px solid #fbd38d', borderRadius: '10px', padding: '8px 12px', marginBottom: '8px', lineHeight: 1.6 }}>
+                      <b>보완 검토:</b> {aiReview.concerns.map((c, i) => <div key={i}>· {c}</div>)}
+                    </div>
+                  )}
+                  {aiReview.tips.length > 0 && (
+                    <div style={{ fontSize: '0.84rem', color: '#276749', background: '#f0fff4', border: '1px solid #c6f6d5', borderRadius: '10px', padding: '8px 12px', lineHeight: 1.6 }}>
+                      <b>첫 주 운영 팁:</b> {aiReview.tips.map((t, i) => <div key={i}>· {t}</div>)}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
 
             <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                onClick={() => setAiProposal(null)}
-                style={{ flex: 1, padding: '14px', background: '#edf2f7', color: '#4a5568', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}
-              >
-                취소
-              </button>
-              <button
-                onClick={applyAiProposal}
-                style={{ flex: 2, padding: '14px', background: 'linear-gradient(90deg, #805ad5, #4a90e2)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(128, 90, 213, 0.3)' }}
-              >
-                이 배치안 적용하기
-              </button>
+              <button onClick={closeProposal} style={{ flex: 1, padding: '14px', background: '#edf2f7', color: '#4a5568', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>취소</button>
+              <button onClick={handleSmartPropose} style={{ flex: 1, padding: '14px', background: 'white', color: '#553c9a', border: '1px solid #d6bcfa', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer' }}>다른 안 보기</button>
+              <button onClick={applyAiProposal} style={{ flex: 2, padding: '14px', background: 'linear-gradient(90deg, #805ad5, #4a90e2)', color: 'white', border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(128, 90, 213, 0.3)' }}>이 배치안 적용하기</button>
             </div>
             <p style={{ margin: '12px 0 0 0', color: '#a0aec0', fontSize: '0.8rem', textAlign: 'center' }}>
-              적용 후에도 드래그로 자유롭게 수정할 수 있으며, [배치 저장]을 눌러야 최종 저장됩니다.
+              적용 후에도 드래그로 자유롭게 수정할 수 있으며, 점검표가 실시간으로 갱신됩니다. [배치 저장]을 눌러야 최종 저장됩니다.
             </p>
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+/** 점수 배지 */
+const ScoreBadge = ({ score, size = 'sm' }) => {
+  if (score === null || score === undefined) return <span style={{ color: '#a0aec0', fontSize: '0.8rem' }}>—</span>;
+  const color = score >= 85 ? '#38a169' : score >= 65 ? '#d69e2e' : '#e53e3e';
+  const dim = size === 'lg' ? 64 : 38;
+  return (
+    <div style={{ width: dim, height: dim, borderRadius: '50%', border: `${size === 'lg' ? 4 : 3}px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color, fontSize: size === 'lg' ? '1.3rem' : '0.8rem', background: 'white', flexShrink: 0 }}>
+      {score}
+    </div>
+  );
+};
+
+/** 점검표 목록 */
+const CheckList = ({ checks }) => {
+  const icon = (status) => status === 'pass' ? <CheckCircle2 size={15} color="#38a169" /> : status === 'partial' ? <AlertCircle size={15} color="#d69e2e" /> : status === 'fail' ? <AlertCircle size={15} color="#e53e3e" /> : <MinusCircle size={15} color="#cbd5e1" />;
+  const textColor = (status) => status === 'pass' ? '#276749' : status === 'partial' ? '#975a16' : status === 'fail' ? '#c53030' : '#a0aec0';
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '6px 14px' }}>
+      {Object.values(checks).map((c, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.83rem', color: textColor(c.status) }}>
+          {icon(c.status)}
+          <span style={{ flex: 1 }}>{c.label}</span>
+          <b style={{ whiteSpace: 'nowrap' }}>
+            {c.status === 'na' ? '해당 없음' : c.goodWhenZero ? `${c.value}건` : `${c.value}/${c.total}`}
+          </b>
+        </div>
+      ))}
     </div>
   );
 };

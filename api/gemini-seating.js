@@ -20,6 +20,91 @@ const getAiEndpoint = () => {
   return null;
 };
 
+const parseJson = (text) => {
+  try { return JSON.parse(text); } catch {
+    const m = text.match(/\{[\s\S]*\}/);
+    if (m) { try { return JSON.parse(m[0]); } catch { return null; } }
+    return null;
+  }
+};
+
+/**
+ * review 모드
+ * body: { rows, cols, students:[{id, gender, mood, chosen, received, conflictWith, lonely}], assignments:[{id,row,col}],
+ *         checks:[{label, value, total, status}], policy:{...}, score }
+ * 응답: { rationale, highlights:[{id, reason}], concerns:[string], tips:[string] }
+ */
+async function handleReview(body, aiEndpoint, res) {
+  const { rows, cols, students, assignments, checks, policy, score } = body;
+  if (
+    !Number.isInteger(rows) || !Number.isInteger(cols) || rows < 1 || cols < 1 || rows > 12 || cols > 12 ||
+    !Array.isArray(students) || students.length === 0 || students.length > 100 || !Array.isArray(assignments)
+  ) {
+    return res.status(400).json({ error: 'Invalid review request' });
+  }
+
+  const posById = new Map(assignments.map(a => [String(a.id), a]));
+  const studentLines = students.map(s => {
+    const p = posById.get(String(s.id));
+    return `- ${String(s.id)}: 좌석=${p ? `${Number(p.row) + 1}줄 ${Number(p.col) + 1}번` : '미배치'}, 성별=${s.gender === '남' || s.gender === '여' ? s.gender : '미상'}, 기분=${String(s.mood || '보통')}, 지목한 친구=[${(s.chosen || []).map(String).join(', ') || '없음'}], 받은 지목=${Number(s.received) || 0}, 갈등 상대=[${(s.conflictWith || []).map(String).join(', ') || '없음'}], 외로움 신호=${Number(s.lonely) || 0}회`;
+  }).join('\n');
+
+  const checkLines = (Array.isArray(checks) ? checks : []).map(c => `- ${c.label}: ${c.value}/${c.total} (${c.status})`).join('\n');
+  const policyLines = policy ? Object.entries(policy).map(([k, v]) => `- ${k}: ${v}`).join('\n') : '';
+
+  const prompt = `
+너는 사회정서학습(SEL)에 정통한 초등 담임교사 멘토야. 규칙 기반 알고리즘이 만든 자리 배치안을 검토하고, 교사가 학생·학부모에게 설명할 수 있도록 근거를 서술해줘.
+
+[교실 구조] ${rows}줄 x ${cols}자리 (1줄이 칠판 앞). 짝꿍 = 같은 줄의 (1,2)(3,4)(5,6)... 번 좌석 쌍.
+[적용한 배치 정책]
+${policyLines}
+[알고리즘 점검표] (종합 점수 ${score ?? '?'}/100)
+${checkLines}
+[학생 데이터 및 배정 좌석] (익명 ID)
+${studentLines}
+
+[검토 관점]
+1. 갈등 분리, 힘듦 학생 관찰 용이성, 고립·외로움 학생의 지지자 배치, 상호 지목 쌍 근접, 남녀 짝꿍이 각각 어떻게 반영됐는지 데이터로 확인.
+2. 알고리즘이 놓쳤을 수 있는 정서적 위험(예: 고립 학생이 구석에 있음, 갈등 학생이 같은 줄 양끝에서 시선이 마주침 등)을 concerns에 적어.
+3. 이 배치를 운영할 때 교사가 첫 주에 할 수 있는 SEL 활동(짝 소개 인터뷰, 모둠 약속 만들기 등)을 tips에 2~3개.
+
+[출력 형식] JSON만 출력:
+{
+  "rationale": "전체 배치 근거를 교사·학부모에게 설명하듯 3~5문장 (존댓말)",
+  "highlights": [ { "id": "S2", "reason": "이 학생 좌석의 구체적 근거 1~2문장 (존댓말)" } ],
+  "concerns": ["보완 검토 사항 0~3개 (없으면 빈 배열)"],
+  "tips": ["첫 주 운영 팁 2~3개"]
+}
+- highlights는 갈등 분리·고립 배려·힘듦 학생 앞줄 등 의도가 뚜렷한 학생 4~6명만. 학생은 익명 ID 그대로 사용(화면에서 실명으로 복원됨).
+`;
+
+  const response = await fetch(aiEndpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { responseMimeType: 'application/json', temperature: 0.5 },
+    }),
+  });
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '');
+    console.error('Gemini review error:', response.status, errText);
+    return res.status(500).json({ error: `AI 검토 호출 실패 (상태 ${response.status})` });
+  }
+  const data = await response.json();
+  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const parsed = parseJson(text);
+  if (!parsed || typeof parsed.rationale !== 'string') {
+    return res.status(500).json({ error: 'AI 검토 응답을 해석할 수 없습니다.' });
+  }
+  return res.status(200).json({
+    rationale: parsed.rationale,
+    highlights: Array.isArray(parsed.highlights) ? parsed.highlights : [],
+    concerns: Array.isArray(parsed.concerns) ? parsed.concerns : [],
+    tips: Array.isArray(parsed.tips) ? parsed.tips : [],
+  });
+}
+
 export default async function handler(req, res) {
   // 자가진단: 브라우저 주소창에서 /api/gemini-seating 을 열면(GET) 함수 상태를 보여줌
   if (req.method === 'GET') {
@@ -44,7 +129,12 @@ export default async function handler(req, res) {
   try {
     // req.body가 문자열로 오는 환경(일부 로컬 실행) 대비
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    const { rows, cols, students } = body;
+    const { rows, cols, students, mode } = body;
+
+    // ===== review 모드: 규칙 엔진이 만든 배치안을 AI가 SEL 관점에서 검토·서술 =====
+    if (mode === 'review') {
+      return handleReview(body, aiEndpoint, res);
+    }
 
     // 요청 형식 검증
     if (

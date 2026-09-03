@@ -11,7 +11,7 @@ const Report = ({ studentsData, teacherProfile }) => {
 
   useEffect(() => {
     if (!customPlan) {
-      const atRiskWithPrescriptions = studentsData.filter(s => s.mood === '힘듦' && s.aiPrescription);
+      const atRiskWithPrescriptions = studentsData.filter(s => s.aiPrescription);
       if (atRiskWithPrescriptions.length > 0) {
         const planText = atRiskWithPrescriptions.map(s => 
           `[${s.realName} 학생 집중 지도 계획]\n${s.aiPrescription}`

@@ -30,6 +30,7 @@ const TeacherDashboard = () => {
   const [teacherProfile, setTeacherProfile] = useState({ teacherName: '', className: '' });
   const [activeClass, setActiveClass] = useState(null); // 현재 입장한 학급 정보 (다중 학급)
   const [currentUser, setCurrentUser] = useState(null);
+  const [focusStudentId, setFocusStudentId] = useState(null); // 대시보드 → 맞춤 처방으로 이동 시 강조할 학생
   const currentClassCode = sessionStorage.getItem('currentClassCode');
 
   // 현재 학급 정보 불러오기 (classes 컬렉션, 없으면 teacherProfile로 폴백)
@@ -185,12 +186,12 @@ const TeacherDashboard = () => {
             </div>
           )}
 
-          <div className="header-row" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginBottom: '24px' }}>
+          <div className="header-row" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
             <h1 className="dashboard-title" style={{ margin: 0 }}>
               {(activeClass?.className || teacherProfile.className || '우리 반')} 관계망 및 정서 건강
               {activeClass?.isDemo && <span style={{ marginLeft: '10px', fontSize: '0.85rem', color: '#805ad5', background: '#faf5ff', border: '1px solid #d6bcfa', padding: '4px 10px', borderRadius: '12px', verticalAlign: 'middle' }}>🎬 데모 학급</span>}
             </h1>
-            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <div style={{ background: 'rgba(74, 144, 226, 0.1)', border: '1px solid rgba(74, 144, 226, 0.2)', padding: '8px 16px', borderRadius: '12px', fontSize: '0.95rem', color: '#4a5568', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 🔑 학생용 학급 입장 코드: <span style={{ color: 'var(--primary-color)', fontSize: '1.1rem', letterSpacing: '1px' }}>{currentClassCode}</span>
               </div>
@@ -207,15 +208,20 @@ const TeacherDashboard = () => {
           {activeMenu === '대시보드' && (
             <div className="dashboard-grid">
               <Sociogram studentsData={studentsData} />
-              <EmotionalSignal studentsData={studentsData} />
-              <InterventionTable studentsData={studentsData} />
+              <div className="dashboard-side">
+                <EmotionalSignal studentsData={studentsData} />
+                <InterventionTable
+                  studentsData={studentsData}
+                  onOpenPrescription={(studentId) => { setFocusStudentId(studentId); setActiveMenu('맞춤 처방'); }}
+                />
+              </div>
               <DailyFlow studentsData={studentsData} />
             </div>
           )}
-          
+
           {activeMenu === '학급 분석' && <ClassAnalysis studentsData={studentsData} />}
           {activeMenu === '감정 트래커' && <EmotionTracker studentsData={studentsData} />}
-          {activeMenu === '맞춤 처방' && <CustomPrescription studentsData={studentsData} teacherProfile={teacherProfile} />}
+          {activeMenu === '맞춤 처방' && <CustomPrescription studentsData={studentsData} teacherProfile={teacherProfile} focusStudentId={focusStudentId} />}
           {activeMenu === '학생 관리' && <StudentManagement studentsData={studentsData} classCode={currentClassCode} />}
           {activeMenu === '자리 배치' && <SeatingChart studentsData={studentsData} classCode={currentClassCode} classLabel={activeClass?.className || teacherProfile.className} />}
           {activeMenu === '관계 신호' && <RelationshipWatch studentsData={studentsData} />}
