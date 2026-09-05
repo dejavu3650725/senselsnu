@@ -5,6 +5,7 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import TeacherSetup from './pages/TeacherSetup';
 import StudentDashboard from './pages/StudentDashboard';
 import ParentConsent from './pages/ParentConsent';
+import FamilyLetter from './pages/FamilyLetter';
 import Footer from './components/Footer';
 import PolicyModal from './components/PolicyModal';
 import './index.css';
@@ -23,6 +24,7 @@ function App() {
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/student" element={<StudentDashboard />} />
             <Route path="/consent/:classCode" element={<ParentConsent />} />
+            <Route path="/family/:classCode/:kind" element={<FamilyLetter />} />
           </Routes>
         </div>
         <Footer onOpenPolicy={(type) => { setPolicyType(type); setIsPolicyOpen(true); }} />

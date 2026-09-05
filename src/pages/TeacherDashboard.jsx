@@ -17,6 +17,7 @@ import EdutechResource from '../components/EdutechResource';
 import StudentManagement from '../components/StudentManagement';
 import SeatingChart from '../components/SeatingChart';
 import RelationshipWatch from '../components/RelationshipWatch';
+import FamilyLink from '../components/FamilyLink';
 import { db, auth } from '../firebase';
 import { collection, onSnapshot, query, orderBy, where, doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -286,6 +287,7 @@ const TeacherDashboard = () => {
           {activeMenu === '학생 관리' && <StudentManagement studentsData={studentsData} classCode={currentClassCode} />}
           {activeMenu === '자리 배치' && <SeatingChart studentsData={studentsData} classCode={currentClassCode} classLabel={activeClass?.className || teacherProfile.className} />}
           {activeMenu === '관계 신호' && <RelationshipWatch studentsData={studentsData} />}
+          {activeMenu === '가정 연계' && <FamilyLink studentsData={studentsData} teacherProfile={teacherProfile} classCode={currentClassCode} classLabel={activeClass?.className || teacherProfile.className} />}
           {activeMenu === '리포트' && <Report studentsData={studentsData} teacherProfile={teacherProfile} />}
           {activeMenu === '에듀테크 리소스' && <EdutechResource />}
         </div>
