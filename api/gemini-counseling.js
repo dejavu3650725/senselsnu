@@ -176,6 +176,11 @@ const decideTurnGoal = (ctx) => {
   const limit = Number(ctx.turnLimit) || 0;           // 담임이 정한 하루 상한 (0 = 무제한)
   const repeated = Array.isArray(ctx.repeatedPeers) ? ctx.repeatedPeers : []; // 이번 세션 2회 이상 갈등 언급된 친구
 
+  if (ctx.freeTalk) {
+    if (repeated.length > 0 && turn >= 3) return `자유 대화 모드. 학생이 ${repeated.join(', ')}에 대한 불만을 반복하고 있어. 캐묻거나 동조하지 말고 감정만 짧게 받아준 뒤 학생 자신에게로 초점을 옮겨(오늘 괜찮았던 순간, 지금 하고 싶은 것). 친구 지목 질문은 하지 마.`;
+    if (mood === '힘듦' && turn <= 2) return '자유 대화 모드. 오늘 기분이 힘든 학생이야. 오직 공감과 안정. 무슨 일이 있었는지 부드럽게 한 가지만 물어봐. 친구 지목 질문은 하지 마.';
+    return '자유 대화 모드. 이 학생에게는 대화 자체가 쉼터야. 정보를 얻으려 하지 말고 편하게 들어주고, 학생이 꺼낸 이야기 안에서만 가볍게 하나 물어봐. 친구 지목(추인) 질문·관계 조사 질문은 하지 마. 갈등 이야기가 나오면 NO_BLAME 4단계로만.';
+  }
   if (limit > 0 && turn >= limit) return '오늘 대화 상한에 도달했어. 오늘 나눈 이야기 중 학생의 좋은 점 하나를 구체적으로 짚어 주고, "내일 또 이야기하자"로 따뜻하게 마무리해. 새 질문은 절대 하지 마.';
   if (limit > 0 && turn === limit - 1) return '다음 턴이 오늘 마지막이야. 지금 주제를 한 문장으로 정리해 주고, 마지막으로 하고 싶은 말이 있는지 딱 하나만 물어봐.';
   if (repeated.length > 0 && turn >= 3) return `학생이 이번 세션에서 ${repeated.join(', ')}에 대한 불만을 반복하고 있어. 더 캐묻거나 동조하지 말고, 감정만 짧게 받아준 뒤 학생 자신에게로 초점을 옮겨: "그럴 때 네가 바라는 건 뭐야?" 또는 오늘 괜찮았던 순간·잘한 점을 묻는 강점 질문 하나. 필요하면 "선생님께 직접 말하는 게 제일 확실해"를 한 번만 권해.`;
@@ -254,8 +259,12 @@ const buildSystemPrompt = ({ chatConfig, ptiser, customPrompt, selLevel, gradeYe
   if (Array.isArray(roster) && roster.length) {
     s += `\n[학급 친구 닉네임 명단]\n${roster.join(', ')}\n`;
   }
+  if (ctx.freeTalk) {
+    s += `\n[데이터 태그 — 자유 대화 모드]\n- 이 학생은 담임이 '자유 대화 모드'로 정했어. [NOMINATION]·[CONFLICT]·[LONELY]·[SKILL] 태그는 절대 출력하지 마.\n- 예외는 [ALERT: 범주 - 사유] 하나뿐이야. 위 5가지 중대 범주에 해당할 때만 응답 맨 끝에 붙여(아동 보호).\n`;
+  } else {
   s += dataTags(cfg.collectConflicts !== false, Array.isArray(ctx.repeatedPeers) ? ctx.repeatedPeers : []);
   s += `- [SKILL: 기술명] 이번 턴에서 학생이 실제로 '해 보인' 사회정서기술 1개만 (감정에 이름 붙이기, 친구 입장 말하기, 사과하기, 도움 요청하기 등 학생의 말에 근거가 있을 때만). 기술명은 반드시 다음 목록에서만: ${seoulSkillList(seoulGradeLabel(selLevel, gradeYear)).join(' / ')}. 근거가 없으면 붙이지 마. 이 태그는 학생의 '성장 기록'에 배지로 표시된다.\n`;
+  }
   s += FEW_SHOT;
 
   // ===== 학생별 맥락 + 이번 턴 목표 =====
@@ -264,6 +273,7 @@ const buildSystemPrompt = ({ chatConfig, ptiser, customPrompt, selLevel, gradeYe
   if (Array.isArray(ctx.nominations) && ctx.nominations.length) s += `- 이미 긍정 지목한 친구: ${ctx.nominations.slice(0, 8).join(', ')} (다시 묻지 말 것)\n`;
   if (Number(ctx.conflictsCount) > 0) s += `- 이전에 친구와의 갈등을 ${ctx.conflictsCount}건 이야기한 적 있음\n`;
   if (Number(ctx.lonelyCount) > 0) s += `- 이전에 외로움을 ${ctx.lonelyCount}회 표현한 적 있음\n`;
+  if (ctx.freeTalk) s += `- 자유 대화 모드(담임 설정): 관계 조사 없음, 하루 상한 없음, 태그는 ALERT만\n`;
   if (Number(ctx.turnLimit) > 0) s += `- 오늘 대화 상한: ${ctx.turnLimit}턴 (현재 ${Number(ctx.turnCount) || 0}턴)\n`;
   if (Array.isArray(ctx.repeatedPeers) && ctx.repeatedPeers.length) s += `- 이번 세션에서 반복 언급(불만)한 친구: ${ctx.repeatedPeers.join(', ')} → 동조 금지, 초점 전환\n`;
   s += `\n[이번 턴 목표 — 가장 중요] ${decideTurnGoal(ctx)}\n`;

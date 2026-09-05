@@ -68,6 +68,7 @@ const StudentDashboard = () => {
   const [missionsDone, setMissionsDone] = useState([]); // [{weekKey, missionId, doneAt}]
   const [classMission, setClassMission] = useState(null); // classes/{code}.mission (교사 지정) 없으면 기본 순환
   const [growthOpen, setGrowthOpen] = useState(false);
+  const [freeTalk, setFreeTalk] = useState(false);           // 담임이 학생 단위로 켠 '자유 대화 모드': 관계 태그·상한 없음, 위기 알림만
   const [consentDenied, setConsentDenied] = useState(false); // 보호자 미동의: 대화는 하되 신호·기록 저장 안 함(위기 알림은 유지)
   // AI 활용 약속 (서울시교육청 가이드라인 학생 핵심 가이드 5·3·6) — 기기당 1회, 학교급 바뀌면 다시
   const [promiseDone, setPromiseDone] = useState(() => { try { return localStorage.getItem('sensel-ai-promise') === (sessionStorage.getItem('studentClassCode') || 'x'); } catch { return false; } });
@@ -83,7 +84,7 @@ const StudentDashboard = () => {
   const [complaintCounts, setComplaintCounts] = useState({}); // 이번 세션 친구별 갈등 언급 횟수 (반복 호소 완화용)
   const [alertedToday, setAlertedToday] = useState(false);    // 오늘 이미 긴급 알림이 기록됐는지 (하루 1건)
   const todayKey = new Date().toISOString().slice(0, 10);
-  const dailyLimit = Number(chatConfig?.dailyTurnLimit ?? 30);
+  const dailyLimit = freeTalk ? 0 : Number(chatConfig?.dailyTurnLimit ?? 30);
   const limitReached = dailyLimit > 0 && turnsToday >= dailyLimit;
   // 학급 친구 닉네임 명단 (LLM이 문맥 추론으로 공식 닉네임에 매핑할 수 있도록 전달)
   const [roster, setRoster] = useState([]);
@@ -238,6 +239,7 @@ const StudentDashboard = () => {
         });
         setSkillLog(Array.isArray(userData.skillLog) ? userData.skillLog : []);
         setConsentDenied(userData.consent?.status === 'denied');
+        setFreeTalk(userData.freeTalk === true);
         setMissionsDone(Array.isArray(userData.missions) ? userData.missions : []);
         if (userData.dailyTurns && userData.dailyTurns.date === new Date().toISOString().slice(0, 10)) setTurnsToday(Number(userData.dailyTurns.count) || 0);
         if ((userData.alerts || []).some(a => a && a.timestamp && String(a.timestamp).slice(0, 10) === new Date().toISOString().slice(0, 10))) setAlertedToday(true);
@@ -374,6 +376,7 @@ const StudentDashboard = () => {
         turnLimit: dailyLimit,
         turnCount: dailyLimit > 0 ? turnsToday + 1 : turnCount, // 상한이 있으면 '오늘 누적' 기준
         repeatedPeers: Object.entries(complaintCounts).filter(([, n]) => n >= 2).map(([nick]) => nick),
+        freeTalk,
       };
       const response = await apiPost('/api/gemini-counseling', { contents: history, ptiser, selLevel, gradeYear, roster, chatConfig, studentContext });
 
@@ -477,7 +480,7 @@ const StudentDashboard = () => {
         if (isLonelySignal) {
           updates.lonelySignals = arrayUnion(new Date().toISOString()); // 외로움 신호 저장
         }
-        if (practicedSkill && !skillLog.some(e => e && e.skill === practicedSkill && e.date === dayKey())) {
+        if (practicedSkill && !freeTalk && !skillLog.some(e => e && e.skill === practicedSkill && e.date === dayKey())) {
           // 성장 기록: 같은 기술은 하루 1회만 기록 (배지 부풀리기 방지)
           const entry = { skill: practicedSkill, area: areaOfSkill(gradeLabelForSkills, practicedSkill), date: dayKey() };
           updates.skillLog = arrayUnion(entry);
@@ -495,7 +498,7 @@ const StudentDashboard = () => {
             excerpt: [...recentUser.map(t => `학생: ${t}`), `챗봇: ${cleanBotText}`].join('\n').slice(0, 1200)
           });
         }
-        if (consentDenied) { // 미동의: 아동 보호 목적의 위기 알림만 남긴다
+        if (consentDenied || freeTalk) { // 미동의 또는 자유 대화 모드: 아동 보호 목적의 위기 알림만 남긴다
           Object.keys(updates).forEach(k => { if (k !== 'alerts') delete updates[k]; });
         }
         if (Object.keys(updates).length > 0) await updateDoc(doc(db, 'students', studentDocId), updates);

@@ -141,6 +141,18 @@ const StudentManagement = ({ studentsData, classCode }) => {
     }
   };
 
+  // 자유 대화 모드(학생 단위): 챗봇이 유일한 출구인 학생을 위해 관계 태그·기술 태그·하루 상한을 끄고 위기 알림만 남긴다
+  const handleToggleFreeTalk = async (student) => {
+    const next = !student.freeTalk;
+    if (next && !window.confirm(`${student.realName} 학생을 '자유 대화 모드'로 바꿀까요?\n\n- 친구 지목·갈등·외로움·기술 태그를 기록하지 않습니다 (관계망·처방에 반영 안 됨)\n- 하루 대화 상한이 적용되지 않습니다\n- 위기 알림(5개 중대 범주)은 그대로 유지됩니다`)) return;
+    try {
+      await updateDoc(doc(db, 'students', student.id), { freeTalk: next, freeTalkChangedAt: new Date().toISOString() });
+    } catch (error) {
+      console.error('Error updating freeTalk:', error);
+      alert('모드 변경 중 오류가 발생했습니다.');
+    }
+  };
+
   // 명단에서 성별 직접 변경 (기존에 성별 없이 등록된 학생도 여기서 지정 가능)
   const handleSetGender = async (studentId, gender) => {
     try {
@@ -268,13 +280,14 @@ const StudentManagement = ({ studentsData, classCode }) => {
               <th style={{ padding: '16px 20px', color: '#4a5568', fontWeight: 'bold' }}>성별</th>
               <th style={{ padding: '16px 20px', color: '#4a5568', fontWeight: 'bold' }}>닉네임</th>
               <th style={{ padding: '16px 20px', color: '#4a5568', fontWeight: 'bold' }}>상태</th>
+              <th style={{ padding: '16px 20px', color: '#4a5568', fontWeight: 'bold' }} title="관계 태그·하루 상한 없이 대화만. 위기 알림은 유지">대화 모드</th>
               <th style={{ padding: '16px 20px', color: '#4a5568', fontWeight: 'bold', textAlign: 'center' }}>삭제</th>
             </tr>
           </thead>
           <tbody>
             {studentsData.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ padding: '32px', textAlign: 'center', color: '#a0aec0' }}>등록된 학생이 없습니다. 위에서 학생을 추가해보세요!</td>
+                <td colSpan="7" style={{ padding: '32px', textAlign: 'center', color: '#a0aec0' }}>등록된 학생이 없습니다. 위에서 학생을 추가해보세요!</td>
               </tr>
             ) : (
               studentsData.map((student, idx) => (
@@ -316,6 +329,20 @@ const StudentManagement = ({ studentsData, classCode }) => {
                     }}>
                       {student.mood || '알 수 없음'}
                     </span>
+                  </td>
+                  <td style={{ padding: '16px 20px' }}>
+                    <button
+                      onClick={() => handleToggleFreeTalk(student)}
+                      title={student.freeTalk ? '자유 대화 모드: 관계·기술 태그와 하루 상한 없음, 위기 알림만 유지. 클릭하면 일반 모드로' : '일반 모드: 관계 신호·성장 기록 수집. 클릭하면 자유 대화 모드로'}
+                      style={{
+                        padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap',
+                        border: student.freeTalk ? '1.5px solid #805ad5' : '1px solid #e2e8f0',
+                        background: student.freeTalk ? '#faf5ff' : 'white',
+                        color: student.freeTalk ? '#805ad5' : '#a0aec0'
+                      }}
+                    >
+                      {student.freeTalk ? '🍃 자유 대화' : '일반'}
+                    </button>
                   </td>
                   <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                     <button

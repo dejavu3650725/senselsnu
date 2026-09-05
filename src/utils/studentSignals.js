@@ -164,6 +164,11 @@ export const assessStudent = (node, graph) => {
     score += 15;
   }
 
+  // 자유 대화 모드: 담임이 관계 태그 수집을 끈 학생 — 신호가 없는 것은 '없음'이 아니라 '수집 안 함'
+  if (s.freeTalk === true) {
+    signals.push({ type: 'freeTalk', label: '자유 대화 모드', detail: '담임 설정: 관계·기술 태그 수집 안 함, 위기 알림만 유지. 신호 없음 = 관찰 필요', ids: [], weight: 0 });
+  }
+
   // 반복 호소: 같은 친구를 3회 이상 갈등 상대로 언급 → 사실 확인 전 판단 보류 (위험 점수는 크게 올리지 않음)
   const repeated = [...node.mentionCounts.entries()].filter(([, n]) => n >= 3);
   if (repeated.length > 0) {
