@@ -310,8 +310,9 @@
   },
 
   "seoulStandards": {
-    "note": "서울시교육청 「사회정서기술&성취기준」 슬롯. 서울 자료 확보 후 학년×역량×기술로 채움 (SEN = 서울, SEL = 사회정서교육)",
-    "status": "pending",
-    "items": []
+    "note": "서울시교육청 사회정서교육자료(초1~고3) 2차 로직. 본문은 src/data/seoulSel.json (성취기준 87개 · 차시 244개 · 영역별 사회정서기술)",
+    "status": "linked",
+    "file": "seoulSel.json",
+    "competencyNames": { "selfAwareness": "자기 인식", "selfManagement": "자기 관리", "relationshipAwareness": "관계 인식", "relationshipManagement": "관계 관리", "communityValues": "사회적 책임", "mentalHealthAwareness": "마음건강 관리" }
   }
 }

@@ -15,7 +15,29 @@ import { selData } from '../src/data/selData.js';
 import { verifyRequest } from './_auth.js';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const FW = require('../src/data/selFramework.json'); // 교육부 한국형 사회정서교육 프레임워크 색인
+const FW = require('../src/data/selFramework.json'); // 교육부 한국형 사회정서교육 프레임워크 색인 (1차 로직)
+const SEOUL = require('../src/data/seoulSel.json');   // 서울 사회정서교육 학년별 성취기준·차시 색인 (2차 로직)
+
+// ===== 서울 2차 로직 헬퍼 (src/utils/seoulSel.js와 동일 로직) =====
+const seoulGradeLabel = (selLevel, gradeYear) => {
+  const n = Number(gradeYear) || 0;
+  if (selLevel === 'middle') return `중${n >= 1 && n <= 3 ? n : 1}`;
+  if (selLevel === 'high') return `고${n >= 1 && n <= 3 ? n : 1}`;
+  if (n >= 1 && n <= 6) return `초${n}`;
+  return selLevel === 'elementary_low' ? '초2' : '초5';
+};
+const seoulLevelOf = (g = '') => ({ '초': 'elementary', '중': 'middle', '고': 'high' }[g[0]] || 'elementary');
+const seoulAreasForSignals = (types) => { const out = []; types.forEach(t => (SEOUL.signalToArea[t] || []).forEach(a => { if (!out.includes(a)) out.push(a); })); return out; };
+const seoulStandardsFor = (g, areas) => {
+  const lv = seoulLevelOf(g); const num = Number(g.slice(1));
+  return (SEOUL.standards[lv] || []).filter(s => (lv !== 'elementary' || s.grade === num) && (!areas.length || areas.includes(s.area)));
+};
+const seoulLessonsFor = (g, areas, limit = 6) => (SEOUL.lessons[g] || []).filter(l => !areas.length || areas.includes(l.area)).slice(0, limit);
+const seoulGuideText = (g, areas) => {
+  const st = seoulStandardsFor(g, areas).slice(0, 6);
+  const ls = seoulLessonsFor(g, areas, 6);
+  return `[서울 사회정서교육 ${g} 성취기준 — 처방의 근거 코드로 인용할 것]\n${st.map(s => `[${s.code}] (${s.area}) ${s.text}`).join('\n') || '(해당 없음)'}\n\n[서울 사회정서교육자료 ${g} 관련 차시 — 활동을 변형해 개별 처방에 활용]\n${ls.map(l => `- ${l.seq ? l.seq + '차시 ' : ''}《${l.title}》 기술: ${l.skill || '-'} / 주제: ${l.lessonTopic || l.gradeTopic} / 목표: ${l.goal} / 근거: ${l.standards.join(', ')}`).join('\n') || '(해당 없음)'}`;
+};
 
 // ===== 프레임워크 헬퍼 (서버용, src/utils/selFramework.js와 동일 로직) =====
 const COMP = {};
@@ -113,9 +135,11 @@ const OUTPUT_SCHEMA = `
       "how": "구체 절차 2~4문장 (언제·어디서·몇 분·어떻게)",
       "script": "교사가 실제로 학생에게 건넬 말 1~2문장 (따옴표 없이)",
       "peers": ["활용할 급우 익명 ID (없으면 빈 배열)"],
-      "resource": "활용한 공식 자료 (예: 초(고) 4차시 경청과 공감을 실천해요 / 아침조회 주제: 타인 이해 · 타인의 생각과 느낌) 또는 빈 문자열"
+      "resource": "활용한 공식 자료 (예: 서울 초5 8~9차시 갈등, 이렇게 해결해요 / 교육부 초(고) 4차시 경청과 공감을 실천해요 / 아침조회 주제: 타인 이해 · 타인의 생각과 느낌) 또는 빈 문자열",
+      "standard": "이 실천이 겨냥하는 서울 성취기준 코드 1개 (예: 5사회정서02-03) 또는 빈 문자열"
     }
   ],
+  "standards": ["이 처방 전체가 근거로 삼은 서울 성취기준 코드 1~3개 (제공된 목록에서만)"],
   "peerPlan": "또래 자원(상호 지목·받은 지목 친구)을 활용한 관계 연결 계획 1~2문장. 자리·모둠·역할 배치 제안 포함",
   "caution": "이 학생에게 특히 피해야 할 접근 1~2문장",
   "checkpoints": ["1주 후 확인할 관찰 지표 2~3개 (측정 가능하게)"],
@@ -143,7 +167,7 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    const { profile, selLevel, avoidStrategies, teacherNote, contents } = body;
+    const { profile, selLevel, gradeYear, avoidStrategies, teacherNote, contents } = body;
 
     // 학교급: 교사 설정이 없으면 초등 고학년을 기본값으로 (별도 설정 없이도 동작)
     const level = selLevel && selData[selLevel] ? selLevel : 'elementary_high';
@@ -172,6 +196,10 @@ export default async function handler(req, res) {
     const sessions = sessionsFor(level, keys);
     const topics = topicsFor(level, keys);
     const excerpts = sessions.slice(0, 2).map(sn => `《${LEVEL_LABEL[level]} ${sn.session}차시 ${sn.title}》 ${manualExcerpt(level, sn.title)}`).join('\n\n');
+    // 서울 2차 로직: 학년별 성취기준 + 차시 (신호 → 영역)
+    const gradeLabel = seoulGradeLabel(level, gradeYear);
+    const seoulAreas = seoulAreasForSignals(signalTypes);
+    const seoulText = seoulGuideText(gradeLabel, seoulAreas);
 
     let systemText = `너는 사회정서교육(SEL) 전문 장학사이자 20년차 담임교사 멘토야. 담임교사가 학생 한 명을 위한 이번 주 맞춤 지도 계획을 세울 수 있도록, 제공된 데이터를 근거로 개별화된 처방을 작성해.\n`;
     systemText += `대상 학교급: ${LEVEL_LABEL[level]}\n`;
@@ -181,6 +209,7 @@ export default async function handler(req, res) {
     systemText += `- 관련 차시: ${sessions.map(sn => `${sn.session}차시 ${sn.title}(${sn.competencies.map(k => COMP[k].name).join('·')})`).join(' / ') || '없음'}\n`;
     systemText += `- 아침조회 대화 주제(교육부 2026): ${topics.join(' / ') || '없음'}\n`;
     if (excerpts) systemText += `\n[지도서 발췌 — 활동을 변형해 개별 처방에 활용]\n${excerpts}\n`;
+    systemText += `\n[2차 로직 — 서울특별시교육청 사회정서교육자료 (${gradeLabel})]\n이 학년에서 실제로 가르치는 성취기준과 차시입니다. 처방의 focus·actions는 가능한 한 아래 성취기준 코드로 근거를 밝히고, 차시 활동을 개별 학생용으로 변형해 제안하세요.\n${seoulText}\n`;
 
     let userText = `[학생 데이터 (익명화)]\n${buildProfileText(profile)}\n`;
     if (avoid.length) {
@@ -224,7 +253,11 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'AI 응답을 해석할 수 없습니다. 다시 시도해주세요.' });
     }
 
-    return res.status(200).json({ prescription: parsed, level });
+    // 성취기준 코드 검증: 제공 목록에 없는 코드는 제거
+    const validCodes = new Set(seoulStandardsFor(gradeLabel, []).map(s => s.code));
+    if (Array.isArray(parsed.standards)) parsed.standards = parsed.standards.filter(c => validCodes.has(c)).slice(0, 3);
+    parsed.actions.forEach(a => { if (a && a.standard && !validCodes.has(a.standard)) a.standard = ''; });
+    return res.status(200).json({ prescription: parsed, level, gradeLabel });
   } catch (error) {
     console.error('Gemini Prescription Error:', error);
     return res.status(500).json({ error: `서버 처리 중 오류: ${error.message || 'Unknown error'}` });

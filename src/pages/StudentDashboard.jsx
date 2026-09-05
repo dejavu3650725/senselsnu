@@ -54,6 +54,7 @@ const StudentDashboard = () => {
   // 교사가 설정한 P-TISER 및 SEL 학교급
   const [ptiser, setPtiser] = useState(null);
   const [selLevel, setSelLevel] = useState('');
+  const [gradeYear, setGradeYear] = useState(null);
   const [isTyping, setIsTyping] = useState(false); // 챗봇 응답 대기 표시
   const [chatConfig, setChatConfig] = useState(null); // 교사 챗봇 설정(프리셋)
   // 대화 원문 보관 여부: 교사가 [챗봇 설정]에서 보호자 동의 확인 후 켠 경우에만 저장 (기본: 신호만 저장)
@@ -114,6 +115,7 @@ const StudentDashboard = () => {
           if (teacherData.selLevel) {
             setSelLevel(teacherData.selLevel);
           }
+          if (teacherData.gradeYear) setGradeYear(teacherData.gradeYear);
           if (teacherData.chatConfig) setChatConfig(teacherData.chatConfig);
         }
       } catch (error) {
@@ -340,7 +342,7 @@ const StudentDashboard = () => {
         turnCount: dailyLimit > 0 ? turnsToday + 1 : turnCount, // 상한이 있으면 '오늘 누적' 기준
         repeatedPeers: Object.entries(complaintCounts).filter(([, n]) => n >= 2).map(([nick]) => nick),
       };
-      const response = await apiPost('/api/gemini-counseling', { contents: history, ptiser, selLevel, roster, chatConfig, studentContext });
+      const response = await apiPost('/api/gemini-counseling', { contents: history, ptiser, selLevel, gradeYear, roster, chatConfig, studentContext });
 
       if (!response.ok) throw new Error('API Error');
 

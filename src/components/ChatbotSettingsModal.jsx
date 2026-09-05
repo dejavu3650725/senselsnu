@@ -39,10 +39,11 @@ const DEFAULT_CONFIG = {
   collectConflicts: true,    // 갈등 신호 수집 (false = 긍정 지목만 모드)
 };
 
-const ChatbotSettingsModal = ({ onClose }) => {
+const ChatbotSettingsModal = ({ onClose, onSaved }) => {
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [ptiser, setPtiser] = useState({ persona: '', task: '', information: '', style: '', restriction: '' });
   const [selLevel, setSelLevel] = useState('elementary_high');
+  const [gradeYear, setGradeYear] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -58,6 +59,7 @@ const ChatbotSettingsModal = ({ onClose }) => {
           if (d.ptiser) setPtiser(d.ptiser);
           else if (d.customPrompt) setPtiser(prev => ({ ...prev, information: d.customPrompt }));
           if (d.selLevel) setSelLevel(d.selLevel);
+          if (d.gradeYear) setGradeYear(String(d.gradeYear));
         }
       } catch (error) {
         console.error('Failed to load settings:', error);
@@ -71,7 +73,9 @@ const ChatbotSettingsModal = ({ onClose }) => {
     try {
       const user = auth.currentUser;
       if (!user) return;
-      await setDoc(doc(db, 'teachers', user.uid), { chatConfig: config, ptiser, selLevel }, { merge: true });
+      const payload = { chatConfig: config, ptiser, selLevel, gradeYear: gradeYear ? Number(gradeYear) : null };
+      await setDoc(doc(db, 'teachers', user.uid), payload, { merge: true });
+      if (onSaved) onSaved(payload);
       onClose();
     } catch (error) {
       console.error('Failed to save settings:', error);
@@ -117,14 +121,23 @@ const ChatbotSettingsModal = ({ onClose }) => {
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 1fr', gap: '12px' }}>
             <div>
               <label style={sectionLabel}>학교급</label>
-              <select value={selLevel} onChange={e => setSelLevel(e.target.value)} style={{ ...inputStyle, background: 'white' }}>
+              <select value={selLevel} onChange={e => { setSelLevel(e.target.value); setGradeYear(''); }} style={{ ...inputStyle, background: 'white' }}>
                 <option value="elementary_low">초등 저학년</option>
                 <option value="elementary_high">초등 고학년</option>
                 <option value="middle">중학교</option>
                 <option value="high">고등학교</option>
+              </select>
+            </div>
+            <div>
+              <label style={sectionLabel}>학년</label>
+              <select value={gradeYear} onChange={e => setGradeYear(e.target.value)} style={{ ...inputStyle, background: 'white' }}>
+                <option value="">선택</option>
+                {(selLevel === 'elementary_low' ? [1, 2, 3] : selLevel === 'elementary_high' ? [4, 5, 6] : [1, 2, 3]).map(n => (
+                  <option key={n} value={n}>{n}학년</option>
+                ))}
               </select>
             </div>
             <div>

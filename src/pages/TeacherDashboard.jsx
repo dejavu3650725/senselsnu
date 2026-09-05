@@ -293,7 +293,7 @@ const TeacherDashboard = () => {
       
       {/* 챗봇 프롬프트 설정 모달 */}
       {isChatbotModalOpen && (
-        <ChatbotSettingsModal onClose={() => setIsChatbotModalOpen(false)} />
+        <ChatbotSettingsModal onClose={() => setIsChatbotModalOpen(false)} onSaved={(d) => setTeacherProfile(prev => ({ ...prev, ...d }))} />
       )}
       
       {/* 교사 프로필(기본 설정) 모달 */}

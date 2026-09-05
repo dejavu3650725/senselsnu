@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Download } from 'lucide-react';
+import { seoulGradeLabel, standardsFor } from '../utils/seoulSel';
 
 const Report = ({ studentsData, teacherProfile }) => {
   const [customPlan, setCustomPlan] = useState('');
 
+  const gradeLabel = seoulGradeLabel(teacherProfile?.selLevel, teacherProfile?.gradeYear);
+  const gradeStandards = standardsFor(gradeLabel, []);
+  const citedCodes = Array.from(new Set(studentsData.flatMap(s => s.aiPrescriptionData?.standards || [])));
   const totalStudents = studentsData.length;
   const healthCount = studentsData.filter(s => s.mood === '건강').length;
   const normalCount = studentsData.filter(s => s.mood === '보통').length;
@@ -48,7 +52,16 @@ const Report = ({ studentsData, teacherProfile }) => {
         <ul style={{ lineHeight: '1.8', color: '#4a5568', marginBottom: '32px' }}>
           <li><strong>총 참여 학생 수:</strong> {totalStudents}명</li>
           <li><strong>학급 정서 온도:</strong> 건강({healthCount}명), 보통({normalCount}명), 힘듦({hardCount}명)</li>
-          <li><strong>적용된 SEL 가이드라인:</strong> {teacherProfile?.selLevel || '미설정'}</li>
+          <li><strong>적용된 SEL 가이드라인:</strong> 교육부 한국형 사회정서교육 4영역·6핵심역량({({ elementary_low: '초등 저학년', elementary_high: '초등 고학년', middle: '중학교', high: '고등학교' })[teacherProfile?.selLevel] || '미설정'}) · 서울 사회정서교육 {gradeLabel} 성취기준</li>
+        </ul>
+
+        <h3 style={{ color: '#4a5568', borderBottom: '2px solid var(--primary-color)', paddingBottom: '8px' }}>1-1. 서울 사회정서교육 {gradeLabel} 성취기준 (서울특별시교육청 사회정서교육자료)</h3>
+        <ul style={{ lineHeight: '1.7', color: '#4a5568', marginBottom: '32px', fontSize: '0.92rem' }}>
+          {gradeStandards.map(s => (
+            <li key={s.code} style={{ fontWeight: citedCodes.includes(s.code) ? 'bold' : 'normal' }}>
+              [{s.code}] ({s.area}) {s.text}{citedCodes.includes(s.code) && ' ★ 맞춤 처방에서 인용'}
+            </li>
+          ))}
         </ul>
 
         <h3 style={{ color: '#4a5568', borderBottom: '2px solid var(--primary-color)', paddingBottom: '8px' }}>2. 교우 관계망 (소시오그램) 요약</h3>

@@ -18,7 +18,23 @@
 import { verifyRequest } from './_auth.js';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const FW = require('../src/data/selFramework.json'); // 교육부 한국형 사회정서교육 프레임워크 색인
+const FW = require('../src/data/selFramework.json'); // 교육부 한국형 사회정서교육 프레임워크 색인 (1차)
+const SEOUL = require('../src/data/seoulSel.json');   // 서울 사회정서교육 학년별 차시 색인 (2차)
+const seoulGradeLabel = (selLevel, gradeYear) => {
+  const n = Number(gradeYear) || 0;
+  if (selLevel === 'middle') return `중${n >= 1 && n <= 3 ? n : 1}`;
+  if (selLevel === 'high') return `고${n >= 1 && n <= 3 ? n : 1}`;
+  if (n >= 1 && n <= 6) return `초${n}`;
+  return selLevel === 'elementary_low' ? '초2' : '초5';
+};
+const TOPIC_TO_SEOUL_AREA = { friendship: '대인관계', emotion: '자기', school: '공동체', study: '자기', online: '자기', family: '마음건강' };
+/** 서울 자료 학년별 학습 주제 → 대화 씨앗 (이 학년이 지금 수업에서 배우는 것과 연결) */
+const seoulSeeds = (gradeLabel, focusTopics = []) => {
+  const areas = new Set(focusTopics.map(t => TOPIC_TO_SEOUL_AREA[t]).filter(Boolean));
+  const seen = new Set();
+  return (SEOUL.lessons[gradeLabel] || []).filter(l => !areas.size || areas.has(l.area))
+    .map(l => l.gradeTopic || l.lessonTopic).filter(t => t && !seen.has(t) && seen.add(t));
+};
 const LEVEL_SHORT = { elementary_low: '초(저)', elementary_high: '초(고)', middle: '중', high: '고' };
 const DOMAIN_TO_CATEGORY = { self: '자기', relationship: '대인관계·공동체', community: '대인관계·공동체', mentalHealth: '마음건강' };
 /** 교사 관심 주제 → 교육부 아침조회 대화 주제 씨앗 (학교급별) */
@@ -179,7 +195,7 @@ const decideTurnGoal = (ctx) => {
   return '학생이 꺼낸 주제를 따라가며 한 가지만 더 깊이 들어봐. 필요하면 상대 친구의 마음을 한 번 상상해 보게 해.';
 };
 
-const buildSystemPrompt = ({ chatConfig, ptiser, customPrompt, selLevel, roster, studentContext }) => {
+const buildSystemPrompt = ({ chatConfig, ptiser, customPrompt, selLevel, gradeYear, roster, studentContext }) => {
   const cfg = chatConfig || {};
   const botName = (cfg.botName || '나무').toString().slice(0, 20);
   const tone = TONE[cfg.tone] || TONE.warm;
@@ -194,6 +210,9 @@ const buildSystemPrompt = ({ chatConfig, ptiser, customPrompt, selLevel, roster,
   if (cfg.classNote) s += `[학급 상황 메모 (교사)] ${String(cfg.classNote).slice(0, 500)}\n`;
   const seeds = topicSeeds(selLevel, Array.isArray(cfg.focusTopics) ? cfg.focusTopics : []);
   if (seeds.length) s += `[대화 씨앗 — 교육부 2026 아침조회 대화 주제(${LEVEL_SHORT[selLevel] || '초(고)'})] 학생이 말할 거리가 없어 보일 때 이 중 하나를 가볍게 꺼내도 좋아: ${seeds.slice(0, 10).join(' / ')}\n`;
+  const gradeLabel = seoulGradeLabel(selLevel, gradeYear);
+  const sSeeds = seoulSeeds(gradeLabel, Array.isArray(cfg.focusTopics) ? cfg.focusTopics : []);
+  if (sSeeds.length) s += `[이 학년이 사회정서 수업에서 배우는 것 — 서울 사회정서교육자료 ${gradeLabel}] 학생이 관련 경험을 말하면 이 기술 이름을 써서 연결해 줘("그게 바로 ~하기야"): ${sSeeds.slice(0, 8).join(' / ')}\n`;
 
   const ruleLines = [];
   if (rules.noStudyNag !== false) ruleLines.push('"공부해라", "숙제했니" 같은 학습 잔소리 금지');
@@ -259,7 +278,7 @@ export default async function handler(req, res) {
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-    const { contents, ptiser, customPrompt, selLevel, roster, chatConfig, studentContext } = body;
+    const { contents, ptiser, customPrompt, selLevel, gradeYear, roster, chatConfig, studentContext } = body;
 
     if (!Array.isArray(contents) || contents.length === 0) {
       return res.status(400).json({ error: 'contents가 필요합니다.' });
@@ -272,7 +291,7 @@ export default async function handler(req, res) {
     const trimmed = contents.slice(-24);
     const history = trimmed[0]?.role === 'model' ? [{ role: 'user', parts: [{ text: '안녕!' }] }, ...trimmed] : trimmed;
 
-    const systemText = buildSystemPrompt({ chatConfig, ptiser, customPrompt, selLevel, roster: safeRoster, studentContext });
+    const systemText = buildSystemPrompt({ chatConfig, ptiser, customPrompt, selLevel, gradeYear, roster: safeRoster, studentContext });
 
     const requestBody = {
       systemInstruction: { parts: [{ text: systemText }] },

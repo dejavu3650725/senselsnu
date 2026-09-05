@@ -4,6 +4,7 @@ import { db } from '../firebase';
 import { apiPost } from '../utils/apiClient';
 import { doc, updateDoc } from 'firebase/firestore';
 import { assessClass, buildAnonymizedProfile, deanonymizeText, CASEL } from '../utils/studentSignals';
+import { seoulGradeLabel, standardByCode } from '../utils/seoulSel';
 
 const TIER_STYLE = {
   urgent: { label: '긴급', color: '#c53030', bg: '#fff5f5', border: '#feb2b2' },
@@ -31,7 +32,9 @@ export const prescriptionToText = (p) => {
     if (a.how) lines.push(`   방법: ${a.how}`);
     if (a.script) lines.push(`   교사 말: "${a.script}"`);
     if (a.resource) lines.push(`   자료: ${a.resource}`);
+    if (a.standard) lines.push(`   성취기준: [${a.standard}]`);
   });
+  if (p.standards?.length) lines.push(`■ 근거 성취기준(서울 사회정서교육): ${p.standards.map(c => `[${c}]`).join(' ')}`);
   if (p.peerPlan) lines.push(`■ 또래 연결: ${p.peerPlan}`);
   if (p.caution) lines.push(`■ 주의: ${p.caution}`);
   if (p.checkpoints?.length) lines.push(`■ 1주 후 확인: ${p.checkpoints.join(' · ')}`);
@@ -82,6 +85,7 @@ const CustomPrescription = ({ studentsData, teacherProfile, focusStudentId }) =>
       const res = await apiPost('/api/gemini-prescription', {
         profile,
         selLevel: teacherProfile?.selLevel || '',
+        gradeYear: teacherProfile?.gradeYear || null,
         avoidStrategies: collectAvoid(student.id),
         teacherNote: notes[student.id] || '',
       });
@@ -97,7 +101,10 @@ const CustomPrescription = ({ studentsData, teacherProfile, focusStudentId }) =>
         actions: (p.actions || []).map(a => ({
           title: dz(a.title), competency: a.competency, how: dz(a.how), script: dz(a.script),
           peers: (a.peers || []).map(dz), resource: a.resource ? String(a.resource) : '',
+          standard: a.standard ? String(a.standard) : '',
         })),
+        standards: Array.isArray(p.standards) ? p.standards.map(String) : [],
+        gradeLabel: data.gradeLabel || '',
         peerPlan: dz(p.peerPlan), caution: dz(p.caution),
         checkpoints: (p.checkpoints || []).map(dz), escalation: dz(p.escalation),
         level: data.level, generatedAt: new Date().toISOString(),
@@ -151,7 +158,8 @@ const CustomPrescription = ({ studentsData, teacherProfile, focusStudentId }) =>
         </div>
       </div>
       <p style={{ color: '#718096', marginBottom: '8px', fontSize: '1rem', paddingLeft: '52px', lineHeight: 1.6 }}>
-        별도 프롬프트 없이, 학생별 기분·관계망·갈등/외로움 신호·대화 내용을 교육부 <b>「한국형 사회정서교육」 4영역·6핵심역량</b>과 학교급별 6차시 프로그램·아침조회 대화 주제에 비추어 분석해
+        별도 프롬프트 없이, 학생별 기분·관계망·갈등/외로움 신호·대화 내용을 교육부 <b>「한국형 사회정서교육」 4영역·6핵심역량</b>(1차 로직)과
+        <b>서울특별시교육청 사회정서교육자료의 {seoulGradeLabel(teacherProfile?.selLevel, teacherProfile?.gradeYear)} 성취기준·차시</b>(2차 로직)에 비추어 분석해
         <b> 학생마다 다른 실천 3가지</b>를 제안합니다. 실명은 익명 ID로 바꾼 뒤 분석되며, 이미 제안된 전략은 다른 학생과 겹치지 않게 조정됩니다.
       </p>
       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', paddingLeft: '52px', marginBottom: '24px' }}>
@@ -159,7 +167,7 @@ const CustomPrescription = ({ studentsData, teacherProfile, focusStudentId }) =>
           <span key={c.key} title={`${c.domain} 영역 — ${c.desc}`} style={{ fontSize: '0.75rem', fontWeight: 'bold', color: compColor(c.label), background: `${compColor(c.label)}14`, border: `1px solid ${compColor(c.label)}55`, padding: '3px 10px', borderRadius: '10px' }}>{c.label}</span>
         ))}
         <span style={{ fontSize: '0.75rem', color: '#a0aec0', alignSelf: 'center' }}>
-          · 근거: 교육부 한국형 사회정서교육 프로그램({({ elementary_low: '초등 저학년', elementary_high: '초등 고학년', middle: '중학교', high: '고등학교' })[teacherProfile?.selLevel] || '초등 고학년(기본값)'}) · KEDI·OECD 사회정서역량 조사
+          · 근거: 교육부 한국형 사회정서교육 프로그램({({ elementary_low: '초등 저학년', elementary_high: '초등 고학년', middle: '중학교', high: '고등학교' })[teacherProfile?.selLevel] || '초등 고학년(기본값)'}) · 서울 사회정서교육 {seoulGradeLabel(teacherProfile?.selLevel, teacherProfile?.gradeYear)} 성취기준{!teacherProfile?.gradeYear && ' (챗봇 설정에서 학년을 고르면 정확해집니다)'} · KEDI·OECD 사회정서역량 조사
         </span>
       </div>
 
@@ -283,9 +291,17 @@ const PrescriptionView = ({ p }) => (
           {a.how && <div style={{ fontSize: '0.86rem', color: '#4a5568', lineHeight: 1.6, marginTop: '4px', wordBreak: 'keep-all' }}>{a.how}</div>}
           {a.script && <div style={{ fontSize: '0.85rem', color: '#2b6cb0', marginTop: '6px', fontStyle: 'italic', lineHeight: 1.5 }}>🗣 "{a.script}"</div>}
           {a.resource && <div style={{ fontSize: '0.75rem', color: '#718096', marginTop: '4px' }}>📚 {a.resource}</div>}
+          {a.standard && <div style={{ fontSize: '0.72rem', color: '#805ad5', marginTop: '2px' }} title={standardByCode(a.standard)?.text || ''}>🎯 [{a.standard}] {standardByCode(a.standard)?.text || ''}</div>}
         </div>
       ))}
     </div>
+
+    {p.standards?.length > 0 && (
+      <div style={{ background: '#faf5ff', border: '1px solid #e9d8fd', borderRadius: '10px', padding: '8px 12px', fontSize: '0.78rem', color: '#553c9a', lineHeight: 1.55 }}>
+        <b>근거 성취기준 · 서울 사회정서교육{p.gradeLabel ? ` ${p.gradeLabel}` : ''}</b>
+        {p.standards.map(c => { const st = standardByCode(c); return <div key={c}>[{c}] {st ? `(${st.area}) ${st.text}` : ''}</div>; })}
+      </div>
+    )}
 
     {p.peerPlan && <Section icon={<Users size={15} />} title="또래 연결 · 자리/모둠 제안" color="#dd6b20">{p.peerPlan}</Section>}
     {p.caution && <Section icon={<ShieldAlert size={15} />} title="피해야 할 접근" color="#c53030">{p.caution}</Section>}
