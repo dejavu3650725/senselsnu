@@ -38,7 +38,7 @@ const TodayFeed = ({ studentsData = [], teacherProfile, classCode, classInfo, on
       updatedAt: new Date().toISOString(), day: dayKey(),
     };
     const key = `sensel-board-${classCode}`;
-    const sig = JSON.stringify([board.day, board.className, board.gradeLabel, board.missionDone, board.missionDoneThisWeek, board.skillEvents, board.activeCount, board.studentCount, board.missionId]);
+    const sig = JSON.stringify([board.day, board.className, board.gradeLabel, board.morning.topic, board.morning.questions, board.missionDone, board.missionDoneThisWeek, board.skillEvents, board.activeCount, board.studentCount, board.missionId]);
     try { if (localStorage.getItem(key) === sig) return; } catch { /* ignore */ }
     setDoc(doc(db, 'classBoards', classCode), board).then(() => { try { localStorage.setItem(key, sig); } catch { /* ignore */ } }).catch(e => console.error('board update error', e));
   }, [classCode, studentsData, className, gradeLabel, wk, mission.id, missionDone, card.topic]);
