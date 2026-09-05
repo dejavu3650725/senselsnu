@@ -95,7 +95,7 @@ const TeacherDashboard = () => {
     const ackedAt = s.alertsAckedAt || '';
     (s.alerts || []).forEach(a => {
       if (a && a.timestamp && (!ackedAt || a.timestamp > ackedAt)) {
-        urgentAlerts.push({ studentId: s.id, name: s.realName, avatar: s.avatar, reason: a.reason || '위기 신호 감지', timestamp: a.timestamp });
+        urgentAlerts.push({ studentId: s.id, name: s.realName, avatar: s.avatar, reason: a.reason || '위기 신호 감지', timestamp: a.timestamp, excerpt: a.excerpt || '' });
       }
     });
   });
@@ -171,6 +171,12 @@ const TeacherDashboard = () => {
                     <b style={{ color: '#2d3748' }}>{a.name}</b>
                     <span style={{ color: '#c53030', fontWeight: 600 }}>{a.reason}</span>
                     <span style={{ color: '#a0aec0', fontSize: '0.85rem' }}>{formatAlertTime(a.timestamp)}</span>
+                    {a.excerpt && (
+                      <details style={{ flexBasis: '100%', fontSize: '0.82rem', color: '#4a5568' }}>
+                        <summary style={{ cursor: 'pointer', color: '#9c4221', fontWeight: 600 }}>대화 전후 보기</summary>
+                        <pre style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: '6px 0 0 0', background: '#fffaf0', padding: '8px 10px', borderRadius: '8px', lineHeight: 1.5 }}>{a.excerpt}</pre>
+                      </details>
+                    )}
                     <button
                       onClick={() => handleAckAlert(a.studentId)}
                       style={{ marginLeft: 'auto', padding: '8px 16px', borderRadius: '10px', border: 'none', background: '#e53e3e', color: 'white', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer' }}
@@ -215,7 +221,7 @@ const TeacherDashboard = () => {
                   onOpenPrescription={(studentId) => { setFocusStudentId(studentId); setActiveMenu('맞춤 처방'); }}
                 />
               </div>
-              <DailyFlow studentsData={studentsData} />
+              <DailyFlow studentsData={studentsData} transcriptsOn={teacherProfile?.chatConfig?.storeTranscripts === true && teacherProfile?.chatConfig?.consentConfirmed === true} />
             </div>
           )}
 

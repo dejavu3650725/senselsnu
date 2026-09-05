@@ -55,6 +55,8 @@ const StudentDashboard = () => {
   const [ptiser, setPtiser] = useState(null);
   const [selLevel, setSelLevel] = useState('');
   const [chatConfig, setChatConfig] = useState(null); // 교사 챗봇 설정(프리셋)
+  // 대화 원문 보관 여부: 교사가 [챗봇 설정]에서 보호자 동의 확인 후 켠 경우에만 저장 (기본: 신호만 저장)
+  const storeTranscripts = chatConfig?.storeTranscripts === true && chatConfig?.consentConfirmed === true;
   const [studentMeta, setStudentMeta] = useState({ nominations: [], conflictsCount: 0, lonelyCount: 0, sessionsCount: 1 }); // 학생 맞춤 대화용 이력
   // 학급 친구 닉네임 명단 (LLM이 문맥 추론으로 공식 닉네임에 매핑할 수 있도록 전달)
   const [roster, setRoster] = useState([]);
@@ -185,7 +187,10 @@ const StudentDashboard = () => {
         // 과거 대화 내역 불러오기
         const pastMessages = userData.messages || [];
         // 학생 맞춤 대화용 이력 (지목한 친구·갈등·외로움·누적 대화 일수)
-        const days = new Set(pastMessages.filter(m => m.sender === 'user' && m.timestamp).map(m => String(m.timestamp).slice(0, 10)));
+        const days = new Set([
+          ...(userData.sessionDates || []),
+          ...pastMessages.filter(m => m.sender === 'user' && m.timestamp).map(m => String(m.timestamp).slice(0, 10)),
+        ]);
         setStudentMeta({
           nominations: userData.nominations || [],
           conflictsCount: (userData.conflicts || []).length,
@@ -199,7 +204,8 @@ const StudentDashboard = () => {
           mood: mood,
           avatar: avatar,
           gender: gender,
-          lastActive: serverTimestamp()
+          lastActive: serverTimestamp(),
+          sessionDates: arrayUnion(new Date().toISOString().slice(0, 10))
         });
 
         // 환영 메시지 추가
@@ -225,7 +231,8 @@ const StudentDashboard = () => {
           messages: [],
           nominations: [], // 동료 추인(긍정 지목) 데이터 배열
           conflicts: [], // 갈등 신호 (학생이 자발적으로 언급한 경우만)
-          lonelySignals: [] // 외로움 신호 발생 시각 목록
+          lonelySignals: [], // 외로움 신호 발생 시각 목록
+          sessionDates: [new Date().toISOString().slice(0, 10)] // 대화한 날짜 (원문 미보관 시에도 누적 대화 일수 계산용)
         });
         
         setStudentDocId(newDocRef.id);
@@ -271,12 +278,11 @@ const StudentDashboard = () => {
     setMessages(newMessages);
     setInput('');
 
-    // Firebase 유저 메시지 저장
+    // Firebase 유저 메시지 저장 — 원문 보관이 켜진 학급만 저장 (기본은 신호만 저장)
     if (studentDocId) {
-      await updateDoc(doc(db, 'students', studentDocId), {
-        messages: arrayUnion({ sender: 'user', text: userMsg, timestamp: new Date().toISOString() }),
-        lastActive: serverTimestamp()
-      });
+      const upd = { lastActive: serverTimestamp() };
+      if (storeTranscripts) upd.messages = arrayUnion({ sender: 'user', text: userMsg, timestamp: new Date().toISOString() });
+      await updateDoc(doc(db, 'students', studentDocId), upd);
     }
 
     try {
@@ -401,9 +407,10 @@ const StudentDashboard = () => {
 
       // Firebase 봇 메시지 및 관계 데이터 저장
       if (studentDocId) {
-        const updates = {
-          messages: arrayUnion({ sender: 'bot', text: cleanBotText, timestamp: new Date().toISOString() })
-        };
+        const updates = {};
+        if (storeTranscripts) {
+          updates.messages = arrayUnion({ sender: 'bot', text: cleanBotText, timestamp: new Date().toISOString() });
+        }
         if (nominatedNickname) {
           updates.nominations = arrayUnion(nominatedNickname);
         }
@@ -415,12 +422,15 @@ const StudentDashboard = () => {
         }
         if (alertMatch) {
           // 위기 신호(긴급 알림) 저장 → 교사 대시보드에 실시간 Red Alert 표시
+          // 원문 보관이 꺼져 있어도 위기 신호 전후 대화(학생 발화 최근 3개 + 챗봇 응답)는 아동 보호 목적으로 남긴다
+          const recentUser = newMessages.filter(m => m.sender === 'user').slice(-3).map(m => m.text);
           updates.alerts = arrayUnion({
             reason: (alertMatch[1] || '위기 신호 감지').trim(),
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            excerpt: [...recentUser.map(t => `학생: ${t}`), `챗봇: ${cleanBotText}`].join('\n').slice(0, 1200)
           });
         }
-        await updateDoc(doc(db, 'students', studentDocId), updates);
+        if (Object.keys(updates).length > 0) await updateDoc(doc(db, 'students', studentDocId), updates);
       }
       // 다음 턴 맥락 갱신
       setStudentMeta(prev => ({

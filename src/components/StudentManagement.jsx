@@ -27,6 +27,29 @@ const StudentManagement = ({ studentsData, classCode }) => {
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [isBulkAdding, setIsBulkAdding] = useState(false);
+  const [isPurging, setIsPurging] = useState(false);
+
+  // 저장된 대화 원문이 있는 학생 수 (개인정보 보관 최소화용)
+  const transcriptCount = studentsData.filter(s => Array.isArray(s.messages) && s.messages.length > 0).length;
+
+  // 대화 원문만 일괄 삭제 — 신호(지목·갈등·외로움·기분·위기 알림)와 처방은 유지
+  const handlePurgeTranscripts = async () => {
+    if (!window.confirm(`학생 ${transcriptCount}명의 대화 원문을 모두 삭제할까요?\n지목·갈등·외로움·기분 신호, 위기 알림, 맞춤 처방은 그대로 남습니다. 이 작업은 되돌릴 수 없습니다.`)) return;
+    setIsPurging(true);
+    try {
+      for (const s of studentsData) {
+        if (Array.isArray(s.messages) && s.messages.length > 0) {
+          await updateDoc(doc(db, 'students', s.id), { messages: [], transcriptsPurgedAt: new Date().toISOString() });
+        }
+      }
+      alert('대화 원문을 삭제했습니다.');
+    } catch (error) {
+      console.error('Failed to purge transcripts:', error);
+      alert('삭제 중 오류가 발생했습니다.');
+    } finally {
+      setIsPurging(false);
+    }
+  };
 
   const createStudentDoc = async (realName, nickname, gender) => {
     await addDoc(collection(db, 'students'), {
@@ -220,6 +243,18 @@ const StudentManagement = ({ studentsData, classCode }) => {
           }}
         >
           <ClipboardList size={18} /> 명단 일괄 등록
+        </button>
+        <button
+          onClick={handlePurgeTranscripts}
+          disabled={isPurging || transcriptCount === 0}
+          title="학기 말 등 보관 기간이 끝났을 때, 저장된 대화 원문만 삭제합니다. 지목·갈등·외로움·기분 신호와 처방은 유지됩니다."
+          style={{
+            marginLeft: 'auto', padding: '12px 18px', background: 'white', color: transcriptCount === 0 ? '#a0aec0' : '#c53030',
+            border: `1px solid ${transcriptCount === 0 ? '#e2e8f0' : '#feb2b2'}`, borderRadius: '12px', fontWeight: 'bold', fontSize: '0.92rem',
+            cursor: isPurging || transcriptCount === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
+          }}
+        >
+          🔒 {isPurging ? '삭제 중...' : `대화 원문 전체 삭제 (${transcriptCount}명)`}
         </button>
       </div>
 

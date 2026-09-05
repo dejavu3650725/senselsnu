@@ -33,6 +33,8 @@ const DEFAULT_CONFIG = {
   rules: { noStudyNag: true, noScolding: true, noPersonalInfo: true },
   customRule: '',
   profanityReply: '',
+  storeTranscripts: false,   // 대화 원문 보관 (기본 꺼짐: 지목·갈등·외로움·기분·위기 신호만 저장)
+  consentConfirmed: false,   // 보호자 동의 절차 완료 확인
 };
 
 const ChatbotSettingsModal = ({ onClose }) => {
@@ -171,6 +173,28 @@ const ChatbotSettingsModal = ({ onClose }) => {
               <input value={config.customRule} onChange={e => setConfig(c => ({ ...c, customRule: e.target.value.slice(0, 300) }))} placeholder="추가 규칙 (선택) 예) 특정 학생 이름을 먼저 언급하지 말 것" style={{ ...inputStyle, marginTop: '4px' }} />
               <input value={config.profanityReply} onChange={e => setConfig(c => ({ ...c, profanityReply: e.target.value.slice(0, 200) }))} placeholder="욕설을 쓰면 할 말 (선택) 예) 그런 말은 나무가 들으면 슬퍼. 다른 말로 다시 해줄래?" style={{ ...inputStyle, background: '#fff5f5', border: '1px solid #fc8181' }} />
             </div>
+          </div>
+
+          {/* 대화 원문 보관 (개인정보) */}
+          <div style={{ border: `2px solid ${config.storeTranscripts ? '#f6ad55' : '#e2e8f0'}`, borderRadius: '14px', padding: '14px 16px', background: config.storeTranscripts ? '#fffaf0' : '#f8fafc' }}>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={!!config.storeTranscripts} onChange={e => setConfig(c => ({ ...c, storeTranscripts: e.target.checked, consentConfirmed: e.target.checked ? c.consentConfirmed : false }))} style={{ marginTop: '3px' }} />
+              <div>
+                <div style={{ fontWeight: 'bold', color: '#2d3748', fontSize: '0.95rem' }}>🔒 학생 대화 원문 보관 {config.storeTranscripts ? '(켜짐)' : '(꺼짐 · 기본)'}</div>
+                <div style={{ fontSize: '0.8rem', color: '#718096', lineHeight: 1.55, marginTop: '4px' }}>
+                  꺼져 있으면 대화 내용은 저장하지 않고 <b>지목·갈등·외로움·기분·위기 신호만</b> 기록합니다. 소시오그램·자리 배치·학급 분석은 그대로 동작하며, 위기 신호(긴급 알림)가 뜬 대화의 전후 발화만 아동 보호 목적으로 남습니다.
+                  켜면 대화 전체가 저장되어 대시보드 '최근 대화 기록'과 맞춤 처방 분석에 활용됩니다.
+                </div>
+              </div>
+            </label>
+            {config.storeTranscripts && (
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #f6ad55' }}>
+                <input type="checkbox" checked={!!config.consentConfirmed} onChange={e => setConfig(c => ({ ...c, consentConfirmed: e.target.checked }))} style={{ marginTop: '3px' }} />
+                <div style={{ fontSize: '0.82rem', color: '#9c4221', lineHeight: 1.55 }}>
+                  <b>보호자 동의 및 학교 절차를 완료했습니다.</b> (14세 미만 학생은 법정대리인 동의가 필요합니다. 이 확인 없이는 원문이 저장되지 않으며, 학기 말에는 [학생 관리]에서 대화 기록을 삭제해 주세요.)
+                </div>
+              </label>
+            )}
           </div>
 
           {/* 고급: 직접 지침 (구버전 P-TISER) */}

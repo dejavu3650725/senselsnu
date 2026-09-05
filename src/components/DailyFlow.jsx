@@ -1,6 +1,6 @@
 import React from 'react';
 
-const DailyFlow = ({ studentsData = [] }) => {
+const DailyFlow = ({ studentsData = [], transcriptsOn = true }) => {
   // 모든 학생의 메시지를 모아서 시간순 정렬
   let allMessages = [];
   studentsData.forEach(student => {
@@ -28,9 +28,14 @@ const DailyFlow = ({ studentsData = [] }) => {
     <div className="glass-card widget daily-flow-widget" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
       <div className="widget-title" style={{ fontSize: '1.2rem', marginBottom: '16px' }}>최근 대화 기록 (실시간 연동)</div>
       
+      {!transcriptsOn && (
+        <div style={{ marginBottom: '12px', padding: '10px 14px', background: '#f8fafc', border: '1px dashed #cbd5e1', borderRadius: '10px', fontSize: '0.85rem', color: '#718096', lineHeight: 1.5 }}>
+          🔒 대화 원문 보관이 꺼져 있어 지목·갈등·외로움·기분·위기 신호만 기록됩니다. 위기 알림에는 해당 대화 전후 발화가 함께 표시됩니다. 원문을 보려면 보호자 동의 후 [챗봇 설정]에서 켜 주세요.
+        </div>
+      )}
       <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {recentMessages.length === 0 ? (
-          <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>아직 대화 내역이 없습니다.</div>
+          <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>{transcriptsOn ? '아직 대화 내역이 없습니다.' : '저장된 대화 원문이 없습니다. (신호만 기록 중)'}</div>
         ) : (
           recentMessages.map((msg, index) => (
             <div key={index} style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', borderLeft: `4px solid ${msg.mood === '건강' ? '#48bb78' : msg.mood === '보통' ? '#ecc94b' : '#e53e3e'}` }}>
