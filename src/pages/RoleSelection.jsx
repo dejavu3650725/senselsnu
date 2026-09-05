@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, BookOpen, Users } from 'lucide-react';
+import { Shield, BookOpen, Users, LogIn } from 'lucide-react';
 import { auth, googleProvider, db } from '../firebase';
 import { signInWithPopup } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
@@ -14,15 +14,19 @@ const RoleSelection = () => {
   const navigate = useNavigate();
   const [classCodeInput, setClassCodeInput] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isSigningIn, setIsSigningIn] = useState(false);
   const [error, setError] = useState('');
 
   const handleTeacherLogin = async () => {
+    setIsSigningIn(true);
     try {
       await signInWithPopup(auth, googleProvider);
       navigate('/teacher-setup');
     } catch (e) {
       console.error('Google Sign In Error', e);
       alert('로그인 중 오류가 발생했습니다.');
+    } finally {
+      setIsSigningIn(false);
     }
   };
 
@@ -57,41 +61,46 @@ const RoleSelection = () => {
 
   return (
     <div className="landing">
+      <div className="landing-bg" aria-hidden="true"><span /><span /><span /></div>
+
       <div className="landing-hero">
-        <div className="landing-logo"><Shield size={36} /></div>
-        <div className="landing-brand" translate="no">SEN SEL <span className="landing-brand-ko">센셀</span></div>
-        <h1 className="landing-title" style={{ fontSize: '1.9rem', marginTop: '6px' }}>교실 속 마음을 잇는 <span className="accent">나무</span></h1>
-        <p className="landing-sub">학생은 나무와 편하게 이야기하고, 선생님은 우리 반을 더 따뜻하게 이끌어요.<br className="hide-sm" />환영합니다! 어떤 역할로 접속하시겠어요?</p>
+        <div className="landing-logo"><Shield size={44} /></div>
+        <div className="landing-brand" translate="no">SEN SEL</div>
+        <p className="landing-sub">환영합니다! 어떤 역할로 접속하시겠어요?</p>
       </div>
 
       <div className="landing-cards">
-        <div className="glass-card card-hover role-card" onClick={handleTeacherLogin} role="button" tabIndex={0} onKeyDown={e => e.key === 'Enter' && handleTeacherLogin()}>
+        <div className="glass-card role-card">
           <div className="role-icon" style={{ background: 'var(--primary-light)' }}><BookOpen size={28} color="var(--primary-color)" /></div>
           <div>
-            <h2 style={{ fontSize: '1.3rem', marginBottom: '4px' }}>선생님</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.55 }}>학교 구글 계정으로 로그인해 학급을 만들고 학급 코드를 받으세요. 체험 학급이 준비되어 있어요.</p>
+            <h2>선생님</h2>
+            <p>학교 구글 계정으로 로그인해 학급을 만들고, 학생들에게 나눠 줄 학급 코드를 받으세요.</p>
           </div>
-          <span className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: '4px' }}>구글 계정으로 로그인</span>
+          <div className="role-bottom">
+            <div className="role-tags"><span>가상 학급으로 바로 체험</span><span>1분 체험 안내</span></div>
+            <button className="role-btn teacher" onClick={handleTeacherLogin} disabled={isSigningIn}><LogIn size={18} /> {isSigningIn ? '로그인 중…' : '구글 계정으로 로그인'}</button>
+          </div>
         </div>
 
-        <div className="glass-card role-card" onClick={e => e.stopPropagation()}>
+        <div className="glass-card role-card">
           <div className="role-icon" style={{ background: 'rgba(56, 161, 105, 0.12)' }}><Users size={28} color="var(--success)" /></div>
           <div>
-            <h2 style={{ fontSize: '1.3rem', marginBottom: '4px' }}>학생</h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.55 }}>선생님이 알려준 학급 코드를 적으면 바로 나무와 이야기할 수 있어. 따로 가입할 필요 없어.</p>
+            <h2>학생</h2>
+            <p>선생님이 알려준 학급 코드를 적으면 바로 나무와 이야기할 수 있어. 따로 가입하지 않아도 돼.</p>
           </div>
-          <div className="student-join" style={{ padding: 0, boxShadow: 'none', background: 'transparent', border: 'none', gap: '8px' }}>
+          <div className="role-bottom">
             <input
+              className="code-input"
               type="text"
               value={classCodeInput}
               onChange={e => { setClassCodeInput(e.target.value); setError(''); }}
-              placeholder="학급 코드"
+              placeholder="학급 코드 입력"
               aria-label="학급 코드"
-              style={{ padding: '12px', fontSize: '1.25rem' }}
+              maxLength={12}
               onKeyDown={e => e.key === 'Enter' && handleStudentJoin()}
             />
-            <button onClick={handleStudentJoin} disabled={isVerifying} style={{ padding: '12px', fontSize: '1rem' }}>{isVerifying ? '확인 중…' : '🌳 나무에게 가기'}</button>
-            {error && <div className="student-join-error">{error}</div>}
+            {error && <div className="code-error">{error}</div>}
+            <button className="role-btn student" onClick={handleStudentJoin} disabled={isVerifying}>🌳 {isVerifying ? '확인 중…' : '나무에게 가기'}</button>
           </div>
         </div>
       </div>
