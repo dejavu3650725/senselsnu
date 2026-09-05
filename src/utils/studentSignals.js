@@ -305,12 +305,47 @@ export const buildAnonymizedProfile = (targetId, studentsData) => {
 };
 
 /** 응답 텍스트 속 익명 ID(S3 등)를 실명으로 복원 */
+/** 마지막 글자에 받침이 있는지 (한글이 아니면 null) */
+export const hasBatchim = (word) => {
+  const s = String(word || '').trim();
+  if (!s) return null;
+  const code = s.charCodeAt(s.length - 1);
+  if (code < 0xac00 || code > 0xd7a3) return null;
+  return (code - 0xac00) % 28 !== 0;
+};
+
+// 조사 쌍: [받침 있음, 받침 없음]
+const JOSA_PAIRS = [['이', '가'], ['을', '를'], ['은', '는'], ['과', '와'], ['아', '야'], ['으로', '로'], ['이랑', '랑'], ['이나', '나'], ['이며', '며'], ['이라고', '라고'], ['이라는', '라는']];
+const JOSA_ALL = JOSA_PAIRS.flat().sort((a, b) => b.length - a.length);
+const JOSA_ALT = JOSA_ALL.join('|');
+
+/** 이름 뒤 조사 하나를 받침에 맞게 교정한 뒤 돌려준다 ("변세현"+"가" → "이") */
+export const fixJosaAfter = (name, josa) => {
+  const b = hasBatchim(name);
+  if (b === null) return josa;
+  const pair = JOSA_PAIRS.find(p => p.includes(josa));
+  return pair ? (b ? pair[0] : pair[1]) : josa;
+};
+
+/** 텍스트 안의 실명 뒤 조사를 일괄 교정 — 이미 저장된 옛 처방에도 적용 */
+export const fixNameJosa = (text, names) => {
+  let out = String(text || '');
+  [...new Set((names || []).filter(n => n && n.length >= 2))].forEach(name => {
+    const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    out = out.replace(new RegExp(`${esc}(${JOSA_ALT})(?![가-힣])`, 'g'), (m, josa) => name + fixJosaAfter(name, josa));
+  });
+  return out;
+};
+
+/** 응답 텍스트 속 익명 ID(S3 등)를 실명으로 복원 — AI는 받침을 모른 채 조사를 붙이므로 바꾸면서 조사도 맞춘다 */
 export const deanonymizeText = (text, idByAnon, studentsData) => {
   if (!text) return '';
-  return String(text).replace(/S(\d+)(?![0-9])/g, (m, num) => {
+  return String(text).replace(new RegExp(`S(\\d+)(?![0-9])(?:(${JOSA_ALT})(?![가-힣]))?`, 'g'), (m, num, josa) => {
     const id = idByAnon.get(`S${num}`);
     const st = studentsData.find(x => x.id === id);
-    return st ? st.realName || st.nickname || m : m;
+    if (!st) return m;
+    const name = st.realName || st.nickname || `S${num}`;
+    return name + (josa ? fixJosaAfter(name, josa) : '');
   });
 };
 

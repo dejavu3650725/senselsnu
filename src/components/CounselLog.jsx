@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { NotebookPen, Copy, Check, FileDown, Info } from 'lucide-react';
 import { assessClass } from '../utils/studentSignals';
 import { prescriptionToText } from './CustomPrescription';
+import { fixNameJosa } from '../utils/studentSignals';
 import { seoulGradeLabel, standardByCode } from '../utils/seoulSel';
 import { moralByCode } from '../utils/moralCurriculum';
 
@@ -12,7 +13,7 @@ const fmt = (iso) => { try { return new Date(iso).toLocaleString('ko-KR', { mont
  * 위기 알림·확인/조치 메모·맞춤 처방·미션·기술 연습을 학교 상담 일지 형식의 텍스트로 만든다.
  * 생활기록부 개인 서술은 만들지 않는다(AI 작성 금지 지침). 이 초안은 담임의 상담 기록·학급 운영 기록용이다.
  */
-export const buildCounselLog = (student, { gradeLabel, className = '', teacherName = '' } = {}) => {
+export const buildCounselLog = (student, { gradeLabel, className = '', teacherName = '', all = [] } = {}) => {
   const s = student;
   const lines = [];
   lines.push(`[상담·조치 기록 초안] ${className} ${s.realName || s.nickname}`);
@@ -38,7 +39,7 @@ export const buildCounselLog = (student, { gradeLabel, className = '', teacherNa
   const p = s.aiPrescriptionData;
   if (p) {
     lines.push(`■ 맞춤 지도 계획 (${p.generatedAt ? new Date(p.generatedAt).toLocaleDateString('ko-KR') : ''})`);
-    lines.push(prescriptionToText(p));
+    lines.push(fixNameJosa(prescriptionToText(p), (all || []).map(x => x.realName || x.nickname)));
     const codes = [...(p.standards || []).map(c => { const st = standardByCode(c); return st ? `[${c}] ${st.text}` : `[${c}]`; }), ...(p.moralStandards || []).map(c => { const st = moralByCode(c); return st ? `[${c}] ${st.text}` : `[${c}]`; })];
     if (codes.length) { lines.push('  근거 성취기준:'); codes.forEach(c => lines.push(`  · ${c}`)); }
     lines.push('');
@@ -68,7 +69,7 @@ const CounselLog = ({ studentsData = [], teacherProfile, classLabel }) => {
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const sel = results.find(r => r.id === selectedId);
-  const text = sel ? buildCounselLog(sel.student, { gradeLabel, className, teacherName }) : '';
+  const text = sel ? buildCounselLog(sel.student, { gradeLabel, className, teacherName, all: studentsData }) : '';
   const copy = async () => { try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ } };
   const downloadAll = async () => {
     setBusy(true);
@@ -77,7 +78,7 @@ const CounselLog = ({ studentsData = [], teacherProfile, classLabel }) => {
       const list = (withRecords.length ? withRecords : results);
       const children = [];
       list.forEach((r, i) => {
-        const t = buildCounselLog(r.student, { gradeLabel, className, teacherName });
+        const t = buildCounselLog(r.student, { gradeLabel, className, teacherName, all: studentsData });
         t.split('\n').forEach((ln, j) => children.push(new D.Paragraph({ pageBreakBefore: i > 0 && j === 0, spacing: { after: 60 }, children: [new D.TextRun({ text: ln, bold: j === 0 || ln.startsWith('■'), size: j === 0 ? 26 : 20 })] })));
       });
       const doc = new D.Document({ sections: [{ children }] });

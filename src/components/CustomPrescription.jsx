@@ -3,7 +3,7 @@ import { HeartPulse, Sparkles, Loader, RefreshCw, ChevronDown, ChevronUp, Users,
 import { db } from '../firebase';
 import { apiPost } from '../utils/apiClient';
 import { doc, updateDoc } from 'firebase/firestore';
-import { assessClass, buildAnonymizedProfile, deanonymizeText, CASEL } from '../utils/studentSignals';
+import { assessClass, buildAnonymizedProfile, deanonymizeText, fixNameJosa, CASEL } from '../utils/studentSignals';
 import { seoulGradeLabel, standardByCode } from '../utils/seoulSel';
 import { moralByCode, moralLevelLabel } from '../utils/moralCurriculum';
 
@@ -64,7 +64,19 @@ const CustomPrescription = ({ studentsData, teacherProfile, focusStudentId }) =>
     }
   }, [focusStudentId]);
 
-  const getStored = (student) => prescriptions[student.id] || student.aiPrescriptionData || null;
+  const names = studentsData.map(s => s.realName || s.nickname);
+  // 저장된 옛 처방의 이름 조사(변세현가 → 변세현이)도 화면에서 교정
+  const fixP = (p) => {
+    if (!p) return p;
+    const fx = (t) => (typeof t === 'string' ? fixNameJosa(t, names) : t);
+    return {
+      ...p, summary: fx(p.summary), hypothesis: fx(p.hypothesis), strengths: fx(p.strengths),
+      focus: (p.focus || []).map(f => ({ ...f, why: fx(f.why) })),
+      actions: (p.actions || []).map(a => ({ ...a, title: fx(a.title), how: fx(a.how), script: fx(a.script) })),
+      peerPlan: fx(p.peerPlan), caution: fx(p.caution), checkpoints: (p.checkpoints || []).map(fx), escalation: fx(p.escalation),
+    };
+  };
+  const getStored = (student) => fixP(prescriptions[student.id] || student.aiPrescriptionData || null);
 
   // 다른 학생에게 이미 제안된 전략 제목 → 중복 방지용
   const collectAvoid = (exceptId) => {
