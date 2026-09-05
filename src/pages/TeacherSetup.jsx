@@ -349,14 +349,18 @@ const TeacherSetup = () => {
           </div>
         ) : (
           <div className="class-grid">
-            {myClasses.map(cls => (
-              <div key={cls.classCode} className="class-tile" role="button" tabIndex={0} onClick={() => enterClass(cls)} onKeyDown={e => e.key === 'Enter' && enterClass(cls)}>
-                <button className="class-tile-del" title="학급 삭제" onClick={e => { e.stopPropagation(); handleDeleteClass(cls); }} disabled={deletingCode === cls.classCode}><Trash2 size={15} /></button>
-                <div className="class-tile-name">{cls.className}</div>
-                <div className="class-tile-code">학급 코드 <b>{cls.classCode}</b></div>
-                <div className="class-tile-actions">
-                  <button className="tile-btn edit" onClick={e => { e.stopPropagation(); openEdit(cls); }}><Pencil size={14} /> 수정</button>
-                  <button className="tile-btn enter" onClick={e => { e.stopPropagation(); enterClass(cls); }}><LogIn size={15} /> 입장</button>
+            {myClasses.map((cls, i) => (
+              <div key={cls.classCode} className={`class-tile tone-${i % 4}`} role="button" tabIndex={0} onClick={() => enterClass(cls)} onKeyDown={e => e.key === 'Enter' && enterClass(cls)}>
+                <div className="class-tile-band">
+                  <div className="class-tile-name">{cls.className}</div>
+                  <button className="class-tile-del" title="학급 삭제" onClick={e => { e.stopPropagation(); handleDeleteClass(cls); }} disabled={deletingCode === cls.classCode}><Trash2 size={14} /></button>
+                </div>
+                <div className="class-tile-body">
+                  <div className="class-tile-code">코드 <b>{cls.classCode}</b></div>
+                  <div className="class-tile-actions">
+                    <button className="tile-btn edit" onClick={e => { e.stopPropagation(); openEdit(cls); }}><Pencil size={13} /> 수정</button>
+                    <button className="tile-btn enter" onClick={e => { e.stopPropagation(); enterClass(cls); }}>입장 <LogIn size={14} /></button>
+                  </div>
                 </div>
               </div>
             ))}
