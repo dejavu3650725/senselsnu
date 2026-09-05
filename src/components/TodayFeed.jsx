@@ -67,7 +67,10 @@ const TodayFeed = ({ studentsData = [], teacherProfile, classCode, classInfo, on
         <div className="today-title"><Sun size={16} /> 오늘 아침 활동 <span className="today-sub">{card.minutes}분</span></div>
         <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', lineHeight: 1.35 }}>“{card.topic}”</div>
         <div style={{ fontSize: '0.86rem', color: 'var(--text-main)', lineHeight: 1.5 }}>{card.questions[0]}</div>
-        <button className="btn btn-primary" style={{ alignSelf: 'flex-start', padding: '5px 10px', fontSize: '0.8rem' }} onClick={() => window.open(treeUrl, '_blank', 'noopener')}><Tv size={13} /> TV에 띄우기</button>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          <button className="btn btn-primary" style={{ padding: '5px 10px', fontSize: '0.8rem' }} onClick={() => window.open(treeUrl, '_blank', 'noopener')}><Tv size={13} /> TV에 띄우기</button>
+          <button className="btn btn-secondary" style={{ padding: '5px 10px', fontSize: '0.8rem' }} title="학생들에게 우리 반 나무를 소개하는 화면(3분)" onClick={() => window.open(`${treeUrl}?intro=1`, '_blank', 'noopener')}>🌳 나무 소개</button>
+        </div>
       </div>
 
       <div className="today-card" style={{ borderTop: '4px solid #38a169' }}>

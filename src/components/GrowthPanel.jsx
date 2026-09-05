@@ -43,6 +43,9 @@ const GrowthPanel = ({ gradeLabel, skillLog = [], mission, missionDone, onMissio
               {month}월에 나무와 이야기하면서 네가 <b>직접 해 보인</b> 사회정서기술이야. 이건 너만 보는 기록이고, 다른 친구와 비교하지 않아. 🌱 1번 → 🌿 3번 → 🌳 6번
             </p>
 
+            <div style={{ background: '#f0fff4', border: '1px solid #c6f6d5', borderRadius: '12px', padding: '10px 12px', marginBottom: '14px', fontSize: '0.84rem', color: '#276749', lineHeight: 1.55 }}>
+              🌳 <b>우리 반 나무</b>는 미션 "했어요"와 네가 해 본 좋은 연습으로만 자라. 속상한 이야기나 누구랑 다퉜는지는 나무에 나가지 않고, 이름도 어디에도 안 나와.
+            </div>
             {mission && (
               <div style={{ background: missionDone ? '#f0fff4' : '#fffbea', border: `1px solid ${missionDone ? '#c6f6d5' : '#f6e05e'}`, borderRadius: '14px', padding: '12px 14px', marginBottom: '16px' }}>
                 <div style={{ fontWeight: 800, fontSize: '0.9rem', marginBottom: '4px' }}>{missionDone ? '✅ 이번 주 미션 완료!' : '🎯 이번 주 미션'} <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.78rem' }}>· {mission.skills[0]}</span></div>
