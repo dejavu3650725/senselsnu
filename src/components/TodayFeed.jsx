@@ -81,7 +81,7 @@ const TodayFeed = ({ studentsData = [], teacherProfile, classCode, classInfo, on
 
       <div className="today-card" style={{ borderTop: '4px solid #38a169' }}>
         <div className="today-title"><Sprout size={16} /> 오늘 알림장 한 줄 <span className="today-sub">미션 {missionDone}/{studentsData.length}</span></div>
-        <div style={{ fontSize: '0.84rem', color: 'var(--text-main)', lineHeight: 1.55, background: 'var(--surface-3)', borderRadius: '10px', padding: '8px 10px', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{notice}</div>
+        <pre style={{ margin: 0, fontFamily: 'inherit', fontSize: '0.84rem', color: 'var(--text-main)', lineHeight: 1.55, background: 'var(--surface-3)', borderRadius: '10px', padding: '8px 10px', whiteSpace: 'pre-wrap', maxHeight: '112px', overflowY: 'auto' }}>{notice}</pre>
         <button className="btn btn-secondary" style={{ alignSelf: 'flex-start', padding: '5px 10px', fontSize: '0.8rem' }} onClick={copy}>{copied ? <Check size={13} /> : <Copy size={13} />} {copied ? '복사됨' : '복사'}</button>
       </div>
     </div>

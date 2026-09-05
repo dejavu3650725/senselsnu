@@ -71,5 +71,5 @@ export const noticeOfTheDay = (gradeLabel, classMission, className = '', date = 
   const wk = weekKey(date);
   const mission = (classMission && classMission.weekKey === wk && missionById(classMission.missionId)) || defaultMission(wk);
   const kid = seoulLevelOf(gradeLabel) === 'elementary' ? '아이' : '자녀';
-  return `[${className || '우리 반'} 알림] 오늘 아침 활동은 "${card.topic}"이었습니다. 이번 주 친절 미션은 "${mission.text}"입니다. 저녁에 ${kid}에게 "오늘 ${card.topic} 얘기했다던데, 뭐라고 했어?" 한 번만 물어봐 주세요.`;
+  return [`1. 오늘 아침 활동: ${card.topic}`, `2. 이번 주 친절 미션: ${mission.text}`, `3. 저녁에 ${kid}에게 한 마디: "오늘 ${card.topic} 얘기했어?"`].join('\n');
 };
