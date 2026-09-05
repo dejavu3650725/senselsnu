@@ -59,6 +59,12 @@ const StudentDashboard = () => {
   // 대화 원문 보관 여부: 교사가 [챗봇 설정]에서 보호자 동의 확인 후 켠 경우에만 저장 (기본: 신호만 저장)
   const storeTranscripts = chatConfig?.storeTranscripts === true && chatConfig?.consentConfirmed === true;
   const [studentMeta, setStudentMeta] = useState({ nominations: [], conflictsCount: 0, lonelyCount: 0, sessionsCount: 1 }); // 학생 맞춤 대화용 이력
+  const [turnsToday, setTurnsToday] = useState(0);            // 오늘 보낸 메시지 수 (하루 상한용, 새로고침해도 유지)
+  const [complaintCounts, setComplaintCounts] = useState({}); // 이번 세션 친구별 갈등 언급 횟수 (반복 호소 완화용)
+  const [alertedToday, setAlertedToday] = useState(false);    // 오늘 이미 긴급 알림이 기록됐는지 (하루 1건)
+  const todayKey = new Date().toISOString().slice(0, 10);
+  const dailyLimit = Number(chatConfig?.dailyTurnLimit ?? 30);
+  const limitReached = dailyLimit > 0 && turnsToday >= dailyLimit;
   // 학급 친구 닉네임 명단 (LLM이 문맥 추론으로 공식 닉네임에 매핑할 수 있도록 전달)
   const [roster, setRoster] = useState([]);
 
@@ -198,6 +204,8 @@ const StudentDashboard = () => {
           lonelyCount: (userData.lonelySignals || []).length,
           sessionsCount: days.size + 1,
         });
+        if (userData.dailyTurns && userData.dailyTurns.date === new Date().toISOString().slice(0, 10)) setTurnsToday(Number(userData.dailyTurns.count) || 0);
+        if ((userData.alerts || []).some(a => a && a.timestamp && String(a.timestamp).slice(0, 10) === new Date().toISOString().slice(0, 10))) setAlertedToday(true);
         
         // 상태 업데이트 (닉네임, 기분 갱신, 아바타 갱신)
         await updateDoc(doc(db, 'students', userDoc.id), {
@@ -257,7 +265,7 @@ const StudentDashboard = () => {
 
   const handleSend = async (presetText) => {
     const raw = typeof presetText === 'string' ? presetText : input;
-    if (raw.trim() === '' || isTyping) return;
+    if (raw.trim() === '' || isTyping || limitReached) return;
     
     // 비속어 및 선정적 단어 광범위 필터링
     const badWords = [
@@ -283,10 +291,11 @@ const StudentDashboard = () => {
 
     // Firebase 유저 메시지 저장 — 원문 보관이 켜진 학급만 저장 (기본은 신호만 저장)
     if (studentDocId) {
-      const upd = { lastActive: serverTimestamp() };
+      const upd = { lastActive: serverTimestamp(), dailyTurns: { date: todayKey, count: turnsToday + 1 } };
       if (storeTranscripts) upd.messages = arrayUnion({ sender: 'user', text: userMsg, timestamp: new Date().toISOString() });
       await updateDoc(doc(db, 'students', studentDocId), upd);
     }
+    setTurnsToday(t => t + 1);
 
     try {
       // Gemini API 요구사항: 첫 메시지는 반드시 'user'여야 하며, 'user'와 'model'이 번갈아가며 나타나야 함.
@@ -327,6 +336,9 @@ const StudentDashboard = () => {
         nominations: studentMeta.nominations,
         conflictsCount: studentMeta.conflictsCount,
         lonelyCount: studentMeta.lonelyCount,
+        turnLimit: dailyLimit,
+        turnCount: dailyLimit > 0 ? turnsToday + 1 : turnCount, // 상한이 있으면 '오늘 누적' 기준
+        repeatedPeers: Object.entries(complaintCounts).filter(([, n]) => n >= 2).map(([nick]) => nick),
       };
       const response = await apiPost('/api/gemini-counseling', { contents: history, ptiser, selLevel, roster, chatConfig, studentContext });
 
@@ -417,13 +429,17 @@ const StudentDashboard = () => {
         if (nominatedNickname) {
           updates.nominations = arrayUnion(nominatedNickname);
         }
-        if (conflictNicknames.length > 0) {
-          updates.conflicts = arrayUnion(...conflictNicknames); // 갈등 신호 저장
+        if (conflictNicknames.length > 0 && chatConfig?.collectConflicts !== false) {
+          // 갈등 언급은 '학생의 주관적 보고'로 기록. 같은 친구 반복 언급은 conflicts(상대 목록)에는 한 번만,
+          // conflictMentions(횟수 로그)에는 매번 남겨 교사가 '반복 호소' 패턴을 볼 수 있게 한다.
+          const fresh = conflictNicknames.filter(n => (complaintCounts[n] || 0) < 2);
+          if (fresh.length > 0) updates.conflicts = arrayUnion(...fresh);
+          updates.conflictMentions = arrayUnion(...conflictNicknames.map(n => ({ target: n, timestamp: new Date().toISOString() })));
         }
         if (isLonelySignal) {
           updates.lonelySignals = arrayUnion(new Date().toISOString()); // 외로움 신호 저장
         }
-        if (alertMatch) {
+        if (alertMatch && !alertedToday) { // 하루 1건: 같은 날 반복 알림은 첫 알림의 '대화 전후'와 반복 호소 로그로 확인
           // 위기 신호(긴급 알림) 저장 → 교사 대시보드에 실시간 Red Alert 표시
           // 원문 보관이 꺼져 있어도 위기 신호 전후 대화(학생 발화 최근 3개 + 챗봇 응답)는 아동 보호 목적으로 남긴다
           const recentUser = newMessages.filter(m => m.sender === 'user').slice(-3).map(m => m.text);
@@ -435,6 +451,8 @@ const StudentDashboard = () => {
         }
         if (Object.keys(updates).length > 0) await updateDoc(doc(db, 'students', studentDocId), updates);
       }
+      if (conflictNicknames.length > 0) setComplaintCounts(prev => { const n = { ...prev }; conflictNicknames.forEach(k => { n[k] = (n[k] || 0) + 1; }); return n; });
+      if (alertMatch) setAlertedToday(true);
       // 다음 턴 맥락 갱신
       setStudentMeta(prev => ({
         ...prev,
@@ -675,7 +693,12 @@ const StudentDashboard = () => {
             )}
           </div>
 
-          {quickReplies.length > 0 && (
+          {limitReached && (
+            <div style={{ padding: '10px 22px 12px', background: '#f5f7fb', fontSize: '0.88rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+              🌳 오늘 나무와 이야기할 수 있는 시간은 여기까지야. 내일 또 만나자! 급한 일이 있으면 선생님께 직접 이야기해 줘.
+            </div>
+          )}
+          {quickReplies.length > 0 && !limitReached && (
             <div className="chat-quick">
               {quickReplies.map(q => <button key={q} onClick={() => handleSend(q)}>{q}</button>)}
             </div>
@@ -689,11 +712,12 @@ const StudentDashboard = () => {
               autoFocus
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSend(); }}
-              placeholder={`${botName}에게 편하게 얘기해 봐…`}
+              placeholder={limitReached ? '오늘 대화는 여기까지! 내일 또 이야기하자' : `${botName}에게 편하게 얘기해 봐…`}
+              disabled={limitReached}
               maxLength={500}
               aria-label="메시지 입력"
             />
-            <button className="chat-send" onClick={() => handleSend()} disabled={isTyping || input.trim() === ''} aria-label="보내기">
+            <button className="chat-send" onClick={() => handleSend()} disabled={isTyping || input.trim() === '' || limitReached} aria-label="보내기">
               <Send size={22} />
             </button>
           </div>

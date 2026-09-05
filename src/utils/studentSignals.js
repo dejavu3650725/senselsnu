@@ -70,6 +70,7 @@ export const buildClassGraph = (studentsData = []) => {
       mutual: new Set(),
       conflicts: new Set(),
       mutualConflicts: new Set(),
+      mentionCounts: new Map(), // 갈등 상대별 언급 횟수 (반복 호소 패턴용)
       received: 0,
       lonelyCount: (s.lonelySignals || []).length,
       allAlerts: (s.alerts || []).filter(a => a && a.timestamp),
@@ -85,8 +86,17 @@ export const buildClassGraph = (studentsData = []) => {
     });
     (s.conflicts || []).forEach(n => {
       const t = resolve(n);
-      if (t && t.id !== s.id && graph.has(t.id)) me.conflicts.add(t.id);
+      if (t && t.id !== s.id && graph.has(t.id)) { me.conflicts.add(t.id); if (!me.mentionCounts.has(t.id)) me.mentionCounts.set(t.id, 1); }
     });
+    // 언급 횟수 로그가 있으면 그것으로 대체 (없으면 conflicts 기준 1회)
+    if (Array.isArray(s.conflictMentions) && s.conflictMentions.length) {
+      const counts = new Map();
+      s.conflictMentions.forEach(m => {
+        const t = resolve(m && m.target);
+        if (t && t.id !== s.id && graph.has(t.id)) counts.set(t.id, (counts.get(t.id) || 0) + 1);
+      });
+      counts.forEach((v, k) => me.mentionCounts.set(k, Math.max(v, me.mentionCounts.get(k) || 0)));
+    }
   });
 
   graph.forEach((node, id) => {
@@ -157,6 +167,15 @@ export const assessStudent = (node, graph) => {
     focus.add('socialAwareness');
   }
 
+  // 반복 호소: 같은 친구를 3회 이상 갈등 상대로 언급 → 사실 확인 전 판단 보류 (위험 점수는 크게 올리지 않음)
+  const repeated = [...node.mentionCounts.entries()].filter(([, n]) => n >= 3);
+  if (repeated.length > 0) {
+    const [tid, n] = repeated.sort((a, b) => b[1] - a[1])[0];
+    signals.push({ type: 'repeatedComplaint', label: '반복 호소', detail: `${nameOf(graph, tid)}에 대해 ${n}회 언급 — 학생의 주관적 보고, 사실 확인 필요`, ids: [tid], weight: 8 });
+    score += 8;
+    focus.add('socialAwareness'); focus.add('responsibleDecision');
+  }
+
   if (node.lonelyCount > 0) {
     signals.push({ type: 'lonely', label: '외로움 신호', detail: `${node.lonelyCount}회 표현`, weight: 25 + Math.min(15, node.lonelyCount * 5) });
     score += 25 + Math.min(15, node.lonelyCount * 5);
@@ -198,6 +217,10 @@ const nameOf = (graph, id) => graph.get(id)?.student?.realName || graph.get(id)?
 const buildQuickAction = (signals, node, graph) => {
   const types = new Set(signals.map(sg => sg.type));
   if (types.has('alert')) return '오늘 중 1:1 안전 확인 면담 → 필요 시 Wee클래스·보호자 연계';
+  if (types.has('repeatedComplaint') && !types.has('mutualConflict')) {
+    const other = signals.find(sg => sg.type === 'repeatedComplaint')?.ids?.[0];
+    return `${other ? nameOf(graph, other) + '에 대한 ' : ''}반복 호소 → 사실 확인 전 판단 보류 · 양쪽 관점 관찰 · "네가 바라는 게 뭐야?" 질문`;
+  }
   if (types.has('mutualConflict')) {
     const other = [...node.mutualConflicts][0];
     return `${nameOf(graph, other)}와(과) 분리 후 각각 개별 경청 → 준비되면 중재 대화`;
@@ -292,4 +315,32 @@ export const deanonymizeText = (text, idByAnon, studentsData) => {
     const st = studentsData.find(x => x.id === id);
     return st ? st.realName || st.nickname || m : m;
   });
+};
+
+/**
+ * 갈등 보고 교차 검증 정보 (교사 관찰용 재료 — 판정 아님)
+ * @returns { mentions, targetMentionsBack, targetReceived, reporterReceived, reporterGivenCount, reporterNominatesTarget, targetNominatesReporter, hints[] }
+ */
+export const crossCheckConflict = (graph, reporterId, targetId) => {
+  const r = graph.get(reporterId); const t = graph.get(targetId);
+  if (!r || !t) return null;
+  const mentions = r.mentionCounts.get(targetId) || (r.conflicts.has(targetId) ? 1 : 0);
+  const targetMentionsBack = t.conflicts.has(reporterId);
+  const info = {
+    mentions,
+    targetMentionsBack,
+    targetReceived: t.received,
+    reporterReceived: r.received,
+    reporterGivenCount: r.given.size,
+    reporterNominatesTarget: r.given.has(targetId),
+    targetNominatesReporter: t.given.has(reporterId),
+    hints: [],
+  };
+  if (targetMentionsBack) info.hints.push('상대도 이 학생과의 갈등을 언급 → 상호 갈등, 중재 대화 우선');
+  if (mentions >= 3) info.hints.push(`같은 상대를 ${mentions}회 반복 언급 → 사실 확인 전 판단 보류`);
+  if (!targetMentionsBack && t.received >= 3 && mentions >= 2) info.hints.push('상대는 학급에서 지목을 많이 받는 학생 → 보고 편향 가능성도 함께 관찰');
+  if (r.received === 0 && r.given.size === 0) info.hints.push('보고 학생 본인이 관계망에 연결되지 않음 → 소속감 지원 병행');
+  if (info.targetNominatesReporter) info.hints.push('상대는 이 학생을 긍정 지목함 → 오해·일회성 사건일 가능성');
+  if (info.hints.length === 0) info.hints.push('추가 교차 정보 없음 → 쉬는 시간·모둠 활동 직접 관찰 권장');
+  return info;
 };

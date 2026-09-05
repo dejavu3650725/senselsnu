@@ -10,7 +10,7 @@ const TIER_STYLE = {
 
 const SIGNAL_ICON = {
   alert: '🚨', alertHistory: '🕓', mood: '🔴', mutualConflict: '⚡', conflict: '⚡',
-  conflictTarget: '💬', lonely: '💧', isolated: '🏝', lowReceived: '·',
+  conflictTarget: '💬', lonely: '💧', isolated: '🏝', lowReceived: '·', repeatedComplaint: '🔁',
 };
 
 /**

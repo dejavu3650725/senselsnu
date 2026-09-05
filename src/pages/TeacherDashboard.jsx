@@ -18,7 +18,7 @@ import StudentManagement from '../components/StudentManagement';
 import SeatingChart from '../components/SeatingChart';
 import RelationshipWatch from '../components/RelationshipWatch';
 import { db, auth } from '../firebase';
-import { collection, onSnapshot, query, orderBy, where, doc, getDoc, updateDoc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, where, doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { Check, Users, Settings, FileSignature, Copy, X } from 'lucide-react';
 
@@ -126,9 +126,15 @@ const TeacherDashboard = () => {
   }, [urgentAlerts.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 긴급 알림 확인 처리
-  const handleAckAlert = async (studentId) => {
+  const [ackNotes, setAckNotes] = useState({});
+  const handleAckAlert = async (studentId, alertTimestamp) => {
+    const note = (ackNotes[studentId] || '').trim();
     try {
-      await updateDoc(doc(db, 'students', studentId), { alertsAckedAt: new Date().toISOString() });
+      const upd = { alertsAckedAt: new Date().toISOString() };
+      // 조치 기록: '알고도 방치'가 아니라 '알고 조치'했다는 근거가 남는다 (메모가 비어 있어도 확인 시각은 기록)
+      upd.alertActions = arrayUnion({ alertTimestamp: alertTimestamp || null, ackedAt: upd.alertsAckedAt, note: note || '(메모 없음) 확인함' });
+      await updateDoc(doc(db, 'students', studentId), upd);
+      setAckNotes(prev => ({ ...prev, [studentId]: '' }));
     } catch (error) {
       console.error('Failed to acknowledge alert:', error);
     }
@@ -187,12 +193,20 @@ const TeacherDashboard = () => {
                     <b style={{ color: '#2d3748' }}>{a.name}</b>
                     <span style={{ color: '#c53030', fontWeight: 600 }}>{a.reason}</span>
                     <span style={{ color: '#a0aec0', fontSize: '0.85rem' }}>{formatAlertTime(a.timestamp)}</span>
-                    <button
-                      onClick={() => handleAckAlert(a.studentId)}
-                      style={{ marginLeft: 'auto', padding: '8px 16px', borderRadius: '10px', border: 'none', background: '#e53e3e', color: 'white', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer' }}
-                    >
-                      확인 완료
-                    </button>
+                    <div style={{ marginLeft: 'auto', display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input
+                        value={ackNotes[a.studentId] || ''}
+                        onChange={e => setAckNotes(prev => ({ ...prev, [a.studentId]: e.target.value }))}
+                        placeholder="조치 메모 (예: 점심시간 면담, 보호자 통화)"
+                        style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid #feb2b2', fontSize: '0.82rem', minWidth: '220px' }}
+                      />
+                      <button
+                        onClick={() => handleAckAlert(a.studentId, a.timestamp)}
+                        style={{ padding: '8px 16px', borderRadius: '10px', border: 'none', background: '#e53e3e', color: 'white', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        확인·조치 기록
+                      </button>
+                    </div>
                     {a.excerpt && (
                       <details style={{ flexBasis: '100%', fontSize: '0.82rem', color: '#4a5568' }}>
                         <summary style={{ cursor: 'pointer', color: '#9c4221', fontWeight: 600 }}>대화 전후 보기</summary>
@@ -203,7 +217,7 @@ const TeacherDashboard = () => {
                 ))}
               </div>
               <p style={{ margin: '10px 0 0 0', fontSize: '0.8rem', color: '#9c4221' }}>
-                💡 [확인 완료]를 누르면 해당 학생의 현재 알림이 해제됩니다. 학생의 대화 내역과 [맞춤 처방] 메뉴에서 후속 지도를 이어가세요.
+                💡 알림은 학생이 챗봇에게 한 말을 바탕으로 한 것으로, 사실 확인이 필요합니다. [확인·조치 기록]을 누르면 확인 시각과 메모가 학생 기록에 남아 이후 '알고 조치했다'는 근거가 됩니다. 중대 사안은 학교 절차(학교폭력 사안 처리, Wee클래스)를 따르세요.
               </p>
             </div>
           )}

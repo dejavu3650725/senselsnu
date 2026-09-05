@@ -35,6 +35,8 @@ const DEFAULT_CONFIG = {
   profanityReply: '',
   storeTranscripts: false,   // 대화 원문 보관 (기본 꺼짐: 지목·갈등·외로움·기분·위기 신호만 저장)
   consentConfirmed: false,   // 보호자 동의 절차 완료 확인
+  dailyTurnLimit: 30,        // 학생 1명당 하루 대화 상한 (0 = 무제한)
+  collectConflicts: true,    // 갈등 신호 수집 (false = 긍정 지목만 모드)
 };
 
 const ChatbotSettingsModal = ({ onClose }) => {
@@ -172,6 +174,31 @@ const ChatbotSettingsModal = ({ onClose }) => {
               ))}
               <input value={config.customRule} onChange={e => setConfig(c => ({ ...c, customRule: e.target.value.slice(0, 300) }))} placeholder="추가 규칙 (선택) 예) 특정 학생 이름을 먼저 언급하지 말 것" style={{ ...inputStyle, marginTop: '4px' }} />
               <input value={config.profanityReply} onChange={e => setConfig(c => ({ ...c, profanityReply: e.target.value.slice(0, 200) }))} placeholder="욕설을 쓰면 할 말 (선택) 예) 그런 말은 나무가 들으면 슬퍼. 다른 말로 다시 해줄래?" style={{ ...inputStyle, background: '#fff5f5', border: '1px solid #fc8181' }} />
+            </div>
+          </div>
+
+          {/* 수집 범위 · 사용량 */}
+          <div style={{ border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px 16px', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div>
+              <div style={{ fontWeight: 'bold', color: '#2d3748', fontSize: '0.95rem' }}>수집 범위</div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                {[[true, '관계 + 갈등 신호', '긍정 지목과 함께 학생이 스스로 말한 갈등·외로움 신호도 기록'], [false, '긍정 지목만', '갈등 신호는 기록하지 않고 대화로만 다룸 (위기 알림은 유지)']].map(([val, label, desc]) => (
+                  <button key={String(val)} onClick={() => setConfig(c => ({ ...c, collectConflicts: val }))} style={{ flex: 1, padding: '10px 10px', borderRadius: '12px', textAlign: 'left', border: (config.collectConflicts !== false) === val ? '2px solid var(--primary-color)' : '1px solid #e2e8f0', background: (config.collectConflicts !== false) === val ? 'var(--primary-light)' : 'white', cursor: 'pointer' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '0.88rem', color: '#2d3748' }}>{label}</div>
+                    <div style={{ fontSize: '0.74rem', color: '#718096', marginTop: '2px', lineHeight: 1.4 }}>{desc}</div>
+                  </button>
+                ))}
+              </div>
+              <div style={{ fontSize: '0.76rem', color: '#a0aec0', marginTop: '6px', lineHeight: 1.5 }}>갈등 신호는 어느 모드에서든 '학생의 주관적 보고'로 표시되며, 프로그램이 사실 여부를 판정하지 않습니다.</div>
+            </div>
+            <div>
+              <div style={{ fontWeight: 'bold', color: '#2d3748', fontSize: '0.95rem' }}>학생 1명당 하루 대화 상한</div>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
+                {[[20, '20턴'], [30, '30턴 (기본)'], [50, '50턴'], [0, '무제한']].map(([val, label]) => (
+                  <button key={val} onClick={() => setConfig(c => ({ ...c, dailyTurnLimit: val }))} style={{ padding: '8px 14px', borderRadius: '10px', border: (config.dailyTurnLimit ?? 30) === val ? '2px solid var(--primary-color)' : '1px solid #e2e8f0', background: (config.dailyTurnLimit ?? 30) === val ? 'var(--primary-light)' : 'white', fontWeight: 'bold', fontSize: '0.85rem', cursor: 'pointer', color: '#2d3748' }}>{label}</button>
+                ))}
+              </div>
+              <div style={{ fontSize: '0.76rem', color: '#a0aec0', marginTop: '6px', lineHeight: 1.5 }}>상한에 가까워지면 챗봇이 스스로 대화를 정리하고, 도달하면 "내일 또 이야기하자"로 따뜻하게 닫습니다. 한 학생이 쉬는 시간마다 매달리는 것을 막고, 필요한 학생에게는 넉넉히 열어 둘 수 있습니다.</div>
             </div>
           </div>
 
