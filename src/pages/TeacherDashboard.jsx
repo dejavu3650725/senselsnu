@@ -240,7 +240,8 @@ const TeacherDashboard = () => {
             const steps = [
               { key: 'students', done: studentsData.length >= 3, title: '학생 명단 등록', desc: studentsData.length ? `${studentsData.length}명 등록됨` : '실명·닉네임·성별을 한 번에 붙여넣기', action: () => setActiveMenu('학생 관리'), icon: <Users size={15} /> },
               { key: 'chat', done: !!teacherProfile?.chatConfig, title: '챗봇 설정 저장', desc: '말투·관심 주제만 고르면 끝 (1분)', action: () => setIsChatbotModalOpen(true), icon: <Settings size={15} /> },
-              { key: 'consent', done: teacherProfile?.chatConfig?.consentConfirmed === true, title: '보호자 안내문 배부', desc: '인쇄·PDF로 가정에 전달 후 동의 확인', action: openConsent, icon: <FileSignature size={15} /> },
+              { key: 'committee', done: teacherProfile?.chatConfig?.committeeApproved === true, title: '학운위 심의', desc: '심의 후 [챗봇 설정] 학교 절차에서 체크', action: () => setIsChatbotModalOpen(true), icon: <Check size={15} /> },
+              { key: 'consent', done: teacherProfile?.chatConfig?.consentCollected === true || teacherProfile?.chatConfig?.consentConfirmed === true, title: '보호자 안내문·동의서', desc: '인쇄·배부·수합 후 [챗봇 설정]에서 체크', action: openConsent, icon: <FileSignature size={15} /> },
               { key: 'code', done: studentsData.some(s => (s.messages || []).length > 0 || (s.sessionDates || []).length > 0), title: '학생 첫 대화', desc: `학급 코드 ${currentClassCode}를 칠판에 적어 주세요`, action: copyCode, icon: <Copy size={15} /> },
             ];
             const doneCount = steps.filter(st => st.done).length;

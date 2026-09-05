@@ -50,41 +50,60 @@ export const defaultMission = (wk = weekKey()) => {
 };
 export const missionById = (id) => MISSION_POOL.find(m => m.id === id) || null;
 
-/** 이번 달 기술별 연습 횟수 (skillLog: [{skill, area, date}]) */
-export const monthlySkillCounts = (skillLog = [], mk = monthKey()) => {
+/** 기간 내 기술별 연습 횟수 (skillLog: [{skill, area, date}]). from/to는 'YYYY-MM-DD' (포함) */
+export const skillCountsBetween = (skillLog = [], from, to) => {
   const counts = {};
-  skillLog.forEach(e => { if (e && e.skill && String(e.date || '').startsWith(mk)) counts[e.skill] = (counts[e.skill] || 0) + 1; });
+  skillLog.forEach(e => { const d = String((e && e.date) || ''); if (e && e.skill && d >= from && d <= to) counts[e.skill] = (counts[e.skill] || 0) + 1; });
   return Object.entries(counts).map(([skill, count]) => ({ skill, count })).sort((a, b) => b.count - a.count);
+};
+/** 이번 달 기술별 연습 횟수 */
+export const monthlySkillCounts = (skillLog = [], mk = monthKey()) => skillCountsBetween(skillLog, `${mk}-01`, `${mk}-31`);
+
+/** 발송 기간 프리셋 — 발송 시점은 교사가 정한다 */
+export const PERIOD_PRESETS = [
+  { key: '2w', label: '최근 2주' }, { key: '4w', label: '최근 4주' }, { key: 'month', label: '이번 달' }, { key: 'semester', label: '학기 시작(3/1·9/1)부터' }, { key: 'all', label: '전체 기간' },
+];
+export const periodRange = (key, now = new Date()) => {
+  const to = dayKey(now);
+  const back = (days) => dayKey(new Date(now.getTime() - days * 86400000));
+  if (key === '2w') return { from: back(13), to, label: '최근 2주' };
+  if (key === '4w') return { from: back(27), to, label: '최근 4주' };
+  if (key === 'month') return { from: `${monthKey(now)}-01`, to, label: `${now.getMonth() + 1}월` };
+  if (key === 'semester') { const y = now.getFullYear(); const m = now.getMonth() + 1; const from = m >= 9 ? `${y}-09-01` : m >= 3 ? `${y}-03-01` : `${y - 1}-09-01`; return { from, to, label: '이번 학기' }; }
+  return { from: '2000-01-01', to, label: '전체 기간' };
 };
 
 /** 배지 단계: 1회 🌱 / 3회 🌿 / 6회 🌳 */
 export const badgeFor = (count) => (count >= 6 ? { icon: '🌳', label: '숲', level: 3 } : count >= 3 ? { icon: '🌿', label: '나무', level: 2 } : count >= 1 ? { icon: '🌱', label: '새싹', level: 1 } : { icon: '·', label: '아직', level: 0 });
 
-/** 학급 월간 집계 (교사 브라우저에서 계산 → classReports 문서로 저장). 개인 식별 정보 없음. */
-export const buildClassMonthly = (studentsData = [], { classCode, className, gradeLabel, mk = monthKey() }) => {
+/** 학급 기간 집계 (교사 브라우저에서 계산 → classReports 문서로 저장). 개인 식별 정보 없음. 발송 시점·기간은 교사가 정한다. */
+export const buildClassReport = (studentsData = [], { classCode, className, gradeLabel, from, to, periodLabel = '' }) => {
   const skillTotals = {};
   const areaTotals = {};
   let active = 0;
   let missionDone = 0;
-  const weeksInMonth = new Set();
+  const weeks = new Set();
   studentsData.forEach(s => {
-    const counts = monthlySkillCounts(s.skillLog || [], mk);
+    const counts = skillCountsBetween(s.skillLog || [], from, to);
     if (counts.length) active += 1;
     counts.forEach(({ skill, count }) => {
       skillTotals[skill] = (skillTotals[skill] || 0) + count;
       const area = areaOfSkill(gradeLabel, skill);
       if (area) areaTotals[area] = (areaTotals[area] || 0) + count;
     });
-    (s.missions || []).forEach(m => { if (m && String(m.doneAt || '').startsWith(mk)) { missionDone += 1; weeksInMonth.add(m.weekKey); } });
+    (s.missions || []).forEach(m => { const d = String((m && m.doneAt) || '').slice(0, 10); if (m && d >= from && d <= to) { missionDone += 1; weeks.add(m.weekKey); } });
   });
   const topSkills = Object.entries(skillTotals).map(([skill, count]) => ({ skill, area: areaOfSkill(gradeLabel, skill), count })).sort((a, b) => b.count - a.count).slice(0, 5);
   const topAreas = Object.entries(areaTotals).sort((a, b) => b[1] - a[1]).map(([area]) => area);
-  const denom = Math.max(1, studentsData.length * Math.max(1, weeksInMonth.size));
+  const denom = Math.max(1, studentsData.length * Math.max(1, weeks.size));
   return {
-    classCode, className: className || '', gradeLabel, month: mk,
+    classCode, className: className || '', gradeLabel, from, to, periodLabel,
     studentCount: studentsData.length, activeCount: active,
     topSkills, topAreas,
     missionDone, missionRate: Math.min(100, Math.round((missionDone / denom) * 100)),
     generatedAt: new Date().toISOString(),
   };
 };
+/** 하위 호환 */
+export const buildClassMonthly = (studentsData, { classCode, className, gradeLabel, mk = monthKey() }) =>
+  buildClassReport(studentsData, { classCode, className, gradeLabel, from: `${mk}-01`, to: `${mk}-31`, periodLabel: `${Number(mk.slice(5))}월` });

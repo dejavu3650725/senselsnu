@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, setDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
-import { MISSION_POOL, defaultMission, missionById, weekKey, monthKey, buildClassMonthly } from '../utils/growth';
+import { MISSION_POOL, defaultMission, missionById, weekKey, monthKey, buildClassReport, PERIOD_PRESETS, periodRange } from '../utils/growth';
 import { Mail, Printer, Copy, Check, Info, Users, ShieldCheck, Target, Send, ExternalLink } from 'lucide-react';
 import { assessClass } from '../utils/studentSignals';
 import { seoulGradeLabel } from '../utils/seoulSel';
@@ -33,9 +33,11 @@ const FamilyLink = ({ studentsData = [], teacherProfile, classCode, classLabel, 
   const [linkCopied, setLinkCopied] = useState(false);
   const mission = missionById(missionId) || defaultMission();
   const missionDoneCount = studentsData.filter(s => (s.missions || []).some(m => m && m.weekKey === thisWeek)).length;
-  const monthly = useMemo(() => buildClassMonthly(studentsData, { classCode, className, gradeLabel, mk: thisMonth }), [studentsData, classCode, className, gradeLabel, thisMonth]);
-  const parentUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/family/${classCode}/monthly`;
-  const smsText = `[${className || '우리 반'} ${Number(thisMonth.slice(5))}월 마음 성장 소식]\n이번 달 우리 반이 연습한 사회정서기술과, 오늘 저녁 아이에게 건넬 말 한 줄을 담았습니다. 특정 학생 정보는 없습니다.\n${parentUrl}\n읽고 집에서 한 번 해보셨다면 화면 아래 '집에서 해봤어요'를 눌러 주세요. — ${teacherName}`;
+  const [periodKey, setPeriodKey] = useState('2w');
+  const period = periodRange(periodKey);
+  const monthly = useMemo(() => buildClassReport(studentsData, { classCode, className, gradeLabel, from: period.from, to: period.to, periodLabel: period.label }), [studentsData, classCode, className, gradeLabel, period.from, period.to, period.label]);
+  const parentUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/family/${classCode}/report`;
+  const smsText = `[${className || '우리 반'} 마음 성장 소식 · ${period.label}]\n${period.label} 동안 우리 반이 연습한 사회정서기술과, 오늘 저녁 아이에게 건넬 말 한 줄을 담았습니다. 특정 학생 정보는 없습니다.\n${parentUrl}\n읽고 집에서 한 번 해보셨다면 화면 아래 '집에서 해봤어요'를 눌러 주세요. — ${teacherName}`;
   useEffect(() => {
     if (classInfo?.mission?.weekKey === thisWeek && classInfo.mission.missionId) setMissionId(classInfo.mission.missionId);
   }, [classInfo, thisWeek]);
@@ -55,7 +57,7 @@ const FamilyLink = ({ studentsData = [], teacherProfile, classCode, classLabel, 
   };
   const publishMonthly = async () => {
     setPublishing(true);
-    try { await setDoc(doc(db, 'classReports', `${classCode}_${thisMonth}`), monthly); setPublished(true); }
+    try { await setDoc(doc(db, 'classReports', `${classCode}_${new Date().toISOString().slice(0, 16).replace(/[-:T]/g, '')}`), monthly); setPublished(true); }
     catch (e) { console.error('publish error', e); alert('발행에 실패했습니다. Firestore 규칙(classReports)을 배포했는지 확인하세요.'); }
     finally { setPublishing(false); }
   };
@@ -116,7 +118,12 @@ const FamilyLink = ({ studentsData = [], teacherProfile, classCode, classLabel, 
           <div style={{ fontSize: '0.75rem', color: '#a0aec0' }}>학생 화면 채팅 위에 이 미션이 보이고, 아무것도 안 고르면 주차별로 자동 순환합니다.</div>
         </div>
         <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, color: '#2d3748' }}><Send size={18} color="#3b6fe0" /> {Number(thisMonth.slice(5))}월 가정 리포트 (학급 단위)</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, color: '#2d3748', flexWrap: 'wrap' }}><Send size={18} color="#3b6fe0" /> 가정 리포트 (학급 단위)
+            <select value={periodKey} onChange={e => { setPeriodKey(e.target.value); setPublished(false); }} style={{ marginLeft: 'auto', padding: '5px 8px', borderRadius: '10px', border: '1px solid #cbd5e1', fontFamily: 'inherit', fontSize: '0.8rem', background: 'white', fontWeight: 500 }}>
+              {PERIOD_PRESETS.map(p => <option key={p.key} value={p.key}>{p.label}</option>)}
+            </select>
+          </div>
+          <div style={{ fontSize: '0.76rem', color: '#a0aec0' }}>보내는 시점은 선생님이 정합니다. 발행할 때마다 새 소식으로 저장되고 학부모는 가장 최근 것을 봅니다. ({period.from} ~ {period.to})</div>
           <div style={{ fontSize: '0.84rem', color: '#4a5568', lineHeight: 1.55 }}>
             연습 학생 <b>{monthly.activeCount}</b>/{monthly.studentCount}명 · 미션 완료 <b>{monthly.missionDone}</b>번 · 많이 연습한 기술 <b>{monthly.topSkills.slice(0, 3).map(s => s.skill).join(', ') || '아직 없음'}</b>
           </div>

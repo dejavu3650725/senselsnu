@@ -92,10 +92,10 @@ service cloud.firestore {
     }
 
     // ===== 학급 월간 가정 리포트 (학급 단위 집계, 개인 정보 없음) =====
-    // 문서 ID: {classCode}_{YYYY-MM}. 교사가 발행, 학부모(익명 로그인)가 읽음
+    // 문서 ID: {classCode}_{발행시각}. 발송 시점은 교사가 정하며, 학부모(익명 로그인)는 최신 문서를 읽음
     match /classReports/{id} {
       allow read: if signedIn();
-      allow create, update: if ownsClass(request.resource.data.get('classCode', '')) && id == request.resource.data.get('classCode', '') + '_' + request.resource.data.get('month', '');
+      allow create, update: if ownsClass(request.resource.data.get('classCode', '')) && id.matches('^' + request.resource.data.get('classCode', '') + '_.*');
       allow delete: if ownsClass(resource.data.get('classCode', ''));
     }
 

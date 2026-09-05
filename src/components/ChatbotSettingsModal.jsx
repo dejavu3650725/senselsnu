@@ -34,7 +34,9 @@ const DEFAULT_CONFIG = {
   customRule: '',
   profanityReply: '',
   storeTranscripts: false,   // 대화 원문 보관 (기본 꺼짐: 지목·갈등·외로움·기분·위기 신호만 저장)
-  consentConfirmed: false,   // 보호자 동의 절차 완료 확인
+  consentConfirmed: false,   // 보호자 동의 절차 완료 확인 (원문 보관용)
+  committeeApproved: false,  // 학교운영위원회 심의 완료
+  consentCollected: false,   // 보호자 동의서 수합 완료 (학급 운영 전제)
   dailyTurnLimit: 30,        // 학생 1명당 하루 대화 상한 (0 = 무제한)
   collectConflicts: true,    // 갈등 신호 수집 (false = 긍정 지목만 모드)
 };
@@ -213,6 +215,22 @@ const ChatbotSettingsModal = ({ onClose, onSaved }) => {
               </div>
               <div style={{ fontSize: '0.76rem', color: '#a0aec0', marginTop: '6px', lineHeight: 1.5 }}>상한에 가까워지면 챗봇이 스스로 대화를 정리하고, 도달하면 "내일 또 이야기하자"로 따뜻하게 닫습니다. 한 학생이 쉬는 시간마다 매달리는 것을 막고, 필요한 학생에게는 넉넉히 열어 둘 수 있습니다.</div>
             </div>
+          </div>
+
+          {/* 학교 절차: 학운위 심의 → 보호자 동의서 */}
+          <div style={{ border: `2px solid ${config.committeeApproved && config.consentCollected ? '#9ae6b4' : '#e2e8f0'}`, borderRadius: '14px', padding: '14px 16px', background: config.committeeApproved && config.consentCollected ? '#f0fff4' : '#f8fafc' }}>
+            <div style={{ fontWeight: 'bold', color: '#2d3748', fontSize: '0.95rem', marginBottom: '6px' }}>🏫 학교 절차 {config.committeeApproved && config.consentCollected ? '(완료)' : ''}</div>
+            <div style={{ fontSize: '0.8rem', color: '#718096', lineHeight: 1.55, marginBottom: '8px' }}>
+              현재 운영 방식: <b>학교운영위원회 심의 → 보호자 안내문·동의서 배부·수합 → 운영</b>. 별도 인증이나 등록 없이 이 두 단계면 학급에서 운영할 수 있습니다. 동의서는 [보호자 안내문]에서 인쇄합니다.
+            </div>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer', marginBottom: '6px' }}>
+              <input type="checkbox" checked={!!config.committeeApproved} onChange={e => setConfig(c => ({ ...c, committeeApproved: e.target.checked }))} style={{ marginTop: '3px' }} />
+              <div style={{ fontSize: '0.85rem', color: '#2d3748' }}><b>학교운영위원회 심의 완료</b> <span style={{ color: '#718096' }}>— 안내문에 "학교운영위원회 심의를 거쳐 운영"이 표기됩니다.</span></div>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={!!config.consentCollected} onChange={e => setConfig(c => ({ ...c, consentCollected: e.target.checked }))} style={{ marginTop: '3px' }} />
+              <div style={{ fontSize: '0.85rem', color: '#2d3748' }}><b>보호자 동의서 수합 완료</b> <span style={{ color: '#718096' }}>— 동의하지 않은 학생은 [학생 관리]에서 제외하거나 참여시키지 마세요.</span></div>
+            </label>
           </div>
 
           {/* 대화 원문 보관 (개인정보) */}

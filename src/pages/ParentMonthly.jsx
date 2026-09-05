@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Printer, ArrowLeft, Heart, Check, Info } from 'lucide-react';
 import { db } from '../firebase';
-import { doc, getDoc, addDoc, collection } from 'firebase/firestore';
+import { doc, getDoc, addDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { ensureStudentSession } from '../utils/apiClient';
 import { familyTipsForAreas } from '../utils/familyLink';
 import { monthKey, weekKey, MISSION_POOL, missionById, defaultMission } from '../utils/growth';
@@ -10,7 +10,7 @@ import { monthKey, weekKey, MISSION_POOL, missionById, defaultMission } from '..
 const AREA_COLOR = { '자기': '#805ad5', '대인관계': '#dd6b20', '공동체': '#d53f8c', '마음건강': '#c53030' };
 
 /**
- * 학부모용 월간 가정 리포트 (/family/:classCode/monthly)
+ * 학부모용 가정 리포트 (/family/:classCode/report) — 교사가 정한 시점·기간의 학급 단위 소식
  * - 교사가 [가정 연계]에서 '발행'한 학급 단위 집계(classReports)만 보여 준다. 학생 개인 정보는 없다.
  * - "집에서 해봤어요" 한 번 → familyFeedback에 익명 회신(학급 코드·주차만) → 교사 화면에 건수로 집계
  */
@@ -29,12 +29,10 @@ const ParentMonthly = () => {
         await ensureStudentSession(null);
         const c = await getDoc(doc(db, 'classes', classCode));
         if (c.exists()) setCls(c.data());
-        const now = new Date();
-        const prev = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-        for (const mk of [monthKey(now), monthKey(prev)]) {
-          const r = await getDoc(doc(db, 'classReports', `${classCode}_${mk}`));
-          if (r.exists()) { setReport(r.data()); break; }
-        }
+        // 가장 최근 발행본 (발송 시점은 교사가 정함)
+        const snap = await getDocs(query(collection(db, 'classReports'), where('classCode', '==', classCode)));
+        const docs = snap.docs.map(d => d.data()).sort((a, b) => String(b.generatedAt || '').localeCompare(String(a.generatedAt || '')));
+        if (docs.length) setReport(docs[0]); // 복합 색인 없이 클라이언트 정렬
       } catch (e) { console.error('parent monthly load error', e); }
       finally { setLoaded(true); }
     };
@@ -56,7 +54,7 @@ const ParentMonthly = () => {
   const gradeLabel = report?.gradeLabel || '초5';
   const mission = (cls?.mission && cls.mission.weekKey === weekKey() && missionById(cls.mission.missionId)) || defaultMission();
   const tips = report ? familyTipsForAreas(report.topAreas?.slice(0, 2) || [], gradeLabel, 2) : [];
-  const [y, m] = (report?.month || monthKey()).split('-');
+  const periodLabel = report?.periodLabel || (report?.month ? `${Number(report.month.slice(5))}월` : '');
 
   return (
     <div className="consent-page">
@@ -67,22 +65,22 @@ const ParentMonthly = () => {
 
       <div className="consent-doc" id="print-area">
         <div style={{ textAlign: 'center', fontSize: '0.85rem', letterSpacing: '0.3em', color: '#6b7280' }}>가 정 리 포 트</div>
-        <h1 style={{ fontSize: '1.4rem' }}>{className} {Number(m)}월 마음 성장 소식</h1>
+        <h1 style={{ fontSize: '1.4rem' }}>{className} 마음 성장 소식{periodLabel ? ` · ${periodLabel}` : ''}</h1>
         <p style={{ textAlign: 'center', color: '#6b7280', fontSize: '0.9rem' }}>서울 사회정서교육 · 학급 전체 이야기입니다. 특정 학생의 정보는 담겨 있지 않습니다.</p>
 
         {!loaded ? null : !report ? (
           <div style={{ padding: '28px', textAlign: 'center', color: '#6b7280', lineHeight: 1.6 }}>
-            아직 이번 달 소식이 발행되지 않았습니다. 담임 선생님이 발행하면 이 주소에서 볼 수 있어요.
+            아직 발행된 소식이 없습니다. 담임 선생님이 발행하면 이 주소에서 볼 수 있어요.
           </div>
         ) : (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px', margin: '18px 0' }}>
-              <div style={{ background: 'var(--surface-3)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}><div style={{ fontSize: '1.6rem', fontWeight: 800 }}>{report.activeCount}<span style={{ fontSize: '0.9rem', color: '#6b7280' }}>/{report.studentCount}명</span></div><div style={{ fontSize: '0.8rem', color: '#6b7280' }}>이번 달 사회정서기술을 연습한 학생</div></div>
+              <div style={{ background: 'var(--surface-3)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}><div style={{ fontSize: '1.6rem', fontWeight: 800 }}>{report.activeCount}<span style={{ fontSize: '0.9rem', color: '#6b7280' }}>/{report.studentCount}명</span></div><div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{periodLabel || '이 기간'} 사회정서기술을 연습한 학생</div></div>
               <div style={{ background: 'var(--surface-3)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}><div style={{ fontSize: '1.6rem', fontWeight: 800 }}>{report.missionDone}<span style={{ fontSize: '0.9rem', color: '#6b7280' }}>번</span></div><div style={{ fontSize: '0.8rem', color: '#6b7280' }}>친절 미션 "했어요" 누적</div></div>
-              <div style={{ background: 'var(--surface-3)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}><div style={{ fontSize: '1.6rem', fontWeight: 800 }}>{report.topAreas?.[0] || '-'}</div><div style={{ fontSize: '0.8rem', color: '#6b7280' }}>이번 달 가장 많이 연습한 영역</div></div>
+              <div style={{ background: 'var(--surface-3)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}><div style={{ fontSize: '1.6rem', fontWeight: 800 }}>{report.topAreas?.[0] || '-'}</div><div style={{ fontSize: '0.8rem', color: '#6b7280' }}>가장 많이 연습한 영역</div></div>
             </div>
 
-            <h2>이번 달 우리 반이 연습한 사회정서기술</h2>
+            <h2>{periodLabel || '이 기간'} 우리 반이 연습한 사회정서기술</h2>
             {report.topSkills?.length ? (
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                 {report.topSkills.map(s => (
@@ -91,7 +89,7 @@ const ParentMonthly = () => {
                   </span>
                 ))}
               </div>
-            ) : <p style={{ color: '#6b7280' }}>이번 달에는 기록된 연습이 아직 적습니다. 다음 달 소식을 기다려 주세요.</p>}
+            ) : <p style={{ color: '#6b7280' }}>이 기간에는 기록된 연습이 아직 적습니다. 다음 소식을 기다려 주세요.</p>}
 
             <h2>이번 주 친절 미션 — 집에서도 한 번</h2>
             <div style={{ background: '#fffbea', border: '1px solid #f6e05e', borderRadius: '12px', padding: '12px 14px' }}>

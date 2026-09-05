@@ -25,6 +25,7 @@ function App() {
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/student" element={<StudentDashboard />} />
             <Route path="/consent/:classCode" element={<ParentConsent />} />
+            <Route path="/family/:classCode/report" element={<ParentMonthly />} />
             <Route path="/family/:classCode/monthly" element={<ParentMonthly />} />
             <Route path="/family/:classCode/:kind" element={<FamilyLetter />} />
           </Routes>
