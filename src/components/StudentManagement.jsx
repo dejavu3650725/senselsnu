@@ -175,186 +175,58 @@ const StudentManagement = ({ studentsData, classCode }) => {
     }
   };
 
-  const inputStyle = {
-    padding: '12px 16px', borderRadius: '12px', border: '1px solid #cbd5e1',
-    fontSize: '1rem', outline: 'none', background: 'white'
+  const G = ({ g, active, onClick, size = 'md' }) => {
+    const male = g === '남';
+    const color = male ? '#2b6cb0' : '#b83280';
+    return (
+      <button onClick={onClick} className="sm-g" style={{ padding: size === 'sm' ? '3px 9px' : '8px 14px', fontSize: size === 'sm' ? '0.78rem' : '0.9rem', border: `1.5px solid ${active ? color : '#e2e8f0'}`, background: active ? (male ? '#ebf8ff' : '#fff5f7') : '#fff', color: active ? color : '#a0aec0' }}>
+        {male ? '👦 남' : '👧 여'}
+      </button>
+    );
   };
 
   return (
-    <div className="glass-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-        <div style={{ background: 'var(--primary-light)', padding: '12px', borderRadius: '16px' }}>
-          <Users size={28} color="var(--primary-color)" />
+    <div className="glass-card sm-page">
+      <div className="sm-head">
+        <div className="sm-title"><Users size={20} /> 학생 관리 <span className="sm-count">{studentsData.length}명</span></div>
+        <div className="sm-actions">
+          <button className="btn btn-secondary" onClick={() => setIsBulkOpen(true)}><ClipboardList size={16} /> 명단 일괄 등록</button>
+          <button className="sm-purge" onClick={handlePurgeTranscripts} disabled={isPurging || transcriptCount === 0} title="학기 말 등 보관 기간이 끝났을 때 대화 원문만 삭제합니다. 신호·처방은 유지됩니다.">🔒 {isPurging ? '삭제 중…' : `대화 원문 삭제 (${transcriptCount})`}</button>
         </div>
-        <h2 style={{ color: '#2d3748', margin: 0, fontSize: '1.8rem' }}>학생 관리</h2>
       </div>
-      <p style={{ color: '#718096', marginBottom: '24px', fontSize: '1.05rem', paddingLeft: '52px' }}>
-        학생을 미리 등록하거나 삭제할 수 있습니다. 미리 등록된 실명으로 학생이 입장하면 데이터가 자동으로 연결됩니다.
-        성별은 추가할 때 선택하거나, 아래 명단의 <b>👦남/👧여 버튼을 클릭</b>해서 언제든 지정·변경할 수 있습니다.
-      </p>
+      <div className="sm-help">미리 등록한 실명으로 학생이 입장하면 기록이 자동으로 이어집니다. 성별·대화 모드는 명단에서 바로 바꿀 수 있어요.</div>
 
-      {/* 학생 추가 폼 */}
-      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '24px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '16px 20px' }}>
-        <UserPlus size={22} color="var(--primary-color)" />
-        <input
-          type="text"
-          value={newName}
-          onChange={e => setNewName(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleAdd()}
-          placeholder="실명 (예: 홍길동)"
-          style={{ ...inputStyle, flex: '1 1 160px' }}
-        />
-        <input
-          type="text"
-          value={newNickname}
-          onChange={e => setNewNickname(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleAdd()}
-          placeholder="닉네임 (선택, 미입력 시 실명)"
-          style={{ ...inputStyle, flex: '1 1 200px' }}
-        />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'white', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '4px 6px 4px 12px' }}>
-          <span style={{ fontSize: '0.9rem', color: '#718096', fontWeight: 'bold' }}>성별</span>
-          <button
-            onClick={() => setNewGender('남')}
-            style={{
-              padding: '12px 18px', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer',
-              border: newGender === '남' ? '2px solid #2b6cb0' : '1px solid #cbd5e1',
-              background: newGender === '남' ? '#ebf8ff' : 'white', color: '#2b6cb0'
-            }}
-          >
-            👦 남
-          </button>
-          <button
-            onClick={() => setNewGender('여')}
-            style={{
-              padding: '12px 18px', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer',
-              border: newGender === '여' ? '2px solid #b83280' : '1px solid #cbd5e1',
-              background: newGender === '여' ? '#fff5f7' : 'white', color: '#b83280'
-            }}
-          >
-            👧 여
-          </button>
-        </div>
-        <button
-          onClick={handleAdd}
-          disabled={isAdding}
-          style={{
-            padding: '12px 24px', background: isAdding ? '#a0aec0' : 'var(--primary-color)', color: 'white',
-            border: 'none', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem',
-            cursor: isAdding ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
-          }}
-        >
-          <UserPlus size={18} /> {isAdding ? '추가 중...' : '학생 추가'}
-        </button>
-        <button
-          onClick={() => setIsBulkOpen(true)}
-          style={{
-            padding: '12px 20px', background: 'white', color: 'var(--primary-color)',
-            border: '1px solid var(--primary-color)', borderRadius: '12px', fontWeight: 'bold', fontSize: '1rem',
-            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px'
-          }}
-        >
-          <ClipboardList size={18} /> 명단 일괄 등록
-        </button>
-        <button
-          onClick={handlePurgeTranscripts}
-          disabled={isPurging || transcriptCount === 0}
-          title="학기 말 등 보관 기간이 끝났을 때, 저장된 대화 원문만 삭제합니다. 지목·갈등·외로움·기분 신호와 처방은 유지됩니다."
-          style={{
-            marginLeft: 'auto', padding: '12px 18px', background: 'white', color: transcriptCount === 0 ? '#a0aec0' : '#c53030',
-            border: `1px solid ${transcriptCount === 0 ? '#e2e8f0' : '#feb2b2'}`, borderRadius: '12px', fontWeight: 'bold', fontSize: '0.92rem',
-            cursor: isPurging || transcriptCount === 0 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px'
-          }}
-        >
-          🔒 {isPurging ? '삭제 중...' : `대화 원문 전체 삭제 (${transcriptCount}명)`}
-        </button>
+      <div className="sm-add">
+        <UserPlus size={18} color="var(--primary-color)" />
+        <input type="text" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="실명 (예: 홍길동)" />
+        <input type="text" value={newNickname} onChange={e => setNewNickname(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdd()} placeholder="닉네임 (선택)" />
+        <div className="sm-gwrap"><G g="남" active={newGender === '남'} onClick={() => setNewGender('남')} /><G g="여" active={newGender === '여'} onClick={() => setNewGender('여')} /></div>
+        <button className="btn btn-primary" onClick={handleAdd} disabled={isAdding}><UserPlus size={16} /> {isAdding ? '추가 중…' : '추가'}</button>
       </div>
 
-      {/* 학생 목록 테이블 */}
-      <div style={{ overflowX: 'auto', background: 'white', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+      <div className="sm-table-wrap">
+        <table className="sm-table">
+          <colgroup><col style={{ width: '56px' }} /><col style={{ width: '120px' }} /><col style={{ width: '150px' }} /><col /><col style={{ width: '90px' }} /><col style={{ width: '110px' }} /><col style={{ width: '56px' }} /></colgroup>
           <thead>
-            <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-              <th style={{ padding: '16px 20px', color: '#4a5568', fontWeight: 'bold' }}>캐릭터</th>
-              <th style={{ padding: '16px 20px', color: '#4a5568', fontWeight: 'bold' }}>실명</th>
-              <th style={{ padding: '16px 20px', color: '#4a5568', fontWeight: 'bold' }}>성별</th>
-              <th style={{ padding: '16px 20px', color: '#4a5568', fontWeight: 'bold' }}>닉네임</th>
-              <th style={{ padding: '16px 20px', color: '#4a5568', fontWeight: 'bold' }}>상태</th>
-              <th style={{ padding: '16px 20px', color: '#4a5568', fontWeight: 'bold' }} title="관계 태그·하루 상한 없이 대화만. 위기 알림은 유지">대화 모드</th>
-              <th style={{ padding: '16px 20px', color: '#4a5568', fontWeight: 'bold', textAlign: 'center' }}>삭제</th>
+            <tr>
+              <th></th><th>실명</th><th>성별</th><th>닉네임</th><th>상태</th><th title="관계 태그·하루 상한 없이 대화만. 위기 알림은 유지">대화 모드</th><th></th>
             </tr>
           </thead>
           <tbody>
             {studentsData.length === 0 ? (
-              <tr>
-                <td colSpan="7" style={{ padding: '32px', textAlign: 'center', color: '#a0aec0' }}>등록된 학생이 없습니다. 위에서 학생을 추가해보세요!</td>
-              </tr>
+              <tr><td colSpan="7" className="sm-empty">등록된 학생이 없어요. 위에서 추가하거나 명단을 붙여 넣으세요.</td></tr>
             ) : (
               studentsData.map((student, idx) => (
-                <tr key={student.id || idx} style={{ borderBottom: '1px solid #edf2f7', transition: 'background 0.2s' }}>
-                  <td style={{ padding: '16px 20px', fontSize: '1.5rem' }}>{student.avatar || '👤'}</td>
-                  <td style={{ padding: '16px 20px', fontWeight: 'bold', color: '#2d3748' }}>{student.realName}</td>
-                  <td style={{ padding: '16px 20px' }}>
-                    <div style={{ display: 'flex', gap: '4px' }} title="클릭해서 성별을 지정/변경할 수 있습니다">
-                      <button
-                        onClick={() => handleSetGender(student.id, '남')}
-                        style={{
-                          padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer',
-                          border: student.gender === '남' ? '1.5px solid #2b6cb0' : '1px solid #e2e8f0',
-                          background: student.gender === '남' ? '#ebf8ff' : 'white',
-                          color: student.gender === '남' ? '#2b6cb0' : '#cbd5e1'
-                        }}
-                      >
-                        👦 남
-                      </button>
-                      <button
-                        onClick={() => handleSetGender(student.id, '여')}
-                        style={{
-                          padding: '4px 10px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer',
-                          border: student.gender === '여' ? '1.5px solid #b83280' : '1px solid #e2e8f0',
-                          background: student.gender === '여' ? '#fff5f7' : 'white',
-                          color: student.gender === '여' ? '#b83280' : '#cbd5e1'
-                        }}
-                      >
-                        👧 여
-                      </button>
-                    </div>
+                <tr key={student.id || idx}>
+                  <td className="sm-avatar">{student.avatar || '👤'}</td>
+                  <td className="sm-name">{student.realName}</td>
+                  <td><div className="sm-gwrap"><G size="sm" g="남" active={student.gender === '남'} onClick={() => handleSetGender(student.id, '남')} /><G size="sm" g="여" active={student.gender === '여'} onClick={() => handleSetGender(student.id, '여')} /></div></td>
+                  <td className="sm-nick" title={student.nickname}>{student.nickname}</td>
+                  <td><span className={`sm-mood ${student.mood === '건강' ? 'good' : student.mood === '보통' ? 'mid' : student.mood ? 'bad' : ''}`}>{student.mood || '—'}</span></td>
+                  <td>
+                    <button onClick={() => handleToggleFreeTalk(student)} className={`sm-mode ${student.freeTalk ? 'free' : ''}`} title={student.freeTalk ? '자유 대화 모드: 관계·기술 태그와 하루 상한 없음, 위기 알림만 유지. 클릭하면 일반 모드로' : '일반 모드: 관계 신호·성장 기록 수집. 클릭하면 자유 대화 모드로'}>{student.freeTalk ? '🍃 자유 대화' : '일반'}</button>
                   </td>
-                  <td style={{ padding: '16px 20px', color: '#4a5568' }}>{student.nickname}</td>
-                  <td style={{ padding: '16px 20px' }}>
-                    <span style={{
-                      padding: '6px 12px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 'bold',
-                      background: student.mood === '건강' ? '#f0fff4' : student.mood === '보통' ? '#fffff0' : '#fff5f5',
-                      color: student.mood === '건강' ? '#38a169' : student.mood === '보통' ? '#d69e2e' : '#e53e3e'
-                    }}>
-                      {student.mood || '알 수 없음'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '16px 20px' }}>
-                    <button
-                      onClick={() => handleToggleFreeTalk(student)}
-                      title={student.freeTalk ? '자유 대화 모드: 관계·기술 태그와 하루 상한 없음, 위기 알림만 유지. 클릭하면 일반 모드로' : '일반 모드: 관계 신호·성장 기록 수집. 클릭하면 자유 대화 모드로'}
-                      style={{
-                        padding: '4px 10px', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap',
-                        border: student.freeTalk ? '1.5px solid #805ad5' : '1px solid #e2e8f0',
-                        background: student.freeTalk ? '#faf5ff' : 'white',
-                        color: student.freeTalk ? '#805ad5' : '#a0aec0'
-                      }}
-                    >
-                      {student.freeTalk ? '🍃 자유 대화' : '일반'}
-                    </button>
-                  </td>
-                  <td style={{ padding: '16px 20px', textAlign: 'center' }}>
-                    <button
-                      onClick={() => handleDelete(student.id, student.realName)}
-                      style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '8px', borderRadius: '8px', color: '#e53e3e', transition: 'background 0.2s' }}
-                      onMouseOver={e => e.currentTarget.style.background = '#fff5f5'}
-                      onMouseOut={e => e.currentTarget.style.background = 'transparent'}
-                      title="학생 삭제"
-                    >
-                      <Trash2 size={20} />
-                    </button>
-                  </td>
+                  <td className="sm-del"><button onClick={() => handleDelete(student.id, student.realName)} title="학생 삭제"><Trash2 size={16} /></button></td>
                 </tr>
               ))
             )}

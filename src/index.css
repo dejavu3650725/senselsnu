@@ -531,3 +531,41 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary-color) !
 .ti-btn.ghost { background: #fff; color: #2d3748; border: 1px solid #cbd5e1; box-shadow: none; }
 @media (max-width: 860px) { .tree-intro-grid { grid-template-columns: 1fr; } }
 @media print { body * { visibility: hidden; } .tree-intro, .tree-intro * { visibility: visible; } .tree-intro { position: static; background: none; backdrop-filter: none; padding: 0; } .tree-intro-card { box-shadow: none; max-height: none; border-radius: 0; } .tree-intro-actions { display: none; } }
+
+/* ===== 학생 관리 ===== */
+.sm-page { padding: 22px 24px; display: flex; flex-direction: column; gap: 12px; flex: 1; min-width: 0; }
+.sm-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sm-title { display: flex; align-items: center; gap: 8px; font-size: 1.25rem; font-weight: 800; color: var(--text-strong); }
+.sm-count { font-size: 0.78rem; font-weight: 700; color: var(--primary-color); background: var(--primary-light); border-radius: 999px; padding: 2px 10px; }
+.sm-actions { display: flex; gap: 8px; align-items: center; }
+.sm-actions .btn { padding: 8px 12px; font-size: 0.86rem; }
+.sm-purge { background: transparent; border: 1px solid var(--border); color: var(--text-muted); border-radius: 10px; padding: 8px 12px; font-size: 0.82rem; cursor: pointer; }
+.sm-purge:hover:not(:disabled) { color: var(--danger); border-color: #feb2b2; }
+.sm-purge:disabled { opacity: 0.5; cursor: not-allowed; }
+.sm-help { font-size: 0.86rem; color: var(--text-muted); }
+.sm-add { display: grid; grid-template-columns: auto minmax(140px, 1fr) minmax(140px, 1fr) auto auto; gap: 8px; align-items: center; background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; }
+.sm-add input { width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border-strong); font-size: 0.92rem; outline: none; background: #fff; }
+.sm-add input:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px var(--primary-light); }
+.sm-add .btn { padding: 9px 14px; font-size: 0.88rem; white-space: nowrap; }
+.sm-gwrap { display: inline-flex; gap: 4px; }
+.sm-g { border-radius: 999px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: background 0.12s, border-color 0.12s; }
+.sm-table-wrap { background: #fff; border: 1px solid var(--border); border-radius: 14px; overflow: auto; }
+.sm-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.sm-table th { text-align: left; font-size: 0.78rem; font-weight: 700; color: var(--text-muted); padding: 10px 12px; background: var(--surface-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.sm-table td { padding: 8px 12px; border-bottom: 1px solid #edf2f7; vertical-align: middle; white-space: nowrap; }
+.sm-table tr:last-child td { border-bottom: none; }
+.sm-table tbody tr:hover td { background: #fafbff; }
+.sm-avatar { font-size: 1.3rem; text-align: center; }
+.sm-name { font-weight: 800; color: var(--text-strong); }
+.sm-nick { color: var(--text-main); overflow: hidden; text-overflow: ellipsis; }
+.sm-mood { display: inline-block; font-size: 0.76rem; font-weight: 700; border-radius: 999px; padding: 3px 10px; background: var(--surface-3); color: var(--text-faint); }
+.sm-mood.good { background: #f0fff4; color: #2f855a; }
+.sm-mood.mid { background: #fffbea; color: #b7791f; }
+.sm-mood.bad { background: #fff5f5; color: #c53030; }
+.sm-mode { border-radius: 999px; padding: 3px 10px; font-size: 0.76rem; font-weight: 700; cursor: pointer; border: 1px solid var(--border); background: #fff; color: var(--text-faint); white-space: nowrap; }
+.sm-mode.free { border-color: #805ad5; background: #faf5ff; color: #805ad5; }
+.sm-del { text-align: center; }
+.sm-del button { background: transparent; border: none; color: var(--text-faint); cursor: pointer; padding: 6px; border-radius: 8px; display: inline-flex; }
+.sm-del button:hover { color: var(--danger); background: var(--danger-bg); }
+.sm-empty { text-align: center; color: var(--text-faint); padding: 28px !important; white-space: normal !important; }
+@media (max-width: 820px) { .sm-add { grid-template-columns: 1fr 1fr; } .sm-add > svg { display: none; } }
