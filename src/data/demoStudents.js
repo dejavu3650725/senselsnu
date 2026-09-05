@@ -222,7 +222,7 @@ const enrich = (s, i) => {
   return out;
 };
 
-export const generateDemoStudents = () => baseDemoStudents().map(enrich);
+export const generateDemoStudents = () => baseDemoStudents().map(enrich).map(s => ({ ...s, messages: [] })); // 원문은 저장하지 않는다
 
 /** 학급 단위 시연 데이터 — 학급 문서의 이번 주 미션, 최근 발행 리포트, 가정 회신, 전자 동의 제출 */
 export const generateDemoClassExtras = (students) => {

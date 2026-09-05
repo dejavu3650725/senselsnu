@@ -76,6 +76,12 @@ const TeacherDashboard = () => {
         students.push({ id: doc.id, ...doc.data() });
       });
       setStudentsData(students);
+      // 원문 저장 기능 제거(2026.9): 예전에 남은 대화 원문은 담임이 열람할 수 없도록 조용히 비운다 (신호·알림·처방은 유지)
+      const stale = students.filter(s => Array.isArray(s.messages) && s.messages.length > 0);
+      if (stale.length && !window.__senselPurging) {
+        window.__senselPurging = true;
+        Promise.all(stale.map(s => updateDoc(doc(db, 'students', s.id), { messages: [], transcriptsPurgedAt: new Date().toISOString() }).catch(() => {}))).finally(() => { window.__senselPurging = false; });
+      }
     }, (error) => {
       console.error("Error fetching students: ", error);
     });
