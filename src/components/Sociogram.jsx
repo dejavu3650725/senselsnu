@@ -310,12 +310,19 @@ const Sociogram = ({ studentsData = [], teacherProfile }) => {
           onClick={() => setSelectedId(null)}
         >
           <defs>
-            <marker id="arrowGray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <marker id="arrowGray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
               <path d="M 0 0 L 10 5 L 0 10 z" fill="rgba(203,213,225,0.95)" />
             </marker>
             <marker id="arrowGold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
               <path d="M 0 0 L 10 5 L 0 10 z" fill="#ffd700" />
             </marker>
+            <filter id="goldGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="2.2" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
             <filter id="starGlow" x="-80%" y="-80%" width="260%" height="260%">
               <feGaussianBlur stdDeviation="2.4" result="blur" />
               <feMerge>
@@ -340,12 +347,15 @@ const Sociogram = ({ studentsData = [], teacherProfile }) => {
               : (active ? 'rgba(203,213,225,0.55)' : 'rgba(148,163,184,0.06)');
             return (
               <g key={idx}>
+                {l.mutual && active && (
+                  <line x1={ends.x1} y1={ends.y1} x2={ends.x2} y2={ends.y2} stroke="rgba(255,215,0,0.4)" strokeWidth={3} strokeLinecap="round" filter="url(#goldGlow)" pointerEvents="none" />
+                )}
                 <line
                   x1={ends.x1} y1={ends.y1} x2={ends.x2} y2={ends.y2}
                   stroke={stroke}
-                  strokeWidth={l.mutual ? 2.6 : 1.4}
-                  markerEnd={active ? (l.mutual ? 'url(#arrowGold)' : 'url(#arrowGray)') : undefined}
-                  markerStart={active && l.mutual ? 'url(#arrowGold)' : undefined}
+                  strokeWidth={l.mutual ? 1.4 : 1.1}
+                  strokeLinecap="round"
+                  markerEnd={active && !l.mutual ? 'url(#arrowGray)' : undefined}
                 >
                   <title>
                     {l.mutual
