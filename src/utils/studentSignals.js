@@ -8,13 +8,15 @@
  * - 외부 AI에 보낼 때는 buildAnonymizedProfile()로 익명 ID(S1, S2...)만 사용합니다.
  */
 
-export const CASEL = {
-  selfAwareness: { key: 'selfAwareness', label: '자기 인식', desc: '자신의 감정·생각·가치를 알아차리기' },
-  selfManagement: { key: 'selfManagement', label: '자기 관리', desc: '감정과 행동을 조절하고 스트레스 다루기' },
-  socialAwareness: { key: 'socialAwareness', label: '사회적 인식', desc: '타인의 관점을 이해하고 공감하기' },
-  relationshipSkills: { key: 'relationshipSkills', label: '관계 기술', desc: '건강한 관계 맺기·협력·갈등 해결' },
-  responsibleDecision: { key: 'responsibleDecision', label: '책임 있는 의사결정', desc: '결과를 고려한 건설적 선택' },
-};
+import { COMPETENCIES, focusForSignals, shortName } from './selFramework.js';
+
+/**
+ * 초점 역량 사전: 교육부 「한국형 사회정서교육」 4영역·6핵심역량 (src/data/selFramework.json)
+ * key: selfAwareness | selfManagement | relationshipAwareness | relationshipManagement | communityValues | mentalHealthAwareness
+ * (구버전 호환을 위해 CASEL 이름으로도 export)
+ */
+export const KSEL = Object.fromEntries(Object.entries(COMPETENCIES).map(([k, c]) => [k, { key: k, label: shortName(k), fullName: c.name, domain: c.domainName, desc: c.elements.join(', ') }]));
+export const CASEL = KSEL;
 
 const stripParticle = (s = '') => String(s).replace(/[은는이가랑하고의야아]$/g, '').trim();
 
@@ -128,7 +130,6 @@ const recentUserMessages = (student, limit = 8) =>
 export const assessStudent = (node, graph) => {
   const s = node.student;
   const signals = [];
-  const focus = new Set();
   let score = 0;
 
   if (node.unackedAlerts.length > 0) {
@@ -143,7 +144,6 @@ export const assessStudent = (node, graph) => {
   if (s.mood === '힘듦') {
     signals.push({ type: 'mood', label: '기분 힘듦', detail: '스스로 보고한 정서 상태', weight: 40 });
     score += 40;
-    focus.add('selfAwareness'); focus.add('selfManagement');
   } else if (s.mood === '보통') {
     score += 5;
   }
@@ -151,20 +151,17 @@ export const assessStudent = (node, graph) => {
   if (node.mutualConflicts.size > 0) {
     signals.push({ type: 'mutualConflict', label: '상호 갈등', detail: `${node.mutualConflicts.size}명과 서로 갈등 언급`, ids: [...node.mutualConflicts], weight: 35 });
     score += 35;
-    focus.add('relationshipSkills'); focus.add('responsibleDecision');
   }
   const oneWay = [...node.conflicts].filter(id => !node.mutualConflicts.has(id));
   if (oneWay.length > 0) {
     signals.push({ type: 'conflict', label: '갈등 신호', detail: `${oneWay.length}명과의 갈등을 스스로 언급`, ids: oneWay, weight: 20 });
     score += 20;
-    focus.add('relationshipSkills'); focus.add('socialAwareness');
   }
   const mentionedBy = [];
   graph.forEach((other, oid) => { if (oid !== s.id && other.conflicts.has(s.id) && !node.conflicts.has(oid)) mentionedBy.push(oid); });
   if (mentionedBy.length > 0) {
     signals.push({ type: 'conflictTarget', label: '갈등 상대로 언급됨', detail: `${mentionedBy.length}명이 이 학생과의 갈등을 언급`, ids: mentionedBy, weight: 15 });
     score += 15;
-    focus.add('socialAwareness');
   }
 
   // 반복 호소: 같은 친구를 3회 이상 갈등 상대로 언급 → 사실 확인 전 판단 보류 (위험 점수는 크게 올리지 않음)
@@ -173,24 +170,20 @@ export const assessStudent = (node, graph) => {
     const [tid, n] = repeated.sort((a, b) => b[1] - a[1])[0];
     signals.push({ type: 'repeatedComplaint', label: '반복 호소', detail: `${nameOf(graph, tid)}에 대해 ${n}회 언급 — 학생의 주관적 보고, 사실 확인 필요`, ids: [tid], weight: 8 });
     score += 8;
-    focus.add('socialAwareness'); focus.add('responsibleDecision');
   }
 
   if (node.lonelyCount > 0) {
     signals.push({ type: 'lonely', label: '외로움 신호', detail: `${node.lonelyCount}회 표현`, weight: 25 + Math.min(15, node.lonelyCount * 5) });
     score += 25 + Math.min(15, node.lonelyCount * 5);
-    focus.add('relationshipSkills'); focus.add('selfAwareness');
   }
 
   const isolated = node.received === 0 && node.mutual.size === 0;
   if (isolated) {
     signals.push({ type: 'isolated', label: '관계망 고립', detail: '긍정 지목을 한 번도 받지 못함', weight: 25 });
     score += 25;
-    focus.add('relationshipSkills'); focus.add('socialAwareness');
   } else if (node.received === 0) {
     signals.push({ type: 'lowReceived', label: '받은 지목 없음', detail: '지목은 했지만 받은 지목이 없음', weight: 12 });
     score += 12;
-    focus.add('relationshipSkills');
   }
 
   let tier = 'ok';
@@ -198,14 +191,16 @@ export const assessStudent = (node, graph) => {
   else if (score >= 40) tier = 'high';
   else if (score >= 15) tier = 'watch';
 
-  if (focus.size === 0 && tier !== 'ok') focus.add('selfAwareness');
+  // 신호 → 한국형 6핵심역량 초점 (selFramework.json signalMapping)
+  const focusKeys = focusForSignals(signals.map(sg => sg.type));
+  if (focusKeys.length === 0 && tier !== 'ok') focusKeys.push('selfAwareness');
 
   return {
     id: s.id,
     tier,
     score,
     signals,
-    focus: [...focus].map(k => CASEL[k]),
+    focus: focusKeys.map(k => KSEL[k]),
     isolated,
     quickAction: buildQuickAction(signals, node, graph),
   };

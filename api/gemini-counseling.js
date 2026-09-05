@@ -16,6 +16,17 @@
  */
 
 import { verifyRequest } from './_auth.js';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const FW = require('../src/data/selFramework.json'); // 교육부 한국형 사회정서교육 프레임워크 색인
+const LEVEL_SHORT = { elementary_low: '초(저)', elementary_high: '초(고)', middle: '중', high: '고' };
+const DOMAIN_TO_CATEGORY = { self: '자기', relationship: '대인관계·공동체', community: '대인관계·공동체', mentalHealth: '마음건강' };
+/** 교사 관심 주제 → 교육부 아침조회 대화 주제 씨앗 (학교급별) */
+const topicSeeds = (level, focusTopics = []) => {
+  const lv = LEVEL_SHORT[level] || '초(고)';
+  const cats = new Set(focusTopics.map(t => DOMAIN_TO_CATEGORY[FW.conversationGoals.focusTopicToDomain[t]]).filter(Boolean));
+  return FW.morningTalkTopics.items.filter(t => t.level === lv && (cats.size === 0 || cats.has(t.category))).map(t => t.topic);
+};
 
 const getAiEndpoint = () => {
   if (process.env.VERTEX_API_KEY) {
@@ -51,12 +62,13 @@ const LEVEL_NOTE = {
 };
 
 const SEL_DIGEST = `
-[대화용 SEL 핵심 지침]
-- 자기 인식: 학생이 말한 감정에 이름을 붙여 되돌려줘. ("그건 서운했다는 마음 같아.")
-- 자기 관리: 힘든 감정이 보이면 지금 할 수 있는 작은 진정법 1가지만 제안해. (숨 3번, 물 한 모금, 좋아하는 것 떠올리기)
-- 사회적 인식: 친구 이야기가 나오면 "그 친구는 어떤 마음이었을까?"처럼 상대 관점을 한 번 물어봐. 단, 학생 감정을 먼저 충분히 받아준 뒤에.
-- 관계 기술: 학생이 원하면 친구에게 할 말을 같이 만들어 봐. ("나는 ~해서 ~했어. 다음엔 ~하면 좋겠어.")
-- 책임 있는 의사결정: 선택지를 2~3개 주고 각각 어떤 결과가 올지 함께 생각해.
+[대화용 지침 — 교육부 「한국형 사회정서교육」 6핵심역량]
+- 자기인식: 학생이 말한 감정에 이름을 붙여 되돌려주고, 잘한 점·강점을 알아차리게 해. ("그건 서운했다는 마음 같아.")
+- 자기관리: 힘든 감정이 보이면 지금 할 수 있는 작은 진정법 1가지만 제안해. (숨 3번, 물 한 모금, 좋아하는 것 떠올리기)
+- 관계인식: 친구 이야기가 나오면 "그 친구는 어떤 마음이었을까?"처럼 상대 관점을 한 번 물어봐. 단, 학생 감정을 먼저 충분히 받아준 뒤에. 다른 점을 존중해.
+- 관계관리: 학생이 원하면 친구에게 할 말(나-전달법)을 같이 만들어 봐. ("나는 ~해서 ~했어. 다음엔 ~하면 좋겠어.") 갈등은 해결 방법을 2~3개 놓고 고르게 해.
+- 공동체 가치: 우리 반에서 내가 할 수 있는 역할·규칙·협력을 자연스럽게 떠올리게 해. 누가 괴롭힘을 당하는 걸 봤다면 방관하지 않는 방법을 함께 생각해.
+- 정신건강 인식·관리: 마음이 힘들 때 도움을 요청하는 건 용기라는 걸 전해. 선생님·Wee클래스·보호자 등 도움 받을 곳을 알려줘.
 - 강점 기반: 대화 중 학생이 잘한 점(솔직하게 말한 것, 친구를 배려한 것)을 한 번은 구체적으로 짚어줘.
 `;
 
@@ -180,6 +192,8 @@ const buildSystemPrompt = ({ chatConfig, ptiser, customPrompt, selLevel, roster,
   s += `\n[말투] ${tone}\n[발달 단계] ${level}\n`;
   s += `[대화 초점] 교사가 정한 이번 시기의 관심 주제: ${topics.join(' / ')}. 학생이 다른 이야기를 꺼내면 그걸 우선 따라가되, 자연스러운 순간에 이 주제로 돌아와.\n`;
   if (cfg.classNote) s += `[학급 상황 메모 (교사)] ${String(cfg.classNote).slice(0, 500)}\n`;
+  const seeds = topicSeeds(selLevel, Array.isArray(cfg.focusTopics) ? cfg.focusTopics : []);
+  if (seeds.length) s += `[대화 씨앗 — 교육부 2026 아침조회 대화 주제(${LEVEL_SHORT[selLevel] || '초(고)'})] 학생이 말할 거리가 없어 보일 때 이 중 하나를 가볍게 꺼내도 좋아: ${seeds.slice(0, 10).join(' / ')}\n`;
 
   const ruleLines = [];
   if (rules.noStudyNag !== false) ruleLines.push('"공부해라", "숙제했니" 같은 학습 잔소리 금지');

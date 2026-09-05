@@ -12,9 +12,11 @@ const TIER_STYLE = {
 };
 
 const COMPETENCY_COLOR = {
+  '자기인식': '#805ad5', '자기관리': '#3182ce', '관계인식': '#38a169', '관계관리': '#dd6b20', '공동체 가치의 인식과 관리': '#d53f8c', '공동체 가치': '#d53f8c', '정신건강 문제의 인식과 관리': '#c53030', '정신건강 인식·관리': '#c53030',
+  // 구버전(CASEL) 호환
   '자기 인식': '#805ad5', '자기 관리': '#3182ce', '사회적 인식': '#38a169', '관계 기술': '#dd6b20', '책임 있는 의사결정': '#d53f8c',
 };
-const compColor = (name) => COMPETENCY_COLOR[name] || '#4a5568';
+const compColor = (name) => COMPETENCY_COLOR[name] || COMPETENCY_COLOR[String(name || '').replace(/\s/g, '')] || '#4a5568';
 
 /** 구조화 처방 → 리포트/인쇄용 텍스트 */
 export const prescriptionToText = (p) => {
@@ -28,6 +30,7 @@ export const prescriptionToText = (p) => {
     lines.push(`${i + 1}. [${a.competency}] ${a.title}`);
     if (a.how) lines.push(`   방법: ${a.how}`);
     if (a.script) lines.push(`   교사 말: "${a.script}"`);
+    if (a.resource) lines.push(`   자료: ${a.resource}`);
   });
   if (p.peerPlan) lines.push(`■ 또래 연결: ${p.peerPlan}`);
   if (p.caution) lines.push(`■ 주의: ${p.caution}`);
@@ -93,7 +96,7 @@ const CustomPrescription = ({ studentsData, teacherProfile, focusStudentId }) =>
         focus: (p.focus || []).map(f => ({ competency: f.competency, why: dz(f.why) })),
         actions: (p.actions || []).map(a => ({
           title: dz(a.title), competency: a.competency, how: dz(a.how), script: dz(a.script),
-          peers: (a.peers || []).map(dz),
+          peers: (a.peers || []).map(dz), resource: a.resource ? String(a.resource) : '',
         })),
         peerPlan: dz(p.peerPlan), caution: dz(p.caution),
         checkpoints: (p.checkpoints || []).map(dz), escalation: dz(p.escalation),
@@ -148,15 +151,15 @@ const CustomPrescription = ({ studentsData, teacherProfile, focusStudentId }) =>
         </div>
       </div>
       <p style={{ color: '#718096', marginBottom: '8px', fontSize: '1rem', paddingLeft: '52px', lineHeight: 1.6 }}>
-        별도 프롬프트 없이, 학생별 기분·관계망·갈등/외로움 신호·대화 내용을 CASEL 5대 역량과 한국형 SEL 매뉴얼에 비추어 분석해
+        별도 프롬프트 없이, 학생별 기분·관계망·갈등/외로움 신호·대화 내용을 교육부 <b>「한국형 사회정서교육」 4영역·6핵심역량</b>과 학교급별 6차시 프로그램·아침조회 대화 주제에 비추어 분석해
         <b> 학생마다 다른 실천 3가지</b>를 제안합니다. 실명은 익명 ID로 바꾼 뒤 분석되며, 이미 제안된 전략은 다른 학생과 겹치지 않게 조정됩니다.
       </p>
       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', paddingLeft: '52px', marginBottom: '24px' }}>
         {Object.values(CASEL).map(c => (
-          <span key={c.key} title={c.desc} style={{ fontSize: '0.75rem', fontWeight: 'bold', color: compColor(c.label), background: `${compColor(c.label)}14`, border: `1px solid ${compColor(c.label)}55`, padding: '3px 10px', borderRadius: '10px' }}>{c.label}</span>
+          <span key={c.key} title={`${c.domain} 영역 — ${c.desc}`} style={{ fontSize: '0.75rem', fontWeight: 'bold', color: compColor(c.label), background: `${compColor(c.label)}14`, border: `1px solid ${compColor(c.label)}55`, padding: '3px 10px', borderRadius: '10px' }}>{c.label}</span>
         ))}
         <span style={{ fontSize: '0.75rem', color: '#a0aec0', alignSelf: 'center' }}>
-          · 적용 매뉴얼: {teacherProfile?.selLevel ? teacherProfile.selLevel : '초등 고학년(기본값)'}
+          · 근거: 교육부 한국형 사회정서교육 프로그램({({ elementary_low: '초등 저학년', elementary_high: '초등 고학년', middle: '중학교', high: '고등학교' })[teacherProfile?.selLevel] || '초등 고학년(기본값)'}) · KEDI·OECD 사회정서역량 조사
         </span>
       </div>
 
@@ -279,6 +282,7 @@ const PrescriptionView = ({ p }) => (
           </div>
           {a.how && <div style={{ fontSize: '0.86rem', color: '#4a5568', lineHeight: 1.6, marginTop: '4px', wordBreak: 'keep-all' }}>{a.how}</div>}
           {a.script && <div style={{ fontSize: '0.85rem', color: '#2b6cb0', marginTop: '6px', fontStyle: 'italic', lineHeight: 1.5 }}>🗣 "{a.script}"</div>}
+          {a.resource && <div style={{ fontSize: '0.75rem', color: '#718096', marginTop: '4px' }}>📚 {a.resource}</div>}
         </div>
       ))}
     </div>

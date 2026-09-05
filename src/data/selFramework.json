@@ -1,0 +1,317 @@
+{
+  "meta": {
+    "name": "센셀 핵심 로직 — 공교육 공식 사회정서교육 프레임워크",
+    "version": "2026-09-05",
+    "sources": [
+      {
+        "id": "moe-2026-press",
+        "title": "교육부 보도자료 「2026학년도 모든 학교에서의 사회정서교육 확대를 위한 맞춤형 현장 지원 강화」",
+        "publisher": "교육부 학생건강안전정책국 학생정서지원과",
+        "date": "2026-01-27",
+        "url": "https://ksee.edunet.net"
+      },
+      {
+        "id": "moe-ksel-program",
+        "title": "한국형 사회정서교육 프로그램 (초등 저학년·고학년·중·고 4종, 각 6차시) — 총론 및 교사용 지도서",
+        "publisher": "교육부 (한국형 사회정서성장지원 모델 마련 연구, 2024 기반)",
+        "note": "src/data/selData.js에 전문 수록. 본 JSON은 그 구조를 색인한 것"
+      },
+      {
+        "id": "kedi-oecd-sses",
+        "title": "OECD ESP 사회정서역량 조사 국제공동연구(Ⅳ): 본조사 결과 분석 (RR 2020-07)",
+        "publisher": "한국교육개발원(KEDI), 김현진 외",
+        "date": "2020-12",
+        "role": "측정·근거 프레임 (5영역 15하위요인, 위험군 특성, 영향 요인)"
+      }
+    ],
+    "layering": "1층: 교육부 한국형 4영역·6핵심역량(고정 뼈대) / 2층: 시도교육청 성취기준(교체 가능, seoulStandards 슬롯) / 근거층: OECD SSES 측정 프레임"
+  },
+
+  "definition": {
+    "ko": "학생들의 긍정적인 성장과 정신건강 증진을 목표로 사회정서역량을 강화하는 학교 기반의 보편적 마음건강 교육",
+    "coreCompetenciesShort": ["자기감정 인식·관리", "관계인식·관리", "공동체 가치 인식·관리", "정신건강 인식·관리"],
+    "policyContext": "국정과제 101-5 학생 마음건강 지원을 위한 다층적 지원체계 구축 / 2025 시범 도입 후 2026학년도 전 학교 확대 / 에듀넷 ksee.edunet.net 전용 서비스(2026.1.29 개통) / 선도교사 1,500명 연수",
+    "evidence": "교사연구회 소속 학생 1,176명 사전-사후 설문: 초3 71.4→81.4, 중2 70→75, 고2 74.2→81.3"
+  },
+
+  "domains": [
+    {
+      "key": "self",
+      "name": "자기",
+      "competencies": [
+        { "key": "selfAwareness", "name": "자기인식", "elements": ["자신의 생각·감정·행동의 인식과 이해", "스트레스 인식", "강점과 약점 인식", "자기효능감"] },
+        { "key": "selfManagement", "name": "자기관리", "elements": ["마음챙김 훈련", "부정적 생각과 감정에 대처하기", "스트레스 조절하기", "자기 조절력 향상", "개인적 목표·과제 설정 및 추진"] }
+      ]
+    },
+    {
+      "key": "relationship",
+      "name": "관계",
+      "competencies": [
+        { "key": "relationshipAwareness", "name": "관계인식", "elements": ["타인의 생각·감정·행동의 존중", "공감하기", "다양성의 수용"] },
+        { "key": "relationshipManagement", "name": "관계관리", "elements": ["자기주장 및 의사소통의 기술", "대인관계 기술", "갈등해결"] }
+      ]
+    },
+    {
+      "key": "community",
+      "name": "공동체",
+      "competencies": [
+        { "key": "communityValues", "name": "공동체 가치의 인식과 관리", "elements": ["사회적 측면에서의 자기성찰", "소속감", "책임감", "주도성", "협력하기", "규칙 준수", "정당하지 않은 압력에 대응하기(방관자가 되지 않기)", "문제 확인 및 해결"] }
+      ]
+    },
+    {
+      "key": "mentalHealth",
+      "name": "마음건강",
+      "competencies": [
+        { "key": "mentalHealthAwareness", "name": "정신건강 문제의 인식과 관리", "elements": ["정신건강 이해와 관리", "정신질환 이해와 대처", "정신질환을 대하는 적절한 태도(낙인 감소)", "자해 및 자살 예방", "정신건강 관련 지원 및 도움 요청"] }
+      ]
+    }
+  ],
+
+  "caselCrosswalk": {
+    "selfAwareness": "Self-awareness",
+    "selfManagement": "Self-management",
+    "relationshipAwareness": "Social awareness",
+    "relationshipManagement": "Relationship skills",
+    "communityValues": "Responsible decision-making (+ community belonging)",
+    "mentalHealthAwareness": "(CASEL 미포함 — 한국형 고유 영역: 정신건강 리터러시·도움 요청)"
+  },
+
+  "programIndex": {
+    "note": "학교급별 6차시. 영역 라벨 → 핵심역량 매핑: 마음건강→mentalHealthAwareness, 자기인식→selfAwareness, 자기조절→selfManagement, 대인관계→relationshipAwareness+relationshipManagement, 공동체→communityValues",
+    "elementary_low": [
+      { "session": 1, "domainLabel": "마음건강", "title": "마음건강! 마음먹기!", "competencies": ["mentalHealthAwareness"] },
+      { "session": 2, "domainLabel": "자기인식", "title": "나의 감정을 알아차릴 수 있어요", "competencies": ["selfAwareness"] },
+      { "session": 3, "domainLabel": "자기조절", "title": "이럴 땐, 이렇게 해 볼까?", "competencies": ["selfManagement"] },
+      { "session": 4, "domainLabel": "대인관계", "title": "친구의 마음을 알아봐요", "competencies": ["relationshipAwareness", "relationshipManagement"] },
+      { "session": 5, "domainLabel": "공동체", "title": "어울리며 함께 하는 우리", "competencies": ["communityValues"] },
+      { "session": 6, "domainLabel": "마음건강", "title": "내 마음을 소중히 돌봐요", "competencies": ["mentalHealthAwareness"] }
+    ],
+    "elementary_high": [
+      { "session": 1, "domainLabel": "마음건강", "title": "사회정서역량을 키워요", "competencies": ["mentalHealthAwareness"] },
+      { "session": 2, "domainLabel": "자기인식", "title": "다양한 감정을 이해해요", "competencies": ["selfAwareness"] },
+      { "session": 3, "domainLabel": "자기조절", "title": "자기조절 기술을 배워요", "competencies": ["selfManagement"] },
+      { "session": 4, "domainLabel": "대인관계", "title": "경청과 공감을 실천해요", "competencies": ["relationshipAwareness", "relationshipManagement"] },
+      { "session": 5, "domainLabel": "공동체", "title": "소중한 공동체를 지켜요", "competencies": ["communityValues"] },
+      { "session": 6, "domainLabel": "마음건강", "title": "너와 나의 마음건강을 지켜요", "competencies": ["mentalHealthAwareness"] }
+    ],
+    "middle": [
+      { "session": 1, "domainLabel": "마음건강", "title": "행복한 삶을 위한 사회정서교육", "competencies": ["mentalHealthAwareness"] },
+      { "session": 2, "domainLabel": "자기인식", "title": "다양한 감정 이해하기", "competencies": ["selfAwareness"] },
+      { "session": 3, "domainLabel": "자기조절", "title": "자기조절 기술 익히기", "competencies": ["selfManagement"] },
+      { "session": 4, "domainLabel": "대인관계", "title": "갈등 해결 레시피 만들기", "competencies": ["relationshipAwareness", "relationshipManagement"] },
+      { "session": 5, "domainLabel": "공동체", "title": "함께 풀어가는 공동체 문제", "competencies": ["communityValues"] },
+      { "session": 6, "domainLabel": "마음건강", "title": "마음건강 문제 함께 해결하기", "competencies": ["mentalHealthAwareness"] }
+    ],
+    "high": [
+      { "session": 1, "domainLabel": "마음건강", "title": "사회정서역량을 키워요", "competencies": ["mentalHealthAwareness"] },
+      { "session": 2, "domainLabel": "자기인식", "title": "다양한 감정을 이해해요", "competencies": ["selfAwareness"] },
+      { "session": 3, "domainLabel": "자기조절", "title": "자기조절 기술을 배워요", "competencies": ["selfManagement"] },
+      { "session": 4, "domainLabel": "대인관계", "title": "경청과 공감을 실천해요", "competencies": ["relationshipAwareness", "relationshipManagement"] },
+      { "session": 5, "domainLabel": "공동체", "title": "소중한 공동체를 지켜요", "competencies": ["communityValues"] },
+      { "session": 6, "domainLabel": "마음건강", "title": "너와 나의 마음건강을 지켜요", "competencies": ["mentalHealthAwareness"] }
+    ]
+  },
+
+  "morningTalkTopics": {
+    "note": "교육부 2026 맞춤형 콘텐츠 '아침조회 대화' 주제 목록(붙임1). 범주(자기/대인관계·공동체/마음건강) × 영역 × 학교급(초저/초고/중/고). 챗봇 대화 씨앗·처방 활동 제안에 사용",
+    "levelKeys": { "초(저)": "elementary_low", "초(고)": "elementary_high", "중": "middle", "고": "high" },
+    "items": [
+      { "category": "자기", "area": "자기 이해", "level": "초(저)", "topic": "내가 좋아하는 것" },
+      { "category": "자기", "area": "자기 이해", "level": "초(고)", "topic": "나의 강점" },
+      { "category": "자기", "area": "자기 이해", "level": "중", "topic": "나의 강점 활용" },
+      { "category": "자기", "area": "자기 이해", "level": "고", "topic": "나의 강점을 활용한 계획" },
+      { "category": "자기", "area": "자기 이해", "level": "초(저)", "topic": "나를 이루고 있는 것" },
+      { "category": "자기", "area": "자기 이해", "level": "초(고)", "topic": "나의 정체성" },
+      { "category": "자기", "area": "자기 이해", "level": "중", "topic": "정체성 형성 요인" },
+      { "category": "자기", "area": "자기 이해", "level": "고", "topic": "정체성 혼란" },
+      { "category": "자기", "area": "자기 이해", "level": "초(저)", "topic": "나에게 도움을 주는 여러 가지" },
+      { "category": "자기", "area": "자기 이해", "level": "초(고)", "topic": "나를 둘러싼 환경" },
+      { "category": "자기", "area": "자기 이해", "level": "중", "topic": "정체성 형성에 도움이 되는 자원" },
+      { "category": "자기", "area": "자기 이해", "level": "고", "topic": "나의 자원 체계 확인 및 마련" },
+      { "category": "자기", "area": "자기 이해", "level": "초(저)", "topic": "내가 싫어하는 것" },
+      { "category": "자기", "area": "자기 이해", "level": "초(고)", "topic": "나의 약점" },
+      { "category": "자기", "area": "자기 이해", "level": "중", "topic": "나의 약점 개선" },
+      { "category": "자기", "area": "자기 이해", "level": "고", "topic": "약점을 강점으로 활용하는 계획" },
+      { "category": "자기", "area": "자기 이해", "level": "초(저)", "topic": "기질 알아보기" },
+      { "category": "자기", "area": "자기 이해", "level": "초(고)", "topic": "나의 기질적 특성" },
+      { "category": "자기", "area": "자기 이해", "level": "중", "topic": "생활 속에 드러나는 기질" },
+      { "category": "자기", "area": "자기 이해", "level": "고", "topic": "기질 이해 및 조절하기" },
+      { "category": "자기", "area": "가치 추구", "level": "초(저)", "topic": "내가 닮고 싶은 사람들" },
+      { "category": "자기", "area": "가치 추구", "level": "초(고)", "topic": "내가 존경하는 사람" },
+      { "category": "자기", "area": "가치 추구", "level": "중", "topic": "나의 롤모델 찾기" },
+      { "category": "자기", "area": "가치 추구", "level": "고", "topic": "나의 선택에 영향을 준 사람들" },
+      { "category": "자기", "area": "가치 추구", "level": "초(저)", "topic": "내가 되고 싶은 사람" },
+      { "category": "자기", "area": "가치 추구", "level": "초(고)", "topic": "가치의 의미" },
+      { "category": "자기", "area": "가치 추구", "level": "중", "topic": "나에게 중요한 가치" },
+      { "category": "자기", "area": "가치 추구", "level": "고", "topic": "추구하는 가치에 따른 선택" },
+      { "category": "자기", "area": "가치 추구", "level": "초(저)", "topic": "나의 삶의 주인 되기" },
+      { "category": "자기", "area": "가치 추구", "level": "초(고)", "topic": "책임 있는 결정하기" },
+      { "category": "자기", "area": "가치 추구", "level": "중", "topic": "삶의 주인의식" },
+      { "category": "자기", "area": "가치 추구", "level": "고", "topic": "삶의 책임의식" },
+      { "category": "자기", "area": "성장 목표", "level": "초(저)", "topic": "목표설정의 중요성" },
+      { "category": "자기", "area": "성장 목표", "level": "초(고)", "topic": "목표설정을 위한 자기 성찰" },
+      { "category": "자기", "area": "성장 목표", "level": "중", "topic": "전략적 목표 설정" },
+      { "category": "자기", "area": "성장 목표", "level": "고", "topic": "체계적 목표 수립" },
+      { "category": "자기", "area": "성장 목표", "level": "초(저)", "topic": "성공적인 목표 설정" },
+      { "category": "자기", "area": "성장 목표", "level": "초(고)", "topic": "목표 달성을 위한 계획" },
+      { "category": "자기", "area": "성장 목표", "level": "중", "topic": "목표 설정 점검 및 재수립" },
+      { "category": "자기", "area": "성장 목표", "level": "고", "topic": "목표 설정 평가 및 재수립" },
+      { "category": "대인관계·공동체", "area": "관계", "level": "초(저)", "topic": "다양한 관계와 소속감" },
+      { "category": "대인관계·공동체", "area": "관계", "level": "초(고)", "topic": "공동체의 개념과 가치" },
+      { "category": "대인관계·공동체", "area": "관계", "level": "중", "topic": "나와 공동체의 관계" },
+      { "category": "대인관계·공동체", "area": "관계", "level": "고", "topic": "공동체 기여" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "초(저)", "topic": "대화 규칙과 경청" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "초(고)", "topic": "바람직한 의사소통 방법-경청" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "중", "topic": "경청을 통한 협력적 문제 해결" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "고", "topic": "경청을 통한 협력적 문제 해결" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "초(저)", "topic": "의사결정의 개념" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "초(고)", "topic": "의사결정 과정" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "중", "topic": "의사결정 방법" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "고", "topic": "책임있는 의사결정" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "초(저)", "topic": "갈등이 일어나는 이유" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "초(고)", "topic": "갈등의 원인" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "중", "topic": "갈등의 형태" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "고", "topic": "갈등의 형태" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "초(저)", "topic": "공감을 통한 대화" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "초(고)", "topic": "바람직한 의사소통 방법-공감" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "중", "topic": "공감을 통한 협력적 의사소통" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "고", "topic": "공감을 통한 협력적 의사소통" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "초(저)", "topic": "갈등의 예방" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "초(고)", "topic": "갈등 해결 방법" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "중", "topic": "협상과 중재 전략" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "고", "topic": "협상과 중재 전략" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "초(저)", "topic": "윈-윈을 위한 협상" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "초(고)", "topic": "윈-윈을 위한 협상" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "중", "topic": "윈-윈을 위한 협상" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "level": "고", "topic": "윈-윈을 위한 협상" },
+      { "category": "대인관계·공동체", "area": "건강한 가정생활", "level": "초(저)", "topic": "가족 소개하기" },
+      { "category": "대인관계·공동체", "area": "건강한 가정생활", "level": "초(고)", "topic": "가족 이해하기" },
+      { "category": "대인관계·공동체", "area": "건강한 가정생활", "level": "중", "topic": "가족과 소통하기" },
+      { "category": "대인관계·공동체", "area": "건강한 가정생활", "level": "고", "topic": "가족과 소통하기" },
+      { "category": "대인관계·공동체", "area": "타인 이해", "level": "초(저)", "topic": "나의 경험과 타인의 경험" },
+      { "category": "대인관계·공동체", "area": "타인 이해", "level": "초(고)", "topic": "타인의 생각과 느낌" },
+      { "category": "대인관계·공동체", "area": "타인 이해", "level": "중", "topic": "나와 타인의 관점" },
+      { "category": "대인관계·공동체", "area": "타인 이해", "level": "고", "topic": "타인 이해를 통한 존중" },
+      { "category": "대인관계·공동체", "area": "타인 이해", "level": "초(저)", "topic": "나와 타인의 비슷한 점과 다른 점" },
+      { "category": "대인관계·공동체", "area": "타인 이해", "level": "초(고)", "topic": "문화의 차이" },
+      { "category": "대인관계·공동체", "area": "타인 이해", "level": "중", "topic": "차별과 편견" },
+      { "category": "대인관계·공동체", "area": "타인 이해", "level": "고", "topic": "편견의 원인과 반편견" },
+      { "category": "마음건강", "area": "긍정적 사고", "level": "초(저)", "topic": "자신감" },
+      { "category": "마음건강", "area": "긍정적 사고", "level": "초(고)", "topic": "자기효능감" },
+      { "category": "마음건강", "area": "긍정적 사고", "level": "중", "topic": "회복탄력성" },
+      { "category": "마음건강", "area": "긍정적 사고", "level": "고", "topic": "회복탄력성" },
+      { "category": "마음건강", "area": "감정과 행동", "level": "초(저)", "topic": "충동적 행동" },
+      { "category": "마음건강", "area": "감정과 행동", "level": "초(고)", "topic": "충동적 행동" },
+      { "category": "마음건강", "area": "감정과 행동", "level": "중", "topic": "행동 조절 방법 및 전략" },
+      { "category": "마음건강", "area": "감정과 행동", "level": "고", "topic": "행동 조절 방법 및 전략" },
+      { "category": "마음건강", "area": "감정과 행동", "level": "초(저)", "topic": "목적의식과 동기부여" },
+      { "category": "마음건강", "area": "감정과 행동", "level": "초(고)", "topic": "목적의식과 동기부여" },
+      { "category": "마음건강", "area": "감정과 행동", "level": "중", "topic": "성장마인드" },
+      { "category": "마음건강", "area": "감정과 행동", "level": "고", "topic": "성장마인드" },
+      { "category": "마음건강", "area": "감정과 행동", "level": "초(저)", "topic": "감정의 유형" },
+      { "category": "마음건강", "area": "감정과 행동", "level": "초(고)", "topic": "감정에 대한 반응과 행동" },
+      { "category": "마음건강", "area": "감정과 행동", "level": "중", "topic": "감정의 적절한 표현" },
+      { "category": "마음건강", "area": "감정과 행동", "level": "고", "topic": "나의 감정 표현으로 인한 영향" },
+      { "category": "마음건강", "area": "감정과 행동", "level": "초(저)", "topic": "스트레스의 인식" },
+      { "category": "마음건강", "area": "감정과 행동", "level": "초(고)", "topic": "스트레스의 인식" },
+      { "category": "마음건강", "area": "감정과 행동", "level": "중", "topic": "스트레스 관리" },
+      { "category": "마음건강", "area": "감정과 행동", "level": "고", "topic": "스트레스 관리" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "초(저)", "topic": "마음건강의 중요성" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "초(고)", "topic": "마음건강의 중요성" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "중", "topic": "정신건강의 중요성" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "고", "topic": "정신건강의 중요성" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "초(저)", "topic": "마음건강 상태" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "초(고)", "topic": "마음건강 상태" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "중", "topic": "정신건강 상태" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "고", "topic": "정신건강 상태" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "초(저)", "topic": "도움이 필요한 상황 알기" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "초(고)", "topic": "도움이 필요한 상황 알기" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "중", "topic": "외부 도움이 필요한 정신건강 상태" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "고", "topic": "외부 도움이 필요한 정신건강 상태" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "초(저)", "topic": "도움 요청하기" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "초(고)", "topic": "도움 요청하기" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "중", "topic": "도움 요청하기" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "고", "topic": "도움 요청하기" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "초(저)", "topic": "웰빙의 의미" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "초(고)", "topic": "웰빙의 의미와 구성요소" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "중", "topic": "사회적 웰빙" },
+      { "category": "마음건강", "area": "건강과 웰빙", "level": "고", "topic": "사회적 웰빙" }
+    ]
+  },
+
+  "crossCurricular": {
+    "note": "교육부 2026 교과 연계 범교과 주제 (붙임1, 학교급별 6종 총 24종)",
+    "items": [
+      { "category": "마음건강", "area": "건강과 웰빙", "keyword": "마음 돌봄", "level": "초(저)", "content": "마음건강과 그 중요성을 통해 마음건강을 인식하도록 돕는다" },
+      { "category": "마음건강", "area": "건강과 웰빙", "keyword": "마음 돌봄", "level": "초(고)", "content": "마음건강의 다양한 상태를 이해하고 마음건강문제를 올바르게 인식할 수 있도록 돕는다" },
+      { "category": "마음건강", "area": "건강과 웰빙", "keyword": "마음 돌봄", "level": "중", "content": "정신건강의 4가지 상태와 정신질환에 대한 올바른 이해를 돕는다" },
+      { "category": "마음건강", "area": "건강과 웰빙", "keyword": "마음 돌봄", "level": "고", "content": "정신건강의 4가지 상태와 정신질환에 대한 올바른 이해를 돕는다" },
+      { "category": "자기", "area": "가치 추구", "keyword": "가치", "level": "초(저)", "content": "'되고 싶은 나'를 통해 가치의 의미를 인식하도록 돕는다" },
+      { "category": "자기", "area": "가치 추구", "keyword": "가치", "level": "초(고)", "content": "보편적 가치를 살펴봄으로써 가치의 중요성을 인식하도록 돕고 가치를 대하는 태도를 학습한다" },
+      { "category": "자기", "area": "가치 추구", "keyword": "가치", "level": "중", "content": "학교생활에서 마주할 수 있는 다양한 상황을 제시하여 청소년에게 필요한 가치들을 인식할 수 있도록 돕는다" },
+      { "category": "자기", "area": "가치 추구", "keyword": "가치", "level": "고", "content": "다양한 가치를 토대로 나에게 중요한 가치를 확인하고 가치관 형성을 위한 삶의 태도를 학습한다" },
+      { "category": "자기", "area": "성장 목표", "keyword": "성장", "level": "초(저)", "content": "성장의 의미를 설명하고 개인에게 필요한 성장을 발견하도록 돕는다" },
+      { "category": "자기", "area": "성장 목표", "keyword": "성장", "level": "초(고)", "content": "성장의 올바른 이해를 돕고 성장에 도움이 되는 방법을 찾도록 돕는다" },
+      { "category": "자기", "area": "성장 목표", "keyword": "성장", "level": "중", "content": "성장을 위해 어야하는 성장통을 설명하고 건강하게 극복하도록 돕는다" },
+      { "category": "자기", "area": "성장 목표", "keyword": "성장", "level": "고", "content": "내가 가진 재능을 확인 및 종합하여 활용하여 성장할 수 있도록 돕는다" },
+      { "category": "대인관계·공동체", "area": "관계", "keyword": "집단", "level": "초(저)", "content": "같이 서로 도우며 함께 살아가는 사이를 통해 건강한 집단이 형성됨을 이해한다" },
+      { "category": "대인관계·공동체", "area": "관계", "keyword": "집단", "level": "초(고)", "content": "집단의 의미와 단위를 나무가 숲을 이루는 비유를 통해 학습한다" },
+      { "category": "대인관계·공동체", "area": "관계", "keyword": "집단", "level": "중", "content": "개인과 집단의 관계를 통해 개인 간 상호작용의 중요성을 학습한다" },
+      { "category": "대인관계·공동체", "area": "관계", "keyword": "집단", "level": "고", "content": "함께 해결할 수 있는 일들을 통해 집단 내 협력의 중요성을 학습한다" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "keyword": "규칙", "level": "초(저)", "content": "공동체 내 규칙의 중요성과 필수 규칙을 학습한다" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "keyword": "규칙", "level": "초(고)", "content": "약속의 개념과 약속 준수의 중요성을 학습한다" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "keyword": "규칙", "level": "중", "content": "규칙을 위반할 때 개인 및 집단에게 미치는 영향과 규칙의 '보호' 역할을 학습한다" },
+      { "category": "대인관계·공동체", "area": "소통과 협력", "keyword": "규칙", "level": "고", "content": "공동 규칙의 중요성과 규칙의 '일치' 역할을 학습한다" },
+      { "category": "마음건강", "area": "감정과 행동", "keyword": "마음 관리", "level": "초(저)", "content": "스스로 조절하기 어려운 감정을 마주할 때 도움 요청하는 방법을 안내한다" },
+      { "category": "마음건강", "area": "감정과 행동", "keyword": "마음 관리", "level": "초(고)", "content": "부정적 감정을 대처하는 방법을 학습하고 문제가 생겼을 때 도움 요청하는 방법을 안내한다" },
+      { "category": "마음건강", "area": "감정과 행동", "keyword": "마음 관리", "level": "중", "content": "충동적 행동을 관리하는 방법과 도움이 필요한 상황에서 도움 요청 관련 정보를 안내한다" },
+      { "category": "마음건강", "area": "감정과 행동", "keyword": "마음 관리", "level": "고", "content": "스트레스를 관리하는 방법과 도움이 필요한 상황에서 도움 요청 관련 정보를 안내한다" }
+    ]
+  },
+
+  "oecdSSES": {
+    "source": "kedi-oecd-sses",
+    "domains": [
+      { "name": "협력", "en": "Collaboration", "subskills": ["협동", "신뢰", "공감"] },
+      { "name": "정서조절", "en": "Emotional regulation", "subskills": ["스트레스 관리", "감정통제", "낙관주의"] },
+      { "name": "타인관계", "en": "Engaging with others", "subskills": ["사회성", "자기주장", "활기"] },
+      { "name": "개방성", "en": "Open-mindedness", "subskills": ["호기심", "관용", "창의성"] },
+      { "name": "과제수행", "en": "Task performance", "subskills": ["끈기", "자기통제", "책임감"] }
+    ],
+    "sample": "만 10세 코호트 초등학생 3,021명, 만 15세 코호트 3,326명 (대구), 학부모 2,029, 교사 1,266, 교장 136",
+    "keyFindings": [
+      "사회정서역량 수준별 4개 잠재집단(상·중상·중하·하)이 추출되며, '하 집단'은 인지·정서·행동·경험 전반에서 결핍이 드러나는 잠재적 위기 집단",
+      "역량이 낮은 집단일수록 학업불안이 높고 삶의 만족도·소속감이 낮으며 부적응·일탈 행동과 학교폭력 피해 경험이 많음",
+      "촉진 요인(친구·학교): 긍정적 친구관계, 문제행동이 적은 또래문화, 협동적 학교문화, 학생 간 긍정적 상호작용, 교사와의 긍정적 관계, 소그룹 문제해결 중심 수업",
+      "촉진 요인(개인·가정): 긍정 정서, 역량이 변할 수 있다는 신념(성장 마인드), 자율성을 지원하는 양육",
+      "연령이 오를수록 자기보고 역량 점수는 낮아지는 경향 — 자기평가 기준이 또래로 이동하는 발달적 특성으로 해석"
+    ],
+    "supportModel": ["진단도구 개발", "수준 진단", "인성교육정책 추진", "잠재적 위험군 추출 및 지원 (학교폭력예방정책과 연동)", "정책 평가와 환류", "후속 연구"],
+    "implicationForSensel": "소시오그램의 '연결되지 않은 학생'과 챗봇의 '기분 힘듦·외로움' 신호는 OECD 연구의 '하 집단(잠재적 위기)' 조기 선별에 해당한다. 개입은 개인 훈계가 아니라 긍정적 또래관계·협동적 학급문화·교사와의 관계를 만드는 방향(자리·모둠·역할)이어야 한다."
+  },
+
+  "signalMapping": {
+    "note": "센셀 신호 → 한국형 6핵심역량 초점. studentSignals.js가 사용",
+    "alert": ["mentalHealthAwareness", "communityValues"],
+    "alertHistory": ["mentalHealthAwareness"],
+    "mood": ["selfAwareness", "selfManagement"],
+    "mutualConflict": ["relationshipManagement", "communityValues"],
+    "conflict": ["relationshipManagement", "relationshipAwareness"],
+    "conflictTarget": ["relationshipAwareness"],
+    "repeatedComplaint": ["relationshipAwareness", "communityValues"],
+    "lonely": ["relationshipManagement", "selfAwareness", "mentalHealthAwareness"],
+    "isolated": ["relationshipManagement", "communityValues"],
+    "lowReceived": ["relationshipManagement"]
+  },
+
+  "conversationGoals": {
+    "note": "챗봇 대화 목표를 6핵심역량 언어로. 교사 설정 focusTopics → 영역 매핑",
+    "focusTopicToDomain": { "friendship": "relationship", "emotion": "self", "school": "community", "study": "self", "online": "relationship", "family": "relationship" }
+  },
+
+  "seoulStandards": {
+    "note": "서울시교육청 「사회정서기술&성취기준」 슬롯. 서울 자료 확보 후 학년×역량×기술로 채움 (SEN = 서울, SEL = 사회정서교육)",
+    "status": "pending",
+    "items": []
+  }
+}

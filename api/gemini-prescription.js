@@ -13,6 +13,30 @@
 
 import { selData } from '../src/data/selData.js';
 import { verifyRequest } from './_auth.js';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const FW = require('../src/data/selFramework.json'); // 교육부 한국형 사회정서교육 프레임워크 색인
+
+// ===== 프레임워크 헬퍼 (서버용, src/utils/selFramework.js와 동일 로직) =====
+const COMP = {};
+FW.domains.forEach(d => d.competencies.forEach(c => { COMP[c.key] = { ...c, domainName: d.name }; }));
+const COMP_NAMES = Object.values(COMP).map(c => c.name);
+const focusForSignals = (types) => { const out = []; types.forEach(t => (FW.signalMapping[t] || []).forEach(k => { if (!out.includes(k)) out.push(k); })); return out; };
+const sessionsFor = (level, keys) => (FW.programIndex[level] || FW.programIndex.elementary_high).filter(sn => !keys.length || sn.competencies.some(k => keys.includes(k)));
+const LEVEL_LABEL_SHORT = { elementary_low: '초(저)', elementary_high: '초(고)', middle: '중', high: '고' };
+const AREAS = { selfAwareness: ['자기 이해', '감정과 행동'], selfManagement: ['감정과 행동', '성장 목표', '긍정적 사고'], relationshipAwareness: ['타인 이해', '소통과 협력'], relationshipManagement: ['소통과 협력', '관계'], communityValues: ['관계', '소통과 협력', '가치 추구'], mentalHealthAwareness: ['건강과 웰빙', '긍정적 사고'] };
+const topicsFor = (level, keys, limit = 8) => {
+  const lv = LEVEL_LABEL_SHORT[level] || '초(고)'; const areas = new Set(); keys.forEach(k => (AREAS[k] || []).forEach(a => areas.add(a)));
+  return FW.morningTalkTopics.items.filter(t => t.level === lv && (areas.size === 0 || areas.has(t.area))).slice(0, limit).map(t => `${t.area} · ${t.topic}`);
+};
+/** 지도서 전문에서 특정 차시 본문 발췌 (제목 두 번째 등장 = 본문, 최대 n자) */
+const manualExcerpt = (level, title, n = 2600) => {
+  const text = selData[level] || '';
+  const first = text.indexOf(title); if (first < 0) return '';
+  const second = text.indexOf(title, first + title.length);
+  const start = second > 0 ? second : first;
+  return text.slice(start, start + n).replace(/\s+/g, ' ');
+};
 
 const getAiEndpoint = () => {
   if (process.env.VERTEX_API_KEY) {
@@ -31,22 +55,26 @@ const LEVEL_LABEL = {
   high: '고등학교',
 };
 
-const CASEL_GUIDE = `
-[CASEL 5대 사회정서역량 — 처방의 이론적 틀]
-1. 자기 인식(Self-awareness): 자신의 감정·생각·가치·강점을 정확히 알아차리기. (감정 이름 붙이기, 감정 온도계, 강점 찾기)
-2. 자기 관리(Self-management): 감정·충동·스트레스를 조절하고 목표를 향해 행동하기. (호흡·진정 루틴, 작은 목표, 자기 점검표)
-3. 사회적 인식(Social awareness): 타인의 관점·감정을 이해하고 공감하며 다양성을 존중하기. (관점 바꾸기, 표정·상황 읽기, 공감 대화)
-4. 관계 기술(Relationship skills): 경청·명확한 의사소통·협력·갈등 해결·도움 요청. (짝 활동, 역할 부여, 갈등 중재 대화, 도움 요청 연습)
-5. 책임 있는 의사결정(Responsible decision-making): 결과를 예측하고 안전·윤리를 고려해 건설적으로 선택하기. (선택-결과 따져보기, 사과·회복 계획)
+const KSEL_GUIDE = () => `
+[처방의 이론적 틀 — 교육부 「한국형 사회정서교육」 4영역·6핵심역량 (2026학년도 전 학교 확대)]
+정의: ${FW.definition.ko}
+${FW.domains.map(d => `- [${d.name}] ` + d.competencies.map(c => `${c.name}: ${c.elements.join(', ')}`).join(' / ')).join('\n')}
+
+[근거 — KEDI·OECD 사회정서역량 조사(2020) 시사점]
+- ${FW.oecdSSES.keyFindings[0]}
+- ${FW.oecdSSES.keyFindings[2]}
+- ${FW.oecdSSES.implicationForSensel}
 
 [처방 설계 원칙 — 반드시 지킬 것]
 A. 근거 인용: 모든 판단은 제공된 데이터(기분, 지목 관계, 갈등·외로움 신호, 대화 발화)를 직접 인용해 뒷받침한다. 데이터에 없는 사실을 지어내지 않는다.
 B. 강점 기반·비낙인: "문제아", "산만", "의지 부족" 같은 단정·진단 표현 금지. 학생이 이미 가진 관계 자원(서로 지목한 친구, 이 학생을 지목한 친구)을 적극 활용한다.
-C. 발달단계 적합: 해당 학교급 학생이 실제로 할 수 있는 활동과 말로 제안한다.
-D. 실행 가능성: 담임교사가 교실에서 1주 안에, 추가 예산 없이 실행할 수 있는 수준으로 구체화한다. (언제·어디서·몇 분·무슨 말로)
-E. 차별화: 아래 [이미 다른 학생에게 제안된 전략]과 제목·핵심 방법이 겹치지 않도록 이 학생의 데이터에 맞는 새로운 각도로 제안한다. 뻔한 "상담하세요", "칭찬하세요"류 일반론 금지.
-F. 안전 최우선: 긴급 위기 신호(학교폭력·자해·가정 위험 등)가 있으면 첫 번째 실천은 반드시 당일 안전 확인 면담이며, 전문기관(Wee클래스/Wee센터, 학교폭력 사안 처리 절차, 보호자) 연계 기준을 escalation에 명시한다.
-G. 문체: 동료 베테랑 교사가 조언하듯 따뜻하고 전문적인 존댓말. 학생을 지칭할 때는 제공된 익명 ID(S1 등)를 그대로 사용한다(화면에서 실명으로 자동 복원됨).
+C. 학생 보고는 사실이 아닐 수 있다: 갈등·반복 호소 신호는 '학생이 말한 것'이다. 상대 학생을 가해자로 단정하지 말고, 교사의 직접 관찰·확인을 먼저 권한다. 반복 호소 학생에게는 관계인식(관점 취하기)과 공동체 가치(방관자 되지 않기·규칙) 역량을 다룬다.
+D. 발달단계 적합: 해당 학교급 학생이 실제로 할 수 있는 활동과 말로 제안한다.
+E. 실행 가능성: 담임교사가 교실에서 1주 안에, 추가 예산 없이 실행할 수 있는 수준으로 구체화한다. (언제·어디서·몇 분·무슨 말로) 아래 [활용 가능한 공식 자료]의 차시·아침조회 주제를 변형해 쓰면 좋다.
+F. 차별화: [이미 다른 학생에게 제안된 전략]과 제목·핵심 방법이 겹치지 않도록 이 학생의 데이터에 맞는 새로운 각도로 제안한다. 뻔한 "상담하세요", "칭찬하세요"류 일반론 금지.
+G. 안전 최우선: 긴급 위기 신호(학교폭력·자해·가정 위험 등)가 있으면 첫 번째 실천은 반드시 당일 안전 확인 면담이며, 전문기관(Wee클래스/Wee센터, 학교폭력 사안 처리 절차, 보호자) 연계 기준을 escalation에 명시한다.
+H. 문체: 동료 베테랑 교사가 조언하듯 따뜻하고 전문적인 존댓말. 학생을 지칭할 때는 제공된 익명 ID(S1 등)를 그대로 사용한다(화면에서 실명으로 자동 복원됨).
+I. 역량 명칭은 반드시 다음 6개 중에서만 쓴다: ${COMP_NAMES.join(' / ')}
 `;
 
 const buildProfileText = (p) => {
@@ -77,14 +105,15 @@ const OUTPUT_SCHEMA = `
   "summary": "관찰 요약 2~3문장. 어떤 데이터가 어떤 신호를 보이는지 구체적으로 인용",
   "hypothesis": "학생의 마음 상태에 대한 조심스러운 가설 1~2문장 ('~일 수 있습니다' 어조, 단정 금지)",
   "strengths": "데이터에서 확인되는 이 학생의 관계 자원·강점 1~2문장 (없으면 잠재 자원)",
-  "focus": [ { "competency": "CASEL 역량명(위 5개 중)", "why": "왜 이 역량이 지금 이 학생에게 우선인지 1~2문장" } ],
+  "focus": [ { "competency": "한국형 6핵심역량 명칭 중 하나", "why": "왜 이 역량이 지금 이 학생에게 우선인지 1~2문장" } ],
   "actions": [
     {
       "title": "실천 제목 (10자 내외, 다른 학생과 겹치지 않게)",
-      "competency": "관련 CASEL 역량명",
+      "competency": "관련 한국형 핵심역량 명칭",
       "how": "구체 절차 2~4문장 (언제·어디서·몇 분·어떻게)",
       "script": "교사가 실제로 학생에게 건넬 말 1~2문장 (따옴표 없이)",
-      "peers": ["활용할 급우 익명 ID (없으면 빈 배열)"]
+      "peers": ["활용할 급우 익명 ID (없으면 빈 배열)"],
+      "resource": "활용한 공식 자료 (예: 초(고) 4차시 경청과 공감을 실천해요 / 아침조회 주제: 타인 이해 · 타인의 생각과 느낌) 또는 빈 문자열"
     }
   ],
   "peerPlan": "또래 자원(상호 지목·받은 지목 친구)을 활용한 관계 연결 계획 1~2문장. 자리·모둠·역할 배치 제안 포함",
@@ -121,7 +150,7 @@ export default async function handler(req, res) {
 
     // ===== 구버전 호환 (contents 직접 전달) =====
     if (!profile && Array.isArray(contents)) {
-      const legacySystem = `너는 초·중·고 교사를 돕는 따뜻하고 전문적인 교육 상담 AI 멘토야. 사회정서학습(SEL) 이론에 기반하여 실질적이고 구체적인 지도 조언 3가지를 핵심만 요약해서 존댓말로 제공해.\n${CASEL_GUIDE}`;
+      const legacySystem = `너는 초·중·고 교사를 돕는 따뜻하고 전문적인 교육 상담 AI 멘토야. 사회정서학습(SEL) 이론에 기반하여 실질적이고 구체적인 지도 조언 3가지를 핵심만 요약해서 존댓말로 제공해.\n${KSEL_GUIDE()}`;
       const r = await fetch(aiEndpoint, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ systemInstruction: { parts: [{ text: legacySystem }] }, contents })
@@ -136,10 +165,22 @@ export default async function handler(req, res) {
 
     const avoid = Array.isArray(avoidStrategies) ? avoidStrategies.filter(x => typeof x === 'string').slice(0, 40) : [];
 
-    let systemText = `너는 사회정서학습(SEL) 전문 장학사이자 20년차 담임교사 멘토야. 담임교사가 학생 한 명을 위한 이번 주 맞춤 지도 계획을 세울 수 있도록, 제공된 데이터를 근거로 개별화된 처방을 작성해.\n`;
+    // 초점 역량(규칙 기반) → 관련 차시·아침조회 주제·지도서 발췌만 선택적으로 제공 (전문 주입 대신)
+    const signalTypes = (profile.signals || []).map(sg => sg.type);
+    const focusKeys = focusForSignals(signalTypes);
+    const keys = focusKeys.length ? focusKeys : ['selfAwareness'];
+    const sessions = sessionsFor(level, keys);
+    const topics = topicsFor(level, keys);
+    const excerpts = sessions.slice(0, 2).map(sn => `《${LEVEL_LABEL[level]} ${sn.session}차시 ${sn.title}》 ${manualExcerpt(level, sn.title)}`).join('\n\n');
+
+    let systemText = `너는 사회정서교육(SEL) 전문 장학사이자 20년차 담임교사 멘토야. 담임교사가 학생 한 명을 위한 이번 주 맞춤 지도 계획을 세울 수 있도록, 제공된 데이터를 근거로 개별화된 처방을 작성해.\n`;
     systemText += `대상 학교급: ${LEVEL_LABEL[level]}\n`;
-    systemText += CASEL_GUIDE;
-    systemText += `\n[한국형 사회정서교육(SEL) 프로그램 매뉴얼 — ${LEVEL_LABEL[level]}]\n아래 매뉴얼의 활동·용어·발달단계 설명을 처방에 자연스럽게 녹여 사용해(활동명을 인용해도 좋음):\n${selData[level]}`;
+    systemText += KSEL_GUIDE();
+    systemText += `\n[이 학생의 규칙 기반 초점 역량] ${keys.map(k => COMP[k].name).join(', ')}\n`;
+    systemText += `\n[활용 가능한 공식 자료 — 교육부 한국형 사회정서교육 프로그램 ${LEVEL_LABEL[level]}]\n`;
+    systemText += `- 관련 차시: ${sessions.map(sn => `${sn.session}차시 ${sn.title}(${sn.competencies.map(k => COMP[k].name).join('·')})`).join(' / ') || '없음'}\n`;
+    systemText += `- 아침조회 대화 주제(교육부 2026): ${topics.join(' / ') || '없음'}\n`;
+    if (excerpts) systemText += `\n[지도서 발췌 — 활동을 변형해 개별 처방에 활용]\n${excerpts}\n`;
 
     let userText = `[학생 데이터 (익명화)]\n${buildProfileText(profile)}\n`;
     if (avoid.length) {
