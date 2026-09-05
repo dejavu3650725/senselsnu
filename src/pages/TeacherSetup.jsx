@@ -17,7 +17,8 @@ import { DEMO_CLASS_CODE, DEMO_CLASS_NAME, generateDemoStudents, generateDemoCla
 const TeacherSetup = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [teacherName, setTeacherName] = useState('');
+  const [teacherName, setTeacherName] = useState('');       // 프로필에 저장된 이름 (입장 시 학급 문서에 기록)
+  const [newTeacherName, setNewTeacherName] = useState(''); // 새 학급 폼 입력값 — 항상 빈칸으로 시작
   const [classes, setClasses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -127,7 +128,8 @@ const TeacherSetup = () => {
   const handleCreateClass = async () => {
     const className = newClassName.trim();
     const classCode = newClassCode.trim();
-    if (!teacherName.trim() || !className || !classCode) {
+    const tName = newTeacherName.trim();
+    if (!tName || !className || !classCode) {
       alert('선생님 이름, 학급 이름, 학급 코드를 모두 입력해주세요.');
       return;
     }
@@ -147,7 +149,7 @@ const TeacherSetup = () => {
       await setDoc(doc(db, 'classes', classCode), {
         classCode, className,
         teacherUid: user.uid,
-        teacherName: teacherName.trim(),
+        teacherName: tName,
         isDemo: false,
         createdAt: serverTimestamp()
       }, { merge: true });
@@ -156,8 +158,9 @@ const TeacherSetup = () => {
       await setDoc(doc(db, 'teachers', user.uid), {
         uid: user.uid,
         email: user.email,
-        teacherName: teacherName.trim(),
+        teacherName: tName,
       }, { merge: true });
+      setTeacherName(tName);
 
       setNewClassName('');
       setNewClassCode('');
@@ -315,7 +318,7 @@ const TeacherSetup = () => {
         <div className="setup-head">
           <div className="setup-brand"><Shield size={18} /> SEN SEL</div>
           <div className="setup-head-text">
-            <h2>{teacherName ? `${teacherName.replace(/선생님|님/g, '').trim()} 선생님, 어서 오세요` : '어서 오세요'}</h2>
+            <h2>선생님, 어서 오세요</h2>
             <p>학급을 고르면 바로 대시보드로 들어갑니다.</p>
           </div>
           <div className="setup-actions">
@@ -328,7 +331,7 @@ const TeacherSetup = () => {
           <section className="setup-card create-card">
             <div className="create-form-title"><Plus size={16} /> 새 학급 만들기 <span>학생 명단·자리 배치·가정 연계까지 5분이면 준비돼요</span></div>
             <div className="create-grid">
-              <label>선생님 이름<input type="text" placeholder="예: 김선생님" value={teacherName} onChange={e => setTeacherName(e.target.value)} /></label>
+              <label>선생님 이름<input type="text" placeholder="예: 김선생님" value={newTeacherName} onChange={e => setNewTeacherName(e.target.value)} /></label>
               <label>학급 이름<input type="text" placeholder="예: 5학년 2반" value={newClassName} onChange={e => setNewClassName(e.target.value)} /></label>
               <label>학급 코드 <span>학생 입장용 · 영문/숫자</span><input type="text" placeholder="예: SNU5B" value={newClassCode} onChange={e => setNewClassCode(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateClass()} /></label>
             </div>
