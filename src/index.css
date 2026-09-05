@@ -290,6 +290,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary-color) !
 .qs-num { width: 20px; height: 20px; border-radius: 50%; background: var(--primary-light); color: var(--primary-color); font-size: 0.72rem; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
 .qs-chip.done .qs-num { background: #c6f6d5; color: #276749; }
 .qs-close { background: transparent; border: none; color: var(--text-faint); cursor: pointer; display: flex; margin-left: auto; }
+.qs-pill { display: inline-flex; align-items: center; gap: 6px; background: linear-gradient(135deg, #eef3ff, #f6f0ff); border: 1px solid #d9e2fb; color: var(--text-main); border-radius: 999px; padding: 6px 12px; font-size: 0.82rem; font-weight: 700; cursor: pointer; margin-bottom: 14px; }
+.qs-pill:hover { border-color: var(--primary-color); color: var(--primary-color); }
 .quickstart-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 12px; }
 .quickstart-step { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; display: flex; gap: 10px; align-items: flex-start; }
 .quickstart-step.done { border-color: #c6f6d5; background: #f7fffa; }

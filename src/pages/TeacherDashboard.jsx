@@ -27,7 +27,7 @@ import CounselLog from '../components/CounselLog';
 import { db, auth } from '../firebase';
 import { collection, onSnapshot, query, orderBy, where, doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { Check, Users, Settings, FileSignature, Copy, X } from 'lucide-react';
+import { Check, Users, Settings, FileSignature, Copy, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 const TeacherDashboard = () => {
   const navigate = useNavigate();
@@ -49,6 +49,7 @@ const TeacherDashboard = () => {
   const handleLogout = async () => { try { await signOut(auth); } catch { /* ignore */ } sessionStorage.removeItem('currentClassCode'); navigate('/'); };
   const copyCode = async () => { try { await navigator.clipboard.writeText(currentClassCode || ''); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 1500); } catch { /* ignore */ } };
   const hideQuickstart = () => { setQuickstartHidden(true); try { localStorage.setItem(`qs-hidden-${currentClassCode}`, '1'); } catch { /* ignore */ } };
+  const showQuickstart = () => { setQuickstartHidden(false); try { localStorage.removeItem(`qs-hidden-${currentClassCode}`); } catch { /* ignore */ } };
 
   // 현재 학급 정보 불러오기 (classes 컬렉션, 없으면 teacherProfile로 폴백)
   useEffect(() => {
@@ -247,7 +248,7 @@ const TeacherDashboard = () => {
           </div>
 
           {/* 시작 체크리스트 — 학급 준비가 덜 된 동안만 표시 */}
-          {activeMenu === '대시보드' && !quickstartHidden && (() => {
+          {activeMenu === '대시보드' && (() => {
             const steps = [
               { key: 'students', done: studentsData.length >= 3, title: '학생 명단 등록', desc: studentsData.length ? `${studentsData.length}명 등록됨` : '실명·닉네임·성별을 한 번에 붙여넣기', action: () => setActiveMenu('학생 관리'), icon: <Users size={15} /> },
               { key: 'chat', done: !!teacherProfile?.chatConfig, title: '챗봇 설정 저장', desc: '말투·관심 주제만 고르면 끝 (1분)', action: () => setIsChatbotModalOpen(true), icon: <Settings size={15} /> },
@@ -256,6 +257,11 @@ const TeacherDashboard = () => {
             ];
             const doneCount = steps.filter(st => st.done).length;
             if (doneCount === steps.length) return null;
+            if (quickstartHidden) {
+              return (
+                <button className="qs-pill" onClick={showQuickstart} title="시작하기 체크리스트 펼치기">🚀 시작하기 {doneCount}/{steps.length} <ChevronDown size={14} /></button>
+              );
+            }
             return (
               <div className="quickstart slim">
                 <div className="qs-title">🚀 시작하기 <b>{doneCount}/{steps.length}</b></div>
@@ -267,7 +273,7 @@ const TeacherDashboard = () => {
                     </button>
                   ))}
                 </div>
-                <button onClick={hideQuickstart} title="숨기기" className="qs-close"><X size={16} /></button>
+                <button onClick={hideQuickstart} title="접기" className="qs-close"><ChevronUp size={16} /></button>
               </div>
             );
           })()}

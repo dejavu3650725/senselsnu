@@ -178,7 +178,7 @@ const GuidelineCheck = ({ onClose, teacherProfile, onSaved, classCode, studentsD
         </Section>
 
         <Section id="mandatory" icon={<ShieldCheck size={18} color="#2f855a" />} title="필수 기준 5가지 (개인정보 보호법)" sub="센셀의 충족 상태">
-          {GUIDE.adoption.mandatoryCriteria.map(c => {
+          {GUIDE.adoption.procedure.mandatoryCriteria.map(c => {
             const st = GUIDE.senselCompliance.mandatoryCriteriaStatus.find(x => x.n === c.n);
             return (
               <div key={c.n} style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '10px', fontSize: '0.84rem', borderBottom: '1px dashed #edf2f7', paddingBottom: '8px' }}>
