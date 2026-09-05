@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { School, Plus, LogIn, Sparkles, Trash2, Users } from 'lucide-react';
+import { School, Plus, LogIn, Trash2, Users } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
@@ -12,7 +12,7 @@ import { DEMO_CLASS_CODE, DEMO_CLASS_NAME, generateDemoStudents, generateDemoCla
  * 학급 관리: 한 교사가 여러 학급을 만들고 선택해서 입장하는 화면
  * - classes/{classCode} 문서로 학급을 관리 (다중 학급 지원)
  * - 기존 단일 학급(teachers/{uid}.classCode)도 목록에 자동 표시 (하위 호환)
- * - 데모 학급(2026ai): 버튼 한 번으로 가상 학생 23명(관계망 포함) 생성/삭제
+ * - 체험 학급(2026ai): 프로그램에 내장. 입장 시 없거나 옛 구조면 자동으로 채움. 삭제 불가
  */
 const TeacherSetup = () => {
   const navigate = useNavigate();
@@ -26,9 +26,9 @@ const TeacherSetup = () => {
   const [newClassCode, setNewClassCode] = useState('');
   const [isCreating, setIsCreating] = useState(false);
 
-  // 데모 학급 상태
-  const [demoStudentCount, setDemoStudentCount] = useState(0);
+  // 내장 체험 학급 준비 상태 / 학급 삭제 상태
   const [demoWorking, setDemoWorking] = useState('');
+  const [deletingCode, setDeletingCode] = useState('');
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -56,13 +56,12 @@ const TeacherSetup = () => {
         }
       });
 
-      // 1-1) 데모 학급은 누가 만들었든 모든 교사 계정에 공용으로 표시 (시연용)
+      // 1-1) 체험 학급은 프로그램에 내장 — 문서가 없어도 항상 목록에 보이고, 입장 시 자동으로 채워진다
       if (!seen.has(DEMO_CLASS_CODE)) {
         const demoSnap = await getDoc(doc(db, 'classes', DEMO_CLASS_CODE));
-        if (demoSnap.exists()) {
-          seen.add(DEMO_CLASS_CODE);
-          list.push({ ...demoSnap.data(), shared: demoSnap.data().teacherUid !== u.uid });
-        }
+        seen.add(DEMO_CLASS_CODE);
+        if (demoSnap.exists()) list.push({ ...demoSnap.data(), shared: demoSnap.data().teacherUid !== u.uid });
+        else list.push({ classCode: DEMO_CLASS_CODE, className: DEMO_CLASS_NAME, isDemo: true, builtin: true });
       }
 
       // 2) 기존 단일 학급(teachers 문서) 하위 호환
@@ -80,10 +79,6 @@ const TeacherSetup = () => {
       list.sort((a, b) => (a.classCode === DEMO_CLASS_CODE ? 1 : 0) - (b.classCode === DEMO_CLASS_CODE ? 1 : 0));
       setClasses(list);
 
-      // 3) 데모 학급 학생 수
-      const dq = query(collection(db, 'students'), where('classCode', '==', DEMO_CLASS_CODE));
-      const dSnap = await getDocs(dq);
-      setDemoStudentCount(dSnap.size);
     } catch (error) {
       console.error('Failed to load classes:', error);
     } finally {
@@ -97,7 +92,10 @@ const TeacherSetup = () => {
 
   // 학급 입장 (classes 문서가 없던 기존 학급이면 자동 생성해서 이관)
   const enterClass = async (cls) => {
-    // 다른 선생님 소유의 공용 데모 학급이면 소유 정보를 덮어쓰지 않고 그대로 입장
+    if (cls.classCode === DEMO_CLASS_CODE) {
+      try { await ensureDemoClass(); } catch (e) { console.error('demo ensure failed', e); setDemoWorking(''); }
+    }
+    // 다른 선생님 소유의 공용 체험 학급이면 소유 정보를 덮어쓰지 않고 그대로 입장
     const isOthersClass = cls.teacherUid && cls.teacherUid !== user.uid;
     if (!isOthersClass) {
       try {
@@ -167,86 +165,69 @@ const TeacherSetup = () => {
     }
   };
 
-  // 데모 학급 + 가상 학생 23명 생성
-  const handleCreateDemo = async () => {
-    if (!teacherName.trim()) {
-      alert('먼저 아래 "새 학급 만들기"의 선생님 이름 칸을 채워주세요. (데모 학급에도 사용됩니다)');
-      return;
-    }
-    if (demoStudentCount > 0) {
-      if (!window.confirm(`데모 학급에 이미 학생 ${demoStudentCount}명이 있습니다. 삭제하고 새로 생성할까요?`)) return;
-      await deleteDemoStudents(false);
-    }
-    setDemoWorking('데모 학급 생성 중...');
-    try {
-      await setDoc(doc(db, 'classes', DEMO_CLASS_CODE), {
-        classCode: DEMO_CLASS_CODE,
-        className: DEMO_CLASS_NAME,
-        teacherUid: user.uid,
-        teacherName: teacherName.trim(),
-        isDemo: true,
-        createdAt: serverTimestamp()
-      }, { merge: true });
+  const DEMO_VERSION = 2; // 시연 데이터 구조가 바뀌면 올린다 → 입장 시 자동 재생성
 
-      const students = generateDemoStudents();
-      let done = 0;
-      for (const s of students) {
-        await addDoc(collection(db, 'students'), {
-          ...s,
-          classCode: DEMO_CLASS_CODE,
-          createdAt: serverTimestamp(),
-          lastActive: serverTimestamp(),
-          addedBy: 'demo'
-        });
-        done++;
-        setDemoWorking(`가상 학생 생성 중... (${done}/${students.length})`);
-      }
-      // 학급 단위 시연 데이터: 이번 주 미션, 최근 발행 리포트, 가정 회신, 전자 동의 제출
-      setDemoWorking('학급 리포트·가정 회신·동의 현황 생성 중...');
+  // 한 학급에 딸린 문서 전부 삭제 (students, seatingCharts, classBoards, classReports, familyFeedback, consents)
+  const purgeClassData = async (code) => {
+    const sSnap = await getDocs(query(collection(db, 'students'), where('classCode', '==', code)));
+    for (const d of sSnap.docs) await deleteDoc(doc(db, 'students', d.id)).catch(() => {});
+    await deleteDoc(doc(db, 'seatingCharts', code)).catch(() => {});
+    await deleteDoc(doc(db, 'classBoards', code)).catch(() => {});
+    for (const col of ['classReports', 'familyFeedback', 'consents']) {
       try {
-        const extras = generateDemoClassExtras(students);
-        await setDoc(doc(db, 'classes', DEMO_CLASS_CODE), { mission: extras.classMission }, { merge: true });
-        await setDoc(doc(db, 'classReports', extras.report.id), extras.report.data);
-        for (const f of extras.feedback) await addDoc(collection(db, 'familyFeedback'), f);
-        for (const c of extras.consents) await addDoc(collection(db, 'consents'), c);
-      } catch (e) { console.warn('demo extras skipped', e); }
-      await loadClasses(user);
-      setDemoWorking('');
-      if (window.confirm(`데모 학급(${DEMO_CLASS_CODE})에 가상 학생 ${students.length}명과 성장 기록·미션·리포트·동의 현황이 생성되었습니다! 바로 입장할까요?`)) {
-        enterClass({ classCode: DEMO_CLASS_CODE, className: DEMO_CLASS_NAME });
-      }
-    } catch (error) {
-      console.error('Failed to create demo data', error);
-      alert('데모 데이터 생성 중 오류가 발생했습니다.');
-      setDemoWorking('');
+        const snap = await getDocs(query(collection(db, col), where('classCode', '==', code)));
+        for (const d of snap.docs) await deleteDoc(doc(db, col, d.id)).catch(() => {});
+      } catch { /* 권한·인덱스 문제는 무시 */ }
     }
   };
 
-  // 데모 학급 학생 전체 삭제 (데모 학급 코드에만 동작 - 실제 학급 데이터 보호)
-  const deleteDemoStudents = async (confirm = true) => {
-    if (confirm && !window.confirm('데모 학급의 가상 학생을 모두 삭제할까요? (실제 학급 데이터는 건드리지 않습니다)')) return;
-    setDemoWorking('데모 학생 삭제 중...');
+  // 내장 체험 학급: 없으면 만들고, 구조가 옛것이거나 학생 수가 맞지 않으면 조용히 다시 채운다
+  const ensureDemoClass = async () => {
+    const ref = doc(db, 'classes', DEMO_CLASS_CODE);
+    const snap = await getDoc(ref);
+    const sSnap = await getDocs(query(collection(db, 'students'), where('classCode', '==', DEMO_CLASS_CODE)));
+    const students = generateDemoStudents();
+    const upToDate = snap.exists() && Number(snap.data().demoVersion || 0) >= DEMO_VERSION && sSnap.size === students.length;
+    if (upToDate) return;
+    setDemoWorking('체험 학급을 준비하고 있어요…');
+    if (!snap.exists()) {
+      await setDoc(ref, { classCode: DEMO_CLASS_CODE, className: DEMO_CLASS_NAME, teacherUid: user.uid, teacherName: teacherName.trim() || '선생님', isDemo: true, createdAt: serverTimestamp() }, { merge: true });
+    }
+    await purgeClassData(DEMO_CLASS_CODE);
+    let done = 0;
+    for (const st of students) {
+      await addDoc(collection(db, 'students'), { ...st, classCode: DEMO_CLASS_CODE, createdAt: serverTimestamp(), lastActive: serverTimestamp(), addedBy: 'demo' });
+      done++; setDemoWorking(`체험 학급을 준비하고 있어요… (${done}/${students.length})`);
+    }
     try {
-      const dq = query(collection(db, 'students'), where('classCode', '==', DEMO_CLASS_CODE));
-      const dSnap = await getDocs(dq);
-      for (const d of dSnap.docs) {
-        await deleteDoc(doc(db, 'students', d.id));
-      }
-      // 데모 자리배치도·리포트·가정 회신·동의 제출·TV 보드도 함께 삭제
-      await deleteDoc(doc(db, 'seatingCharts', DEMO_CLASS_CODE)).catch(() => {});
-      await deleteDoc(doc(db, 'classBoards', DEMO_CLASS_CODE)).catch(() => {});
-      for (const col of ['classReports', 'familyFeedback', 'consents']) {
-        try {
-          const snap = await getDocs(query(collection(db, col), where('classCode', '==', DEMO_CLASS_CODE)));
-          for (const d of snap.docs) await deleteDoc(doc(db, col, d.id)).catch(() => {});
-        } catch { /* 권한/인덱스 문제는 무시 */ }
-      }
+      const extras = generateDemoClassExtras(students);
+      await setDoc(ref, { mission: extras.classMission, demoVersion: DEMO_VERSION, isDemo: true, className: DEMO_CLASS_NAME }, { merge: true });
+      await setDoc(doc(db, 'classReports', extras.report.id), extras.report.data);
+      for (const f of extras.feedback) await addDoc(collection(db, 'familyFeedback'), f);
+      for (const c of extras.consents) await addDoc(collection(db, 'consents'), c);
+    } catch (e) { console.warn('demo extras skipped', e); }
+    setDemoWorking('');
+  };
+
+  // 내 학급 삭제 (학생·자리 배치·리포트·회신·동의·TV 보드까지 모두) — 체험 학급은 삭제 불가
+  const handleDeleteClass = async (cls) => {
+    if (cls.classCode === DEMO_CLASS_CODE) return;
+    const name = cls.className || cls.classCode;
+    if (!window.confirm(`'${name}' 학급을 삭제할까요?\n\n학생 기록·관계망·자리 배치·리포트·동의 현황이 모두 지워지며 되돌릴 수 없습니다.`)) return;
+    const typed = window.prompt(`정말 삭제하려면 학급 코드를 입력하세요: ${cls.classCode}`);
+    if ((typed || '').trim() !== cls.classCode) { alert('학급 코드가 일치하지 않아 취소했습니다.'); return; }
+    setDeletingCode(cls.classCode);
+    try {
+      await purgeClassData(cls.classCode);
+      await deleteDoc(doc(db, 'classes', cls.classCode)).catch(() => {});
+      if (cls.legacy) { try { await setDoc(doc(db, 'teachers', user.uid), { classCode: '', className: '' }, { merge: true }); } catch { /* ignore */ } }
+      if (sessionStorage.getItem('currentClassCode') === cls.classCode) sessionStorage.removeItem('currentClassCode');
       await loadClasses(user);
     } catch (error) {
-      console.error('Failed to delete demo students', error);
-      alert('삭제 중 오류가 발생했습니다.');
+      console.error('Failed to delete class', error);
+      alert('학급 삭제 중 오류가 발생했습니다.');
     } finally {
-      setDemoWorking('');
+      setDeletingCode('');
     }
   };
 
@@ -289,18 +270,30 @@ const TeacherSetup = () => {
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 'bold', color: '#2d3748' }}>
                       {cls.className}
-                      {cls.classCode === DEMO_CLASS_CODE && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#805ad5', fontWeight: 'bold' }}>데모</span>}
+                      {cls.classCode === DEMO_CLASS_CODE && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#805ad5', fontWeight: 'bold' }}>체험</span>}
                     </div>
                     <div style={{ fontSize: '0.85rem', color: '#a0aec0' }}>
-                      코드: <b style={{ color: 'var(--primary-color)' }}>{cls.classCode}</b>
-                      {cls.classCode === DEMO_CLASS_CODE && ` · 가상 학생 ${demoStudentCount}명`}
+                      {cls.classCode === DEMO_CLASS_CODE
+                        ? (demoWorking || '가상 학생 23명 · 관계망·신호·성장 기록·리포트가 내장되어 바로 체험할 수 있어요')
+                        : <>코드: <b style={{ color: 'var(--primary-color)' }}>{cls.classCode}</b></>}
                     </div>
                   </div>
+                  {cls.classCode !== DEMO_CLASS_CODE && (
+                    <button
+                      onClick={() => handleDeleteClass(cls)}
+                      disabled={deletingCode === cls.classCode}
+                      title="학급 삭제"
+                      style={{ padding: '10px', borderRadius: '10px', border: '1px solid #fed7d7', background: 'white', color: '#e53e3e', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  )}
                   <button
                     onClick={() => enterClass(cls)}
+                    disabled={!!demoWorking && cls.classCode === DEMO_CLASS_CODE}
                     style={{ padding: '10px 18px', borderRadius: '10px', border: 'none', background: 'var(--primary-color)', color: 'white', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}
                   >
-                    <LogIn size={16} /> 입장
+                    <LogIn size={16} /> {cls.classCode === DEMO_CLASS_CODE ? (demoWorking ? '준비 중…' : '체험') : '입장'}
                   </button>
                 </div>
               ))}
@@ -334,39 +327,6 @@ const TeacherSetup = () => {
               {isCreating ? '생성 중...' : '학급 만들기'}
             </button>
           </div>
-        </div>
-
-        {/* 데모 학급 */}
-        <div className="glass-card" style={{ background: 'white', borderRadius: '20px', padding: '24px', border: '2px dashed #d6bcfa' }}>
-          <h3 style={{ margin: '0 0 8px 0', fontSize: '1.15rem', color: '#553c9a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Sparkles size={20} color="#805ad5" /> 데모 학급 (포트폴리오·시연용)
-          </h3>
-          <p style={{ color: '#718096', fontSize: '0.9rem', margin: '0 0 16px 0', lineHeight: 1.6 }}>
-            학급 코드 <b style={{ color: '#805ad5' }}>{DEMO_CLASS_CODE}</b>에 가상 학생 23명을 생성합니다.
-            관계망(지목)·상호 갈등·고립·외로움 신호·대화 샘플에 더해, 성장 기록과 배지, 주간 미션 "했어요", 반복 호소 사례, 확인·조치 메모가 남은 알림, 보호자 동의 현황(동의·미동의·미회신), 학생별 자유 대화 모드, 최근 발행 학급 리포트와 가정 회신까지 채워져
-            오늘 피드·소시오그램·관계 신호·자리 배치·맞춤 처방·기록·가정 연계·서류함·TV 나무를 전부 시연할 수 있어요. 입장 후 상단 [1분 체험]을 누르면 순서대로 둘러봅니다. 실제 학급 데이터와는 완전히 분리됩니다.
-            {demoStudentCount > 0 ? ' 이전에 만든 데모 학급이라면 [데모 데이터 다시 생성]으로 최신 항목(성장 기록·미션·동의 현황·리포트)을 채우세요.' : ''}
-          </p>
-          {demoWorking ? (
-            <p style={{ color: '#805ad5', fontWeight: 'bold', margin: 0 }}>⏳ {demoWorking}</p>
-          ) : (
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-              <button
-                onClick={handleCreateDemo}
-                style={{ flex: 2, minWidth: '200px', padding: '14px', borderRadius: '12px', border: 'none', background: 'linear-gradient(90deg, #805ad5, #4a90e2)', color: 'white', fontWeight: 'bold', fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-              >
-                <Sparkles size={18} /> {demoStudentCount > 0 ? '데모 데이터 다시 생성' : '데모 학급 + 학생 23명 생성'}
-              </button>
-              {demoStudentCount > 0 && (
-                <button
-                  onClick={() => deleteDemoStudents(true)}
-                  style={{ flex: 1, minWidth: '140px', padding: '14px', borderRadius: '12px', border: '1px solid #fc8181', background: 'white', color: '#e53e3e', fontWeight: 'bold', fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  <Trash2 size={16} /> 데모 삭제
-                </button>
-              )}
-            </div>
-          )}
         </div>
 
       </div>

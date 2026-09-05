@@ -26,7 +26,7 @@ const TeacherTutorial = ({ onStartTour, isDemo }) => {
           <div style={{ width: 54, height: 54, background: 'var(--primary-light)', borderRadius: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}><Shield size={28} color="var(--primary-color)" /></div>
           <div>
             <h2 style={{ fontSize: '1.4rem', color: 'var(--text-strong)', margin: 0 }}>센셀에 오신 것을 환영합니다</h2>
-            <p style={{ color: 'var(--text-muted)', margin: '2px 0 0', fontSize: '0.9rem' }}>{isDemo ? '데모 학급입니다 — 가상 학생 23명의 관계망·신호·기록이 채워져 있어요.' : '평가가 아니라 심리적 안전망을 만드는 도구입니다.'}</p>
+            <p style={{ color: 'var(--text-muted)', margin: '2px 0 0', fontSize: '0.9rem' }}>{isDemo ? '체험 학급입니다 — 가상 학생 23명의 관계망·신호·기록이 내장되어 있어요.' : '평가가 아니라 심리적 안전망을 만드는 도구입니다.'}</p>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

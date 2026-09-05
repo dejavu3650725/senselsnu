@@ -237,7 +237,7 @@ const TeacherDashboard = () => {
             <h1 className="dashboard-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               {(activeClass?.className || teacherProfile.className || '우리 반')}
               <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '1rem' }}>관계망 · 정서 건강</span>
-              {activeClass?.isDemo && <span className="chip" style={{ color: '#6b46c1', background: '#faf5ff', borderColor: '#d6bcfa' }}>🎬 데모 학급</span>}
+              {activeClass?.isDemo && <span className="chip" style={{ color: '#6b46c1', background: '#faf5ff', borderColor: '#d6bcfa' }}>🎬 체험 학급</span>}
             </h1>
             <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
               {new Date().toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' })} · 학생 {studentsData.length}명
