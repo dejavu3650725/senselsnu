@@ -29,6 +29,9 @@ const TeacherSetup = () => {
   // 내장 체험 학급 준비 상태 / 학급 삭제 상태
   const [demoWorking, setDemoWorking] = useState('');
   const [deletingCode, setDeletingCode] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteTyped, setDeleteTyped] = useState('');
+  const [deleteProgress, setDeleteProgress] = useState('');
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -210,22 +213,32 @@ const TeacherSetup = () => {
   };
 
   // 내 학급 삭제 (학생·자리 배치·리포트·회신·동의·TV 보드까지 모두) — 체험 학급은 삭제 불가
-  const handleDeleteClass = async (cls) => {
+  // 삭제 모달 열기 → 모달에서 학급 코드 입력 후 실행
+  const handleDeleteClass = (cls) => {
     if (cls.classCode === DEMO_CLASS_CODE) return;
-    const name = cls.className || cls.classCode;
-    if (!window.confirm(`'${name}' 학급을 삭제할까요?\n\n학생 기록·관계망·자리 배치·리포트·동의 현황이 모두 지워지며 되돌릴 수 없습니다.`)) return;
-    const typed = window.prompt(`정말 삭제하려면 학급 코드를 입력하세요: ${cls.classCode}`);
-    if ((typed || '').trim() !== cls.classCode) { alert('학급 코드가 일치하지 않아 취소했습니다.'); return; }
+    setDeleteTarget(cls); setDeleteTyped(''); setDeleteProgress('');
+  };
+
+  const runDeleteClass = async () => {
+    const cls = deleteTarget;
+    if (!cls || deleteTyped.trim().toUpperCase() !== cls.classCode.toUpperCase()) return;
     setDeletingCode(cls.classCode);
     try {
+      // 규칙상 학급 문서가 있어야 학생·부속 문서를 지울 수 있다 (기존 단일 학급은 문서가 없을 수 있음) → 먼저 보장
+      setDeleteProgress('학급 정보 확인 중…');
+      await setDoc(doc(db, 'classes', cls.classCode), { classCode: cls.classCode, className: cls.className || cls.classCode, teacherUid: user.uid }, { merge: true });
+      setDeleteProgress('학생 기록·관계망 삭제 중…');
       await purgeClassData(cls.classCode);
-      await deleteDoc(doc(db, 'classes', cls.classCode)).catch(() => {});
+      setDeleteProgress('학급 삭제 중…');
+      await deleteDoc(doc(db, 'classes', cls.classCode));
       if (cls.legacy) { try { await setDoc(doc(db, 'teachers', user.uid), { classCode: '', className: '' }, { merge: true }); } catch { /* ignore */ } }
       if (sessionStorage.getItem('currentClassCode') === cls.classCode) sessionStorage.removeItem('currentClassCode');
+      setClasses(prev => prev.filter(c => c.classCode !== cls.classCode));
+      setDeleteTarget(null);
       await loadClasses(user);
     } catch (error) {
       console.error('Failed to delete class', error);
-      alert('학급 삭제 중 오류가 발생했습니다.');
+      setDeleteProgress(`삭제 중 오류: ${error?.code || error?.message || '알 수 없음'}. 다시 시도해 주세요.`);
     } finally {
       setDeletingCode('');
     }
@@ -247,7 +260,7 @@ const TeacherSetup = () => {
         </div>
 
         {/* 선생님만 보는 소개 — 첫 화면(학생용)에는 두지 않는다 */}
-        <div className="landing-steps" style={{ maxWidth: '520px' }}>
+        <div className="landing-steps" style={{ gridTemplateColumns: '1fr', gap: '8px' }}>
           <div className="landing-step"><b>1. 학생이 대화합니다</b>긍정적인 질문만으로 오늘의 기분과 함께하고 싶은 친구를 자연스럽게 이야기합니다.</div>
           <div className="landing-step"><b>2. 선생님이 한눈에 봅니다</b>소시오그램, 갈등·외로움 신호, 긴급 알림이 실시간으로 정리됩니다. 이 화면은 선생님만 봅니다.</div>
           <div className="landing-step"><b>3. 교실이 달라집니다</b>근거 성취기준이 붙은 자리 배치·맞춤 처방·상담 기록과 가정통신문·학급 리포트로 이어집니다.</div>
@@ -330,6 +343,38 @@ const TeacherSetup = () => {
         </div>
 
       </div>
+
+      {deleteTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={() => !deletingCode && setDeleteTarget(null)}>
+          <div className="glass-card" style={{ width: '100%', maxWidth: '440px', background: 'white', borderRadius: '22px', padding: '26px', boxShadow: '0 24px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '14px', background: '#fff5f5', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Trash2 size={22} color="#e53e3e" /></div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '1.15rem', color: 'var(--text-strong)' }}>학급 삭제</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{deleteTarget.className || deleteTarget.classCode}</div>
+              </div>
+            </div>
+            <p style={{ margin: '0 0 14px', fontSize: '0.92rem', color: 'var(--text-main)', lineHeight: 1.6 }}>학생 기록·관계망·자리 배치·리포트·가정 회신·동의 현황이 <b>모두 지워지며 되돌릴 수 없습니다.</b> 계속하려면 학급 코드를 입력하세요.</p>
+            <input
+              className="code-input"
+              value={deleteTyped}
+              onChange={e => setDeleteTyped(e.target.value)}
+              placeholder={deleteTarget.classCode}
+              autoFocus
+              disabled={!!deletingCode}
+              onKeyDown={e => e.key === 'Enter' && runDeleteClass()}
+              style={{ fontSize: '1.15rem', letterSpacing: '3px' }}
+            />
+            {deleteProgress && <div style={{ marginTop: '10px', fontSize: '0.85rem', color: deleteProgress.startsWith('삭제 중 오류') ? '#e53e3e' : 'var(--text-muted)' }}>{deletingCode ? '⏳ ' : ''}{deleteProgress}</div>}
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button className="btn btn-secondary" style={{ flex: 1 }} disabled={!!deletingCode} onClick={() => setDeleteTarget(null)}>취소</button>
+              <button style={{ flex: 1.4, padding: '12px', borderRadius: '12px', border: 'none', background: deleteTyped.trim().toUpperCase() === deleteTarget.classCode.toUpperCase() && !deletingCode ? '#e53e3e' : '#fed7d7', color: 'white', fontWeight: 800, cursor: deleteTyped.trim().toUpperCase() === deleteTarget.classCode.toUpperCase() && !deletingCode ? 'pointer' : 'not-allowed' }} disabled={deleteTyped.trim().toUpperCase() !== deleteTarget.classCode.toUpperCase() || !!deletingCode} onClick={runDeleteClass}>
+                {deletingCode ? '삭제 중…' : '영구 삭제'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
