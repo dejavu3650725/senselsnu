@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { School, Plus, LogIn, Trash2, Users } from 'lucide-react';
+import { Shield, Plus, LogIn, Trash2, Users } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
@@ -244,103 +244,84 @@ const TeacherSetup = () => {
     }
   };
 
-  const inputStyle = {
-    width: '100%', padding: '14px', borderRadius: '12px', border: '1px solid #cbd5e1',
-    fontSize: '1rem', outline: 'none', boxSizing: 'border-box'
-  };
+  const myClasses = classes.filter(c => c.classCode !== DEMO_CLASS_CODE);
+  const demoClass = classes.find(c => c.classCode === DEMO_CLASS_CODE);
+  const [showCreate, setShowCreate] = useState(false);
+  const createOpen = showCreate || (!isLoading && myClasses.length === 0);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', minHeight: '100vh', padding: '40px 16px', background: 'var(--bg-color)', overflowY: 'auto' }}>
-      <div style={{ width: '100%', maxWidth: '520px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-
-        <div style={{ textAlign: 'center' }}>
-          <School size={48} color="var(--primary-color)" />
-          <h2 style={{ fontSize: '1.8rem', color: 'var(--text-main)', margin: '8px 0 4px 0' }}>학급 관리 🏫</h2>
-          <p style={{ color: 'var(--text-muted)', margin: 0 }}>입장할 학급을 선택하거나, 새 학급을 만들어보세요.</p>
+    <div className="setup-page">
+      <div className="setup-wrap">
+        <div className="setup-head">
+          <div className="setup-brand"><Shield size={20} /> SEN SEL</div>
+          <div>
+            <h2>{teacherName ? `${teacherName.replace(/선생님|님/g, '').trim()} 선생님, 어서 오세요` : '어서 오세요'}</h2>
+            <p>입장할 학급을 고르세요. 새 학급은 아래에서 1분이면 만듭니다.</p>
+          </div>
         </div>
 
-        {/* 선생님만 보는 소개 — 첫 화면(학생용)에는 두지 않는다 */}
-        <div className="landing-steps" style={{ gridTemplateColumns: '1fr', gap: '8px' }}>
-          <div className="landing-step"><b>1. 학생이 대화합니다</b>긍정적인 질문만으로 오늘의 기분과 함께하고 싶은 친구를 자연스럽게 이야기합니다.</div>
-          <div className="landing-step"><b>2. 선생님이 한눈에 봅니다</b>소시오그램, 갈등·외로움 신호, 긴급 알림이 실시간으로 정리됩니다. 이 화면은 선생님만 봅니다.</div>
-          <div className="landing-step"><b>3. 교실이 달라집니다</b>근거 성취기준이 붙은 자리 배치·맞춤 처방·상담 기록과 가정통신문·학급 리포트로 이어집니다.</div>
-        </div>
-
-        {/* 내 학급 목록 */}
-        <div className="glass-card" style={{ background: 'white', borderRadius: '20px', padding: '24px' }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: '1.15rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Users size={20} color="var(--primary-color)" /> 내 학급 목록
-          </h3>
+        {/* 내 학급 — 가장 먼저 */}
+        <section className="setup-card">
+          <div className="setup-card-head">
+            <h3><Users size={18} /> 내 학급</h3>
+            <button className="btn btn-primary" style={{ padding: '8px 14px', fontSize: '0.88rem' }} onClick={() => setShowCreate(v => !v)}><Plus size={15} /> 새 학급</button>
+          </div>
           {isLoading ? (
-            <p style={{ color: '#a0aec0', margin: 0 }}>불러오는 중...</p>
-          ) : classes.length === 0 ? (
-            <p style={{ color: '#a0aec0', margin: 0 }}>아직 만든 학급이 없습니다. 아래에서 첫 학급을 만들어보세요!</p>
+            <p className="setup-empty">불러오는 중…</p>
+          ) : myClasses.length === 0 ? (
+            <p className="setup-empty">아직 만든 학급이 없어요. 아래에서 첫 학급을 만들거나, 데모 학급으로 먼저 둘러보세요.</p>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {classes.map(cls => (
-                <div key={cls.classCode} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px 16px', border: '1px solid #e2e8f0', borderRadius: '14px', background: cls.classCode === DEMO_CLASS_CODE ? '#faf5ff' : '#f8fafc' }}>
-                  <span style={{ fontSize: '1.5rem' }}>{cls.classCode === DEMO_CLASS_CODE ? '🎬' : '🏫'}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 'bold', color: '#2d3748' }}>
-                      {cls.classCode === DEMO_CLASS_CODE ? DEMO_CLASS_NAME : cls.className}
-                    </div>
-                    <div style={{ fontSize: '0.85rem', color: '#a0aec0' }}>
-                      {cls.classCode === DEMO_CLASS_CODE
-                        ? (demoWorking || '가상 학생 23명 · 관계망·신호·성장 기록·리포트가 내장되어 바로 체험할 수 있어요')
-                        : <>코드: <b style={{ color: 'var(--primary-color)' }}>{cls.classCode}</b></>}
-                    </div>
+            <div className="class-grid">
+              {myClasses.map(cls => (
+                <div key={cls.classCode} className="class-tile" role="button" tabIndex={0} onClick={() => enterClass(cls)} onKeyDown={e => e.key === 'Enter' && enterClass(cls)}>
+                  <div className="class-tile-top">
+                    <span className="class-tile-icon">🏫</span>
+                    <button className="class-tile-del" title="학급 삭제" onClick={e => { e.stopPropagation(); handleDeleteClass(cls); }} disabled={deletingCode === cls.classCode}><Trash2 size={15} /></button>
                   </div>
-                  {cls.classCode !== DEMO_CLASS_CODE && (
-                    <button
-                      onClick={() => handleDeleteClass(cls)}
-                      disabled={deletingCode === cls.classCode}
-                      title="학급 삭제"
-                      style={{ padding: '10px', borderRadius: '10px', border: '1px solid #fed7d7', background: 'white', color: '#e53e3e', cursor: 'pointer', display: 'flex', alignItems: 'center', flexShrink: 0 }}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  )}
-                  <button
-                    onClick={() => enterClass(cls)}
-                    disabled={!!demoWorking && cls.classCode === DEMO_CLASS_CODE}
-                    style={{ padding: '10px 18px', borderRadius: '10px', border: 'none', background: 'var(--primary-color)', color: 'white', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}
-                  >
-                    <LogIn size={16} /> {cls.classCode === DEMO_CLASS_CODE ? (demoWorking ? '준비 중…' : '체험') : '입장'}
-                  </button>
+                  <div className="class-tile-name">{cls.className}</div>
+                  <div className="class-tile-code">코드 <b>{cls.classCode}</b></div>
+                  <div className="class-tile-enter"><LogIn size={15} /> 입장</div>
                 </div>
               ))}
             </div>
           )}
-        </div>
 
-        {/* 새 학급 만들기 */}
-        <div className="glass-card" style={{ background: 'white', borderRadius: '20px', padding: '24px' }}>
-          <h3 style={{ margin: '0 0 16px 0', fontSize: '1.15rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Plus size={20} color="var(--primary-color)" /> 새 학급 만들기
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>선생님 이름</label>
-              <input type="text" placeholder="예: 김선생님" value={teacherName} onChange={e => setTeacherName(e.target.value)} style={inputStyle} />
+          {createOpen && (
+            <div className="create-form">
+              <div className="create-form-title"><Plus size={16} /> 새 학급 만들기</div>
+              <div className="create-grid">
+                <label>선생님 이름<input type="text" placeholder="예: 김선생님" value={teacherName} onChange={e => setTeacherName(e.target.value)} /></label>
+                <label>학급 이름<input type="text" placeholder="예: 5학년 2반" value={newClassName} onChange={e => setNewClassName(e.target.value)} /></label>
+                <label>학급 코드 <span>학생 입장용 · 영문/숫자</span><input type="text" placeholder="예: SNU5B" value={newClassCode} onChange={e => setNewClassCode(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateClass()} /></label>
+              </div>
+              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                {myClasses.length > 0 && <button className="btn btn-secondary" onClick={() => setShowCreate(false)}>닫기</button>}
+                <button className="btn btn-primary" disabled={isCreating} onClick={handleCreateClass}>{isCreating ? '만드는 중…' : '학급 만들기'}</button>
+              </div>
             </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>학급 이름</label>
-              <input type="text" placeholder="예: 5학년 2반" value={newClassName} onChange={e => setNewClassName(e.target.value)} style={inputStyle} />
-            </div>
-            <div>
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', fontSize: '0.9rem' }}>학급 코드 (학생 입장용, 영문/숫자)</label>
-              <input type="text" placeholder="예: SNU5B" value={newClassCode} onChange={e => setNewClassCode(e.target.value)} style={inputStyle} onKeyDown={e => e.key === 'Enter' && handleCreateClass()} />
-            </div>
-            <button
-              onClick={handleCreateClass}
-              disabled={isCreating}
-              style={{ padding: '14px', borderRadius: '12px', border: 'none', background: isCreating ? '#a0aec0' : 'var(--primary-color)', color: 'white', fontWeight: 'bold', fontSize: '1rem', cursor: isCreating ? 'not-allowed' : 'pointer' }}
-            >
-              {isCreating ? '생성 중...' : '학급 만들기'}
-            </button>
-          </div>
-        </div>
+          )}
+        </section>
 
+        {/* 데모 학급 — 내장 */}
+        {demoClass && (
+          <section className="setup-card demo">
+            <div className="demo-row">
+              <span className="class-tile-icon" style={{ fontSize: '1.7rem' }}>🎬</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="class-tile-name">{DEMO_CLASS_NAME}</div>
+                <div className="class-tile-code" style={{ color: 'var(--text-muted)' }}>{demoWorking || '가상 학생 23명 · 관계망·신호·성장 기록·리포트가 내장되어 있어요. 입장 후 상단 [1분 체험]으로 둘러보세요.'}</div>
+              </div>
+              <button className="btn btn-primary" disabled={!!demoWorking} onClick={() => enterClass(demoClass)} style={{ background: 'linear-gradient(135deg, #7c5cd6, #9f7aea)' }}><LogIn size={16} /> {demoWorking ? '준비 중…' : '체험'}</button>
+            </div>
+          </section>
+        )}
+
+        {/* 선생님만 보는 소개 */}
+        <div className="setup-steps">
+          <div><b>1. 학생이 대화합니다</b>긍정적인 질문만으로 오늘의 기분과 함께하고 싶은 친구를 자연스럽게 이야기합니다.</div>
+          <div><b>2. 선생님이 한눈에 봅니다</b>소시오그램, 갈등·외로움 신호, 긴급 알림이 실시간으로 정리됩니다. 이 화면은 선생님만 봅니다.</div>
+          <div><b>3. 교실이 달라집니다</b>근거 성취기준이 붙은 자리 배치·맞춤 처방·상담 기록과 가정통신문·학급 리포트로 이어집니다.</div>
+        </div>
       </div>
 
       {deleteTarget && (
