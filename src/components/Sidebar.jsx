@@ -17,7 +17,7 @@ const SECTIONS = [
     { name: '학생 관리', icon: Users },
   ] },
   { label: '설정', items: [
-    { name: '서류함', icon: FolderArchive, isModal: true },
+    { name: '서류함', icon: FolderArchive },
     { name: '챗봇 설정', icon: Settings, isModal: true },
     { name: '기본 설정', icon: UserCog, isModal: true },
   ] },

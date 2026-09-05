@@ -41,8 +41,8 @@ const VIEW_W = 900;
 const VIEW_H = 460;
 const CX = VIEW_W / 2;
 const CY = VIEW_H / 2;
-const RX = VIEW_W / 2 - 120; // 타원 배치: 가로로 넓은 위젯에 맞춰 좌우로 펼친다 (이름 라벨 여백 확보)
 const RY = VIEW_H / 2 - 40;
+const RX = RY; // 원형 배치 (이름 라벨 여백은 세로 기준으로 확보)
 
 const Sociogram = ({ studentsData = [], teacherProfile }) => {
   const [selectedId, setSelectedId] = useState(null);
