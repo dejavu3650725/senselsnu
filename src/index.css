@@ -448,23 +448,31 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary-color) !
 .create-grid input { width: 100%; padding: 11px 12px; border-radius: 10px; border: 1px solid var(--border-strong); font-size: 0.95rem; outline: none; background: var(--surface-2); }
 .create-grid input:focus { border-color: var(--primary-color); background: #fff; box-shadow: 0 0 0 3px var(--primary-light); }
 .setup-empty { margin: 0; color: var(--text-faint); font-size: 0.92rem; }
-.class-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; animation: fadeUp 0.4s ease 0.08s both; }
+.class-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 16px; animation: fadeUp 0.4s ease 0.08s both; }
 .class-tile { position: relative; border-radius: 18px; background: #fff; border: 1px solid var(--border); overflow: hidden; cursor: pointer; display: flex; flex-direction: column; box-shadow: var(--shadow-xs); transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
 .class-tile:hover { transform: translateY(-3px); box-shadow: 0 16px 36px rgba(17,24,39,0.10); border-color: #c9d6f5; }
-.class-tile-band { position: relative; min-height: 84px; padding: 18px 40px 16px 18px; display: flex; align-items: center; }
+.class-tile-band { position: relative; min-height: 88px; padding: 16px 44px 16px 16px; display: flex; align-items: center; gap: 12px; overflow: hidden; }
+.class-tile-mark { width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,0.85); color: var(--primary-color); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 10px rgba(17,24,39,0.06); }
+.class-tile.tone-1 .class-tile-mark { color: var(--success); }
+.class-tile.tone-2 .class-tile-mark { color: #dd6b20; }
+.class-tile.tone-3 .class-tile-mark { color: var(--accent-purple); }
+.class-tile-watermark { position: absolute; right: -14px; bottom: -22px; color: var(--primary-color); opacity: 0.10; pointer-events: none; transform: rotate(-12deg); }
+.class-tile.tone-1 .class-tile-watermark { color: var(--success); }
+.class-tile.tone-2 .class-tile-watermark { color: #dd6b20; }
+.class-tile.tone-3 .class-tile-watermark { color: var(--accent-purple); }
 .class-tile.tone-0 .class-tile-band { background: linear-gradient(135deg, #dfe8ff, #eef2ff); }
 .class-tile.tone-1 .class-tile-band { background: linear-gradient(135deg, #d9f5e6, #edfdf4); }
 .class-tile.tone-2 .class-tile-band { background: linear-gradient(135deg, #ffe8d6, #fff6ec); }
 .class-tile.tone-3 .class-tile-band { background: linear-gradient(135deg, #ebe3ff, #f5f2ff); }
-.class-tile-name { font-weight: 800; color: var(--text-strong); font-size: 1.02rem; line-height: 1.4; letter-spacing: -0.01em; }
+.class-tile-name { position: relative; z-index: 1; font-weight: 800; color: var(--text-strong); font-size: 1.02rem; line-height: 1.4; letter-spacing: -0.01em; }
 .class-tile-del { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.6); border: 1px solid transparent; color: var(--text-faint); border-radius: 8px; padding: 5px; cursor: pointer; display: flex; opacity: 0; transition: opacity 0.15s ease; }
 .class-tile:hover .class-tile-del { opacity: 1; }
 .class-tile-del:hover { color: var(--danger); background: #fff; border-color: #fed7d7; }
 .class-tile-body { padding: 12px 12px 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
 .class-tile-code { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
-.class-tile-code b { font-family: Inter, monospace; color: var(--text-strong); letter-spacing: 1.5px; margin-left: 4px; }
+.class-tile-code b { font-family: Inter, monospace; color: var(--text-strong); letter-spacing: 1px; margin-left: 3px; }
 .class-tile-actions { display: flex; gap: 6px; flex-shrink: 0; }
-.tile-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 11px; border-radius: 9px; font-weight: 700; font-size: 0.8rem; cursor: pointer; transition: transform 0.15s ease, filter 0.15s ease, background 0.15s ease; }
+.tile-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 9px; border-radius: 9px; font-weight: 700; font-size: 0.78rem; white-space: nowrap; cursor: pointer; transition: transform 0.15s ease, filter 0.15s ease, background 0.15s ease; }
 .tile-btn:hover { transform: translateY(-1px); filter: brightness(1.04); }
 .tile-btn.edit { background: #fff; color: var(--text-main); border: 1px solid var(--border-strong); }
 .tile-btn.edit:hover { color: var(--primary-color); border-color: var(--primary-color); background: var(--primary-light); }

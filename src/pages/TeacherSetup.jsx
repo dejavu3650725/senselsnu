@@ -355,7 +355,9 @@ const TeacherSetup = () => {
             {myClasses.map((cls, i) => (
               <div key={cls.classCode} className={`class-tile tone-${i % 4}`} role="button" tabIndex={0} onClick={() => enterClass(cls)} onKeyDown={e => e.key === 'Enter' && enterClass(cls)}>
                 <div className="class-tile-band">
+                  <span className="class-tile-mark"><Shield size={22} /></span>
                   <div className="class-tile-name">{cls.className}</div>
+                  <Shield className="class-tile-watermark" size={96} strokeWidth={1.2} />
                   <button className="class-tile-del" title="학급 삭제" onClick={e => { e.stopPropagation(); handleDeleteClass(cls); }} disabled={deletingCode === cls.classCode}><Trash2 size={14} /></button>
                 </div>
                 <div className="class-tile-body">
