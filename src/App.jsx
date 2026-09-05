@@ -9,7 +9,6 @@ import FamilyLetter from './pages/FamilyLetter';
 import ParentMonthly from './pages/ParentMonthly';
 import ParentConsentSign from './pages/ParentConsentSign';
 import ClassTree from './pages/ClassTree';
-import TeacherLanding from './pages/TeacherLanding';
 import Footer from './components/Footer';
 import PolicyModal from './components/PolicyModal';
 import './index.css';
@@ -24,7 +23,7 @@ function App() {
         <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
           <Routes>
             <Route path="/" element={<RoleSelection />} />
-            <Route path="/teachers" element={<TeacherLanding />} />
+            <Route path="/teachers" element={<RoleSelection />} />
             <Route path="/teacher-setup" element={<TeacherSetup />} />
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/student" element={<StudentDashboard />} />

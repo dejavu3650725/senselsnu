@@ -319,6 +319,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary-color) !
 .landing { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 28px; padding: 32px 20px; width: 100%; }
 .landing-hero { text-align: center; max-width: 720px; animation: fadeUp 0.4s ease both; }
 .landing-logo { width: 72px; height: 72px; border-radius: 22px; background: var(--primary-gradient); color: #fff; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 12px 28px rgba(59, 111, 224, 0.35); margin-bottom: 18px; }
+.landing-brand { font-size: 2.6rem; font-weight: 900; letter-spacing: -0.03em; color: var(--text-strong); line-height: 1.1; }
+.landing-brand-ko { font-size: 1.3rem; font-weight: 700; color: var(--primary-color); margin-left: 6px; vertical-align: middle; }
 .landing-title { font-size: 2.4rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text-strong); }
 .landing-title .accent { background: var(--primary-gradient); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .landing-sub { font-size: 1.08rem; color: var(--text-muted); margin-top: 10px; line-height: 1.65; }

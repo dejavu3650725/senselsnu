@@ -16,7 +16,7 @@
 
 | 입장 | 주소 | 로그인 | 무엇을 하나 |
 |---|---|---|---|
-| 교사 | 첫 화면 → 선생님이신가요? | Google | 학급 목록에서 체험 학급 입장 또는 학급 만들기(삭제도 여기서) → 학급 코드 배부 → 대시보드. 상단 [1분 체험]이 오늘 피드→관계망→개입→관계 신호→자리 배치→처방→가정→기록→서류함 9단계를 실제 화면 위에서 안내 |
+| 교사 | 첫 화면 → 선생님 카드 | Google | 학급 목록에서 체험 학급 입장 또는 학급 만들기(삭제도 여기서) → 학급 코드 배부 → 대시보드. 상단 [1분 체험]이 오늘 피드→관계망→개입→관계 신호→자리 배치→처방→가정→기록→서류함 9단계를 실제 화면 위에서 안내 |
 | 학생 | 첫 화면 → 학생 → 학급 코드 | 익명(자동) | 실명·닉네임·기분 입력 → 'AI 활용 약속' → 챗봇 대화 |
 | 학부모 | 교사가 보낸 링크 | 익명(자동) | 전자 동의 `/consent/:code/sign`, 학급 리포트 `/family/:code/report`, 가정통신문 `/family/:code/:kind` |
 | 교실 TV | `/tree/:code` | 익명(자동) | 우리 반 나무·아침 카드·이번 주 미션. 이름·관계 정보 없음 |
@@ -109,7 +109,7 @@
 ## 7. 구조
 
 **경로**
-`/` 학생 첫 화면(학급 코드 입력, 분석 이야기 없음) · `/teachers` 선생님 로그인(기능 설명 없음) · `/teacher-setup` 학급 만들기 · `/teacher` 교사 대시보드 · `/student` 학생 · `/tree/:code` TV · `/consent/:code` 동의 안내문 인쇄 · `/consent/:code/sign` 전자 동의 · `/family/:code/report` 학급 리포트 · `/family/:code/:kind` 가정통신문
+`/` 첫 화면(SEN SEL 브랜드 + 선생님 로그인·학생 코드 입력, 분석 이야기 없음) · `/teacher-setup` 학급 만들기 · `/teacher` 교사 대시보드 · `/student` 학생 · `/tree/:code` TV · `/consent/:code` 동의 안내문 인쇄 · `/consent/:code/sign` 전자 동의 · `/family/:code/report` 학급 리포트 · `/family/:code/:kind` 가정통신문
 
 **Firestore 컬렉션(9)**
 `classes` · `teachers`(chatConfig, selLevel, gradeYear, guidelineChecks) · `studentSessions` · `students`(신호·skillLog·missions·consent·alerts·aiPrescriptionData) · `seatingCharts` · `classReports/{code}_{시각}` · `classBoards/{code}` · `consents` · `familyFeedback`

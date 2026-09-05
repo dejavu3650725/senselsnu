@@ -45,7 +45,7 @@ const TeacherDashboard = () => {
   const [codeCopied, setCodeCopied] = useState(false);
 
   const openConsent = () => window.open(`/consent/${currentClassCode}`, '_blank', 'noopener');
-  const handleLogout = async () => { try { await signOut(auth); } catch { /* ignore */ } sessionStorage.removeItem('currentClassCode'); navigate('/teachers'); };
+  const handleLogout = async () => { try { await signOut(auth); } catch { /* ignore */ } sessionStorage.removeItem('currentClassCode'); navigate('/'); };
   const copyCode = async () => { try { await navigator.clipboard.writeText(currentClassCode || ''); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 1500); } catch { /* ignore */ } };
   const hideQuickstart = () => { setQuickstartHidden(true); try { localStorage.setItem(`qs-hidden-${currentClassCode}`, '1'); } catch { /* ignore */ } };
 
@@ -62,7 +62,7 @@ const TeacherDashboard = () => {
       if (user) {
         setCurrentUser(user);
       } else {
-        navigate('/teachers');
+        navigate('/');
       }
     });
     return () => unsubscribeAuth();
