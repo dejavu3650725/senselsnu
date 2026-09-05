@@ -20,6 +20,12 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const FW = require('../src/data/selFramework.json'); // 교육부 한국형 사회정서교육 프레임워크 색인 (1차)
 const SEOUL = require('../src/data/seoulSel.json');   // 서울 사회정서교육 학년별 차시 색인 (2차)
+const AIGUIDE = require('../src/data/aiGuideline.json'); // 서울시교육청 AI·에듀테크 가이드라인 (4차: 준거)
+const guideLevelOf = (selLevel) => (selLevel === 'middle' ? 'middle' : selLevel === 'high' ? 'high' : 'elementary');
+const chatbotGuideText = (selLevel) => {
+  const g = (AIGUIDE.usage.studentCoreGuides[guideLevelOf(selLevel)] || []).find(x => x.n === 5);
+  return `[서울시교육청 AI·에듀테크 가이드라인 — 학생 '안전과 관계'] ${g ? g.title + ' ' + g.text : ''}\n너는 사람이 아니라 프로그램이라는 점을 학생이 물으면 솔직히 말해. 학생이 너에게만 의지하려 하면 가족·친구·선생님과 실제로 마음을 나누도록 부드럽게 연결해. 이름·주소·전화번호·학교 같은 개인정보는 묻지도 받지도 마.`;
+};
 const seoulGradeLabel = (selLevel, gradeYear) => {
   const n = Number(gradeYear) || 0;
   if (selLevel === 'middle') return `중${n >= 1 && n <= 3 ? n : 1}`;
@@ -218,6 +224,7 @@ const buildSystemPrompt = ({ chatConfig, ptiser, customPrompt, selLevel, gradeYe
   const sSeeds = seoulSeeds(gradeLabel, Array.isArray(cfg.focusTopics) ? cfg.focusTopics : []);
   if (sSeeds.length) s += `[이 학년이 사회정서 수업에서 배우는 것 — 서울 사회정서교육자료 ${gradeLabel}] 학생이 관련 경험을 말하면 이 기술 이름을 써서 연결해 줘("그게 바로 ~하기야"): ${sSeeds.slice(0, 8).join(' / ')}\n`;
 
+  s += chatbotGuideText(selLevel) + '\n';
   const ruleLines = [];
   if (rules.noStudyNag !== false) ruleLines.push('"공부해라", "숙제했니" 같은 학습 잔소리 금지');
   if (rules.noScolding !== false) ruleLines.push('훈계·다그침·비교("다른 애들은~") 금지');

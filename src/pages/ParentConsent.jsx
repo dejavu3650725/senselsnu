@@ -4,6 +4,7 @@ import { Printer, ArrowLeft, Shield, Info } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { ensureStudentSession } from '../utils/apiClient';
+import { parentByLevel, GUIDE } from '../utils/aiGuideline';
 
 /**
  * 보호자 안내문 · 동의서 (/consent/:classCode)
@@ -17,6 +18,8 @@ const ParentConsent = () => {
   const [cls, setCls] = useState(null);
   const [cfg, setCfg] = useState(null);
   const [loaded, setLoaded] = useState(false);
+  const [selLevel, setSelLevel] = useState('');
+  const pl = parentByLevel(selLevel);
 
   useEffect(() => {
     const load = async () => {
@@ -27,7 +30,7 @@ const ParentConsent = () => {
           setCls(c.data());
           if (c.data().teacherUid) {
             const t = await getDoc(doc(db, 'teachers', c.data().teacherUid));
-            if (t.exists()) setCfg(t.data().chatConfig || null);
+            if (t.exists()) { setCfg(t.data().chatConfig || null); setSelLevel(t.data().selLevel || ''); }
           }
         }
       } catch (e) {
@@ -93,6 +96,10 @@ const ParentConsent = () => {
                 <tr><th>보관 기간</th><td>해당 학년도 종료 시까지 (종료 후 지체 없이 삭제)</td></tr>
                 <tr><th>열람 권한</th><td>담임교사만 열람합니다. 다른 학생·학부모·외부인은 볼 수 없습니다.</td></tr>
                 <tr><th>처리 방식</th><td>인공지능 분석 시 학생 이름을 익명 번호로 바꾸어 처리하며, 이름이 외부 인공지능 서비스로 전송되지 않도록 설계되어 있습니다.</td></tr>
+                <tr><th>안전성 확보 조치</th><td>학급별 접근 권한 분리(다른 학급·외부인 열람 불가), 로그인 인증, 전송 구간 암호화(HTTPS), 대화 원문 기본 미저장</td></tr>
+                <tr><th>열람·정정·삭제·처리정지</th><td>보호자는 언제든 담임교사에게 요청하여 자녀의 기록을 열람·정정·삭제하거나 처리 정지를 요구할 수 있으며, 요청 즉시 처리합니다.</td></tr>
+                <tr><th>제3자 제공 · 위탁</th><td>제3자에게 제공하지 않습니다. 서비스 운영을 위해 클라우드(데이터 저장·서버) 및 인공지능 분석 서비스에 처리를 위탁하며, 위탁 시에도 학생 이름은 전송되지 않습니다.</td></tr>
+                <tr><th>개인정보 보호책임자</th><td>{teacherName} (학급 담임) · 학교 개인정보 보호책임자의 감독을 받습니다.</td></tr>
               </tbody>
             </table>
 
@@ -102,7 +109,18 @@ const ParentConsent = () => {
               동의를 철회하거나, 학생의 기록을 열람·삭제하도록 하실 수 있습니다. 만 14세 미만 학생의 경우 법정대리인의 동의가 필요합니다.
             </p>
 
-            <h2>4. 안전 조치</h2>
+            <h2>4. 인공지능 활용 안내 (서울시교육청 AI·에듀테크 가이드라인 기준)</h2>
+            <p>
+              '{botName}'는 학급 운영과 사회정서교육 맥락에 맞춘 <b>교육용 도구</b>로, 학생이 범용 인공지능 서비스에 직접 가입하지 않습니다. 하루 대화 횟수에 상한이 있고, 정치·성인·유해 주제는 거절하며,
+              학생에게 이름·주소·전화번호 같은 개인정보를 묻지 않습니다. 인공지능은 사람이 아니며 위로를 대신하는 존재가 아니라는 점을 학생에게 안내하고, 힘든 감정은 가족·친구·선생님과 나누도록 연결합니다.
+            </p>
+            {pl && (
+              <p style={{ fontSize: '0.92rem', color: '#4a5568' }}>
+                <b>가정에서는 이렇게 함께해 주세요 — “{pl.slogan}”</b> {pl.points.slice(0, 3).map(p => p.title).join(' ')} (서울시교육청 「{GUIDE.meta.title}」 학부모용)
+              </p>
+            )}
+
+            <h2>5. 안전 조치</h2>
             <p>
               대화 중 학교폭력, 따돌림, 자해 등 위험 신호가 감지되면 담임교사에게 즉시 알림이 전달되며, 필요한 경우 학교 상담 절차와
               보호자 연락으로 이어집니다. 이는 학생 보호를 위한 조치입니다.

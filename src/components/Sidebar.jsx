@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, BarChart2, Smile, AlertCircle, FileText, BookOpen, Users, Settings, UserCog, LayoutGrid, HeartHandshake, Mail } from 'lucide-react';
+import { Home, BarChart2, Smile, AlertCircle, FileText, BookOpen, Users, Settings, UserCog, LayoutGrid, HeartHandshake, Mail, ClipboardCheck } from 'lucide-react';
 
 const SECTIONS = [
   { label: '홈', items: [{ name: '대시보드', icon: Home }] },
@@ -17,6 +17,7 @@ const SECTIONS = [
     { name: '에듀테크 리소스', icon: BookOpen },
   ] },
   { label: '설정', items: [
+    { name: '도입 점검', icon: ClipboardCheck, isModal: true },
     { name: '챗봇 설정', icon: Settings, isModal: true },
     { name: '기본 설정', icon: UserCog, isModal: true },
   ] },

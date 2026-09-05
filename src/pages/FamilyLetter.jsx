@@ -77,7 +77,33 @@ const FamilyLetter = () => {
           <p style={{ marginTop: '14px' }}>존경하는 학부모님께,</p>
           <p>{letter.greeting}</p>
 
-          {letter.kind === 'intro' ? (
+          {letter.kind === 'ai' ? (
+            <>
+              <p style={{ fontSize: '0.95rem', color: '#4a5568' }}>{letter.aiLevel.intro}</p>
+              <h2>다섯 가지 핵심 가치 — 가정에서 이렇게</h2>
+              {letter.aiGuides.map((g, i) => (
+                <div key={i} style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '10px 14px', marginBottom: '8px', breakInside: 'avoid' }}>
+                  <div style={{ fontWeight: 800, color: 'var(--primary-color)' }}>{['주도성', '합목적성', '포용성', '안전성', '투명성'][i]} · {g.title}</div>
+                  <ul style={{ margin: '4px 0 0', paddingLeft: '18px', fontSize: '0.92rem', lineHeight: 1.6 }}>{g.items.map((it, j) => <li key={j}>{it}</li>)}</ul>
+                </div>
+              ))}
+              <h2>{letter.aiLevel.slogan}</h2>
+              {letter.aiLevel.points.map((p, i) => (
+                <div key={i} style={{ marginBottom: '8px', breakInside: 'avoid' }}>
+                  <div style={{ fontWeight: 700 }}>{['첫째', '둘째', '셋째', '넷째', '다섯째', '여섯째'][i]}. {p.title}</div>
+                  <div style={{ fontSize: '0.92rem', color: '#4a5568', lineHeight: 1.6 }}>{p.text}</div>
+                </div>
+              ))}
+              <h2>우리 학급의 AI 도구 '센셀'은</h2>
+              <ul style={{ fontSize: '0.92rem', lineHeight: 1.7, paddingLeft: '18px' }}>
+                <li>학생이 범용 AI 서비스에 가입하지 않고, 학급 코드로만 접속하는 교육용 도구입니다.</li>
+                <li>하루 대화 횟수에 상한이 있고, 정치·성인·유해 주제는 거절하며, 개인정보를 묻지 않습니다.</li>
+                <li>AI는 사람이 아니라는 점을 학생에게 안내하고, 힘든 감정은 가족·친구·선생님과 나누도록 연결합니다.</li>
+                <li>대화 원문은 기본적으로 저장하지 않으며, 학생 이름은 AI 분석에 전송되지 않습니다.</li>
+              </ul>
+              <p>{letter.closing}</p>
+            </>
+          ) : letter.kind === 'intro' ? (
             <>
               <p>{letter.levelNote}</p>
               <p>{letter.structure}</p>

@@ -7,6 +7,7 @@
 import family from '../data/seoulFamily.json' with { type: 'json' };
 import { SEOUL, seoulLevelOf, lessonsFor, areasForCompetencies } from './seoulSel.js';
 import { codesForActivity, moralLevelOf } from './moralCurriculum.js';
+import { GUIDE, parentGuides, parentByLevel, guideLevelOf } from './aiGuideline.js';
 
 export const FAMILY = family;
 export const AREA_ORDER = ['자기', '대인관계', '공동체', '마음건강'];
@@ -16,6 +17,7 @@ export const LETTER_KINDS = [
   { key: '대인관계', label: '대인관계 영역', desc: '관점 이해, 공감, 의사소통, 갈등 해결' },
   { key: '공동체', label: '공동체 영역', desc: '소속감, 협력, 책임 있는 의사 결정' },
   { key: '마음건강', label: '마음건강 영역', desc: '마음건강 이해, 어려움 대처, 도움 요청' },
+  { key: 'ai', label: 'AI 활용 가정 지도', desc: '서울시교육청 AI·에듀테크 가이드라인 학부모용 — 센셀 사용 전 배부' },
 ];
 
 const AREA_DEF = {};
@@ -64,6 +66,19 @@ export const buildLetter = ({ kind, gradeLabel, className = '', schoolName = '',
   const source = verbatim
     ? '서울특별시교육청 사회정서교육자료(고등학교) 가정연계 가정통신문 예시를 바탕으로 작성'
     : `서울특별시교육청 사회정서교육자료(${gradeLabel.replace('초', '초등 ').replace('중', '중학교 ')}학년)의 학습 주제·학습 목표를 바탕으로 자동 구성`;
+
+  if (kind === 'ai') {
+    const pl = parentByLevel(level === 'high' ? 'high' : level === 'middle' ? 'middle' : 'elementary_high');
+    return {
+      kind, gradeLabel, school, className, teacherName, verbatim: true,
+      source: `서울특별시교육청 창의미래교육과 「${GUIDE.meta.title}」(${GUIDE.meta.published}) 학부모용 핵심 가이드를 바탕으로 작성`,
+      title: `AI·에듀테크 활용 가정 지도 안내 — ${pl.slogan}`,
+      greeting: `본교(학급)에서는 학생의 사회정서교육을 돕는 교육용 AI 도구 '센셀'을 활용합니다. 서울특별시교육청 「${GUIDE.meta.title}」은 AI·에듀테크를 '누구나 안전하고 이롭게' 활용하기 위해 학생·교사·학부모가 함께 지켜야 할 다섯 가지 핵심 가치(주도성·합목적성·포용성·안전성·투명성)를 제시합니다. 아래는 가정에서 자녀와 함께 실천해 주실 내용입니다.`,
+      aiGuides: parentGuides(),
+      aiLevel: pl,
+      closing: `${pl.closing} 학교의 AI 활용 방침과 가정의 지도가 같은 방향을 향할 때 아이는 기술의 주인으로 자랍니다. 궁금한 점은 담임교사에게 언제든 문의해 주세요.`,
+    };
+  }
 
   if (kind === 'intro') {
     const hi = family.high.intro;

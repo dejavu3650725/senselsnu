@@ -8,6 +8,7 @@ import { apiPost, ensureStudentSession } from '../utils/apiClient';
 import { seoulGradeLabel } from '../utils/seoulSel';
 import { skillsForLevel, areaOfSkill, monthlySkillCounts, badgeFor, defaultMission, missionById, weekKey, dayKey } from '../utils/growth';
 import GrowthPanel from '../components/GrowthPanel';
+import { studentPromises } from '../utils/aiGuideline';
 
 const AVATAR_LIST = [
   '🐻', '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐼', '🐨', '🐯',
@@ -67,6 +68,9 @@ const StudentDashboard = () => {
   const [missionsDone, setMissionsDone] = useState([]); // [{weekKey, missionId, doneAt}]
   const [classMission, setClassMission] = useState(null); // classes/{code}.mission (교사 지정) 없으면 기본 순환
   const [growthOpen, setGrowthOpen] = useState(false);
+  // AI 활용 약속 (서울시교육청 가이드라인 학생 핵심 가이드 5·3·6) — 기기당 1회, 학교급 바뀌면 다시
+  const [promiseDone, setPromiseDone] = useState(() => { try { return localStorage.getItem('sensel-ai-promise') === (sessionStorage.getItem('studentClassCode') || 'x'); } catch { return false; } });
+  const acceptPromise = () => { setPromiseDone(true); try { localStorage.setItem('sensel-ai-promise', sessionStorage.getItem('studentClassCode') || 'x'); } catch { /* ignore */ } };
   const [growthToast, setGrowthToast] = useState('');
   const gradeLabelForSkills = seoulGradeLabel(selLevel, gradeYear);
   const validSkills = skillsForLevel(gradeLabelForSkills).map(s => s.skill);
@@ -669,6 +673,26 @@ const StudentDashboard = () => {
           </button>
         </div>
       </div>
+
+      {/* AI 활용 약속 — 첫 대화 전 1회 */}
+      {!promiseDone && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.55)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200 }}>
+          <div style={{ background: 'white', padding: '26px', borderRadius: '24px', width: '92%', maxWidth: '460px', boxShadow: 'var(--shadow-lg)' }}>
+            <div style={{ fontSize: '2.2rem', textAlign: 'center' }}>🤝</div>
+            <h3 style={{ margin: '6px 0 4px', textAlign: 'center', fontSize: '1.25rem' }}>{botName}와 이야기하기 전 세 가지 약속</h3>
+            <p style={{ margin: '0 0 14px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>서울시교육청 AI·에듀테크 가이드라인의 학생 약속이야.</p>
+            <ol style={{ margin: 0, paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {studentPromises(selLevel).map(p => (
+                <li key={p.n} style={{ lineHeight: 1.5 }}>
+                  <b>{p.title}</b>
+                  <div style={{ fontSize: '0.84rem', color: 'var(--text-muted)' }}>{p.text.split('. ').slice(0, 2).join('. ')}{p.text.includes('. ') ? '.' : ''}</div>
+                </li>
+              ))}
+            </ol>
+            <button className="btn btn-primary btn-lg" style={{ width: '100%', marginTop: '18px' }} onClick={acceptPromise}>약속할게요</button>
+          </div>
+        </div>
+      )}
 
       {/* 캐릭터 변경 모달 */}
       {isEditingProfile && (

@@ -18,6 +18,11 @@ const require = createRequire(import.meta.url);
 const FW = require('../src/data/selFramework.json'); // 교육부 한국형 사회정서교육 프레임워크 색인 (1차 로직)
 const SEOUL = require('../src/data/seoulSel.json');   // 서울 사회정서교육 학년별 성취기준·차시 색인 (2차 로직)
 const MORAL = require('../src/data/moralCurriculum.json'); // 2022 개정 도덕과 교육과정 (3차 로직: 교과 근거)
+const AIGUIDE = require('../src/data/aiGuideline.json'); // 서울시교육청 AI·에듀테크 가이드라인 (4차: 준거)
+const prescriptionGuideText = () => {
+  const pick = [1, 3, 5, 7].map(n => AIGUIDE.usage.teacherCoreGuides.find(x => x.n === n)).filter(Boolean);
+  return `[서울시교육청 AI·에듀테크 가이드라인 — 교사 핵심 가이드]\n${pick.map(g => `- ${g.title}`).join('\n')}\n이 처방은 참고 자료이며 최종 판단은 교사에게 있음을 문체에 반영하라(단정 금지).`;
+};
 
 // ===== 도덕과 헬퍼 (src/utils/moralCurriculum.js와 동일 로직) =====
 const MORAL_INDEX = {}; Object.values(MORAL.standards).forEach(l => l.forEach(s => { MORAL_INDEX[s.code] = s; }));
@@ -237,6 +242,7 @@ export default async function handler(req, res) {
     systemText += `- 아침조회 대화 주제(교육부 2026): ${topics.join(' / ') || '없음'}\n`;
     if (excerpts) systemText += `\n[지도서 발췌 — 활동을 변형해 개별 처방에 활용]\n${excerpts}\n`;
     systemText += `\n[2차 로직 — 서울특별시교육청 사회정서교육자료 (${gradeLabel})]\n이 학년에서 실제로 가르치는 성취기준과 차시입니다. 처방의 focus·actions는 가능한 한 아래 성취기준 코드로 근거를 밝히고, 차시 활동을 개별 학생용으로 변형해 제안하세요.\n${seoulText}\n`;
+    systemText += `\n[4차 — 준거]\n${prescriptionGuideText()}\n`;
     systemText += `\n[3차 로직 — 교과 근거]\n${moralText}\n담임교사가 이 처방을 도덕(또는 통합교과·창체) 수업과 연결할 수 있도록, 각 실천에 도덕과 성취기준 코드(moral)를 붙이세요. 초1~2 학급이면 3~4학년군 코드를 '다음 학년군 연계'로 씁니다.\n`;
 
     let userText = `[학생 데이터 (익명화)]\n${buildProfileText(profile)}\n`;

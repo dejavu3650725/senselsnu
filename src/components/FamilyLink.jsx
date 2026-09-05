@@ -146,11 +146,11 @@ const FamilyLink = ({ studentsData = [], teacherProfile, classCode, classLabel, 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))', gap: '12px' }}>
           {LETTER_KINDS.map(k => {
             const l = preview(k.key);
-            const n = k.key === 'intro' ? (l.skillIntro || []).length : (l.tips || []).length;
+            const n = k.key === 'intro' ? (l.skillIntro || []).length : k.key === 'ai' ? (l.aiLevel?.points || []).length : (l.tips || []).length;
             return (
               <div key={k.key} style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ fontWeight: 800, color: '#2d3748' }}>{k.label}</div>
-                <div style={{ fontSize: '0.82rem', color: '#718096', lineHeight: 1.5, flex: 1 }}>{k.desc}<br /><span style={{ color: '#a0aec0' }}>{k.key === 'intro' ? `사회정서기술 ${n}개 소개` : `가정 실천 팁 ${n}개`}</span></div>
+                <div style={{ fontSize: '0.82rem', color: '#718096', lineHeight: 1.5, flex: 1 }}>{k.desc}<br /><span style={{ color: '#a0aec0' }}>{k.key === 'intro' ? `사회정서기술 ${n}개 소개` : k.key === 'ai' ? `핵심 가치 5 · 학교급 지침 ${n}개` : `가정 실천 팁 ${n}개`}</span></div>
                 <button className="btn btn-secondary" style={{ justifyContent: 'center' }} onClick={() => openLetter(k.key)}><Printer size={14} /> 미리보기 · 인쇄</button>
               </div>
             );
