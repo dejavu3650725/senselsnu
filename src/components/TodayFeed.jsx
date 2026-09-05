@@ -57,6 +57,7 @@ const TodayFeed = ({ studentsData = [], teacherProfile, classCode, classInfo, on
               <span style={{ fontSize: '0.72rem', fontWeight: 700, color: t.color }}>{t.label}</span>
               {who.focus.slice(0, 2).map(f => <span key={f} className="chip" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>{f}</span>)}
             </div>
+            {who.reason && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>왜: {who.reason}</div>}
             <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: 1.5 }}>{who.action}</div>
             {onOpenStudent && <button className="btn btn-secondary" style={{ alignSelf: 'flex-start', padding: '5px 10px', fontSize: '0.8rem' }} onClick={() => onOpenStudent(who.id)}>맞춤 처방 <ArrowRight size={13} /></button>}
           </>

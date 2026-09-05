@@ -15,7 +15,7 @@ const STATUS_COLOR = { '충족': '#2f855a', '부분 충족': '#b7791f', '충족(
  */
 const GuidelineCheck = ({ onClose, teacherProfile, onSaved, classCode, studentsData = [] }) => {
   const [checks, setChecks] = useState({});
-  const [open, setOpen] = useState({ forms: true, pre: false, steps: true, mandatory: true, risks: false, values: false });
+  const [open, setOpen] = useState({ forms: true, pre: false, steps: false, mandatory: false, risks: false, values: false });
   const [school, setSchool] = useState(() => { try { return localStorage.getItem('sensel-school') || ''; } catch { return ''; } });
   const [principal, setPrincipal] = useState('');
   const [busy, setBusy] = useState('');
@@ -79,6 +79,17 @@ const GuidelineCheck = ({ onClose, teacherProfile, onSaved, classCode, studentsD
     } catch (e) { console.error(e); } finally { setSaving(false); }
   };
 
+  const schoolDone = teacherProfile?.chatConfig?.committeeApproved === true && (teacherProfile?.chatConfig?.consentCollected === true || teacherProfile?.chatConfig?.consentConfirmed === true);
+  const setSchoolDone = async (done) => {
+    try {
+      setSaving(true);
+      const u = auth.currentUser; if (!u) return;
+      const chatConfig = { ...(teacherProfile?.chatConfig || {}), committeeApproved: done, consentCollected: done, schoolProcessAt: done ? new Date().toISOString() : null };
+      await setDoc(doc(db, 'teachers', u.uid), { chatConfig }, { merge: true });
+      if (onSaved) onSaved({ chatConfig });
+    } catch (e) { console.error(e); } finally { setSaving(false); }
+  };
+
   const preItems = GUIDE.adoption.units.flatMap(u => u.checks.map((c, i) => ({ key: `pre_${u.key}_${i}`, unit: u.name, ...c })));
   const stepItems = [
     { key: 'step1', n: 1, title: GUIDE.adoption.procedure.steps[0].name, desc: '교장·동료 교원 의견 수렴. 센셀은 학생 개인정보를 처리하므로 "학운위 심의가 필요한 학습지원 소프트웨어"에 해당합니다.' },
@@ -88,7 +99,7 @@ const GuidelineCheck = ({ onClose, teacherProfile, onSaved, classCode, studentsD
   ];
   const doneCount = (keys) => keys.filter(k => checks[k]).length;
   const Section = ({ id, icon, title, sub, children }) => (
-    <div style={{ border: '1px solid #e2e8f0', borderRadius: '14px', overflow: 'hidden' }}>
+    <div style={{ border: '1px solid #e2e8f0', borderRadius: '14px', overflow: 'hidden', flexShrink: 0 }}>
       <button onClick={() => setOpen(o => ({ ...o, [id]: !o[id] }))} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 14px', background: '#f8fafc', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
         {icon}<span style={{ fontWeight: 800, color: '#2d3748' }}>{title}</span><span style={{ fontSize: '0.8rem', color: '#718096' }}>{sub}</span>
         <span style={{ marginLeft: 'auto', color: '#a0aec0' }}>{open[id] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}</span>
@@ -118,6 +129,14 @@ const GuidelineCheck = ({ onClose, teacherProfile, onSaved, classCode, studentsD
 
         <div style={{ background: '#faf5ff', border: '1px solid #e9d8fd', borderRadius: '12px', padding: '10px 14px', fontSize: '0.84rem', color: '#553c9a', lineHeight: 1.55 }}>
           <b>센셀의 분류:</b> {GUIDE.senselCompliance.classification.reason} · {GUIDE.senselCompliance.classification.aiType}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', background: schoolDone ? '#f0fff4' : '#fffbea', border: `1.5px solid ${schoolDone ? '#9ae6b4' : '#f6e05e'}`, borderRadius: '14px', padding: '12px 14px', flexShrink: 0 }}>
+          <div style={{ flex: 1, minWidth: '240px' }}>
+            <div style={{ fontWeight: 800, color: schoolDone ? '#276749' : '#744210' }}>{schoolDone ? '✅ 학교 절차 완료 — 학운위 심의·보호자 동의를 마쳤습니다' : '학운위 심의와 보호자 동의를 이미 마치셨나요?'}</div>
+            <div style={{ fontSize: '0.82rem', color: '#718096', marginTop: '2px' }}>{schoolDone ? '아래 서식·점검은 필요할 때만 참고하세요.' : '이미 완료했다면 여기서 표시하세요. 아직이라면 아래 서식으로 진행하면 됩니다.'}</div>
+          </div>
+          <button className={`btn ${schoolDone ? 'btn-secondary' : 'btn-primary'}`} style={{ padding: '8px 14px', fontSize: '0.85rem' }} disabled={saving} onClick={() => setSchoolDone(!schoolDone)}>{schoolDone ? '완료 표시 해제' : '이미 완료했어요'}</button>
         </div>
 
         <Section id="forms" icon={<FileDown size={18} color="#dd6b20" />} title="공문·동의서 내려받기 (서울시교육청 공식 서식)" sub="한글(HWP)·Word에서 열어 학교 양식에 맞게 수정">

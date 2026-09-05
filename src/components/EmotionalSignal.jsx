@@ -62,6 +62,9 @@ const EmotionalSignal = ({ studentsData = [] }) => {
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
             현재 상태: <strong style={{ color: statusColor }}>{currentStatus}</strong> ({total}명 참여)
+            <div style={{ fontSize: '0.74rem', color: 'var(--text-faint)', marginTop: '3px', lineHeight: 1.45 }}>
+              {currentStatus.startsWith('빨강') ? `지원 필요 학생이 30% 이상(${badCount}명)이라 빨강` : currentStatus.startsWith('노랑') ? (badCount > 0 ? `지원 필요 학생이 ${badCount}명 있어서 노랑 — 한 명이라도 있으면 초록이 되지 않아요` : `보통이 절반 이상이라 노랑`) : '지원 필요 0명, 보통 절반 미만이라 초록'}
+            </div>
           </div>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>

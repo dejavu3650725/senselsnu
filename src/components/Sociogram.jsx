@@ -1,5 +1,4 @@
 import React, { useState, useMemo } from 'react';
-import CurriculumEvidence from './CurriculumEvidence';
 import { X } from 'lucide-react';
 
 /**
@@ -239,7 +238,6 @@ const Sociogram = ({ studentsData = [], teacherProfile }) => {
           별을 클릭하면 그 학생의 관계만 강조됩니다
         </div>
         <div style={{ marginTop: '6px', fontWeight: 'normal', textShadow: 'none', maxWidth: '420px' }}>
-          <CurriculumEvidence activity="peerNomination" teacherProfile={teacherProfile} seoulAreas={['대인관계']} dark compact />
         </div>
       </div>
 
