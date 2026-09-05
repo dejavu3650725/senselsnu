@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Plus, LogIn, Trash2, MessageCircle, HeartHandshake, Sparkles } from 'lucide-react';
+import { Shield, Plus, LogIn, Trash2, MessageCircle, HeartHandshake, Sparkles, Pencil } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
@@ -32,6 +32,11 @@ const TeacherSetup = () => {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleteTyped, setDeleteTyped] = useState('');
   const [deleteProgress, setDeleteProgress] = useState('');
+  const [editTarget, setEditTarget] = useState(null);
+  const [editName, setEditName] = useState('');
+  const [editCode, setEditCode] = useState('');
+  const [editProgress, setEditProgress] = useState('');
+  const [editBusy, setEditBusy] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -213,6 +218,61 @@ const TeacherSetup = () => {
   };
 
   // 내 학급 삭제 (학생·자리 배치·리포트·회신·동의·TV 보드까지 모두) — 체험 학급은 삭제 불가
+  // 학급 정보 수정 (이름은 즉시, 코드 변경은 모든 부속 문서를 새 코드로 옮긴다)
+  const openEdit = (cls) => { setEditTarget(cls); setEditName(cls.className || ''); setEditCode(cls.classCode); setEditProgress(''); };
+
+  const migrateCollection = async (col, oldCode, newCode, idMap) => {
+    const snap = await getDocs(query(collection(db, col), where('classCode', '==', oldCode)));
+    let n = 0;
+    for (const d of snap.docs) {
+      const data = { ...d.data(), classCode: newCode };
+      if (idMap) await setDoc(doc(db, col, idMap(d.id)), data); else await addDoc(collection(db, col), data);
+      await deleteDoc(doc(db, col, d.id)).catch(() => {});
+      n++; setEditProgress(`${col} 옮기는 중… (${n}/${snap.size})`);
+    }
+  };
+
+  const runEditClass = async () => {
+    const cls = editTarget; if (!cls) return;
+    const name = editName.trim(); const code = editCode.trim();
+    if (!name || !code) { setEditProgress('학급 이름과 코드를 모두 입력하세요.'); return; }
+    if (!/^[A-Za-z0-9]{3,12}$/.test(code)) { setEditProgress('학급 코드는 영문·숫자 3~12자로 입력하세요.'); return; }
+    setEditBusy(true); setEditProgress('');
+    try {
+      const oldCode = cls.classCode;
+      if (code === oldCode) {
+        await setDoc(doc(db, 'classes', oldCode), { classCode: oldCode, className: name, teacherUid: user.uid, updatedAt: serverTimestamp() }, { merge: true });
+      } else {
+        const existing = await getDoc(doc(db, 'classes', code));
+        if (existing.exists()) { setEditProgress('이미 사용 중인 학급 코드입니다.'); setEditBusy(false); return; }
+        // 1) 새 학급 문서 (기존 설정 유지)
+        const oldSnap = await getDoc(doc(db, 'classes', oldCode));
+        const base = oldSnap.exists() ? oldSnap.data() : {};
+        setEditProgress('새 학급 문서 만드는 중…');
+        await setDoc(doc(db, 'classes', code), { ...base, classCode: code, className: name, teacherUid: user.uid, isDemo: false, updatedAt: serverTimestamp() });
+        // 2) 부속 문서 이동
+        await migrateCollection('students', oldCode, code);
+        await migrateCollection('consents', oldCode, code);
+        await migrateCollection('familyFeedback', oldCode, code);
+        await migrateCollection('classReports', oldCode, code, (id) => id.replace(new RegExp('^' + oldCode + '_'), code + '_'));
+        const seat = await getDoc(doc(db, 'seatingCharts', oldCode));
+        if (seat.exists()) { await setDoc(doc(db, 'seatingCharts', code), seat.data()); await deleteDoc(doc(db, 'seatingCharts', oldCode)).catch(() => {}); }
+        await deleteDoc(doc(db, 'classBoards', oldCode)).catch(() => {});
+        // 3) 옛 학급 문서 삭제, 레거시 프로필 갱신
+        await deleteDoc(doc(db, 'classes', oldCode)).catch(() => {});
+        try { const t = await getDoc(doc(db, 'teachers', user.uid)); if (t.exists() && t.data().classCode === oldCode) await setDoc(doc(db, 'teachers', user.uid), { classCode: code, className: name }, { merge: true }); } catch { /* ignore */ }
+        if (sessionStorage.getItem('currentClassCode') === oldCode) sessionStorage.setItem('currentClassCode', code);
+      }
+      setEditTarget(null);
+      await loadClasses(user);
+    } catch (error) {
+      console.error('Failed to edit class', error);
+      setEditProgress(`수정 중 오류: ${error?.code || error?.message || '알 수 없음'}`);
+    } finally {
+      setEditBusy(false);
+    }
+  };
+
   // 삭제 모달 열기 → 모달에서 학급 코드 입력 후 실행
   const handleDeleteClass = (cls) => {
     if (cls.classCode === DEMO_CLASS_CODE) return;
@@ -289,18 +349,14 @@ const TeacherSetup = () => {
           </div>
         ) : (
           <div className="class-grid">
-            {myClasses.map((cls, i) => (
-              <div key={cls.classCode} className={`class-tile tone-${i % 4}`} role="button" tabIndex={0} onClick={() => enterClass(cls)} onKeyDown={e => e.key === 'Enter' && enterClass(cls)}>
-                <div className="class-tile-band">
-                  <span className="class-tile-emoji">🏫</span>
-                  <button className="class-tile-del" title="학급 삭제" onClick={e => { e.stopPropagation(); handleDeleteClass(cls); }} disabled={deletingCode === cls.classCode}><Trash2 size={15} /></button>
-                </div>
-                <div className="class-tile-body">
-                  <div className="class-tile-name">{cls.className}</div>
-                  <div className="class-tile-foot">
-                    <span className="class-tile-code">{cls.classCode}</span>
-                    <span className="class-tile-enter">입장 <LogIn size={14} /></span>
-                  </div>
+            {myClasses.map(cls => (
+              <div key={cls.classCode} className="class-tile" role="button" tabIndex={0} onClick={() => enterClass(cls)} onKeyDown={e => e.key === 'Enter' && enterClass(cls)}>
+                <button className="class-tile-del" title="학급 삭제" onClick={e => { e.stopPropagation(); handleDeleteClass(cls); }} disabled={deletingCode === cls.classCode}><Trash2 size={15} /></button>
+                <div className="class-tile-name">{cls.className}</div>
+                <div className="class-tile-code">학급 코드 <b>{cls.classCode}</b></div>
+                <div className="class-tile-actions">
+                  <button className="tile-btn edit" onClick={e => { e.stopPropagation(); openEdit(cls); }}><Pencil size={14} /> 수정</button>
+                  <button className="tile-btn enter" onClick={e => { e.stopPropagation(); enterClass(cls); }}><LogIn size={15} /> 입장</button>
                 </div>
               </div>
             ))}
@@ -327,6 +383,30 @@ const TeacherSetup = () => {
           </div>
         </div>
       </div>
+
+      {editTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={() => !editBusy && setEditTarget(null)}>
+          <div className="glass-card" style={{ width: '100%', maxWidth: '440px', background: 'white', borderRadius: '22px', padding: '26px', boxShadow: '0 24px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '14px', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><Pencil size={20} color="var(--primary-color)" /></div>
+              <div>
+                <div style={{ fontWeight: 800, fontSize: '1.15rem', color: 'var(--text-strong)' }}>학급 정보 수정</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>이름은 바로 바뀌고, 코드를 바꾸면 학생·기록이 새 코드로 옮겨져요.</div>
+              </div>
+            </div>
+            <div className="create-grid" style={{ gridTemplateColumns: '1fr' }}>
+              <label>학급 이름<input type="text" value={editName} onChange={e => setEditName(e.target.value)} disabled={editBusy} autoFocus /></label>
+              <label>학급 코드 <span>영문·숫자 3~12자</span><input type="text" value={editCode} onChange={e => setEditCode(e.target.value.toUpperCase().replace(/[^A-Za-z0-9]/g, ''))} disabled={editBusy} style={{ fontFamily: 'Inter, monospace', letterSpacing: '2px', fontWeight: 700 }} /></label>
+            </div>
+            {editCode.trim() !== editTarget.classCode && <div style={{ marginTop: '10px', fontSize: '0.82rem', color: '#975a16', background: '#fffbea', border: '1px solid #f6e05e', borderRadius: '10px', padding: '8px 10px', lineHeight: 1.5 }}>코드를 바꾸면 학생들은 <b>새 코드로 다시 입장</b>해야 해요. 칠판·알림장의 코드도 함께 바꿔 주세요.</div>}
+            {editProgress && <div style={{ marginTop: '10px', fontSize: '0.85rem', color: editProgress.includes('오류') || editProgress.includes('입력') || editProgress.includes('사용 중') ? '#e53e3e' : 'var(--text-muted)' }}>{editBusy ? '⏳ ' : ''}{editProgress}</div>}
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button className="btn btn-secondary" style={{ flex: 1 }} disabled={editBusy} onClick={() => setEditTarget(null)}>취소</button>
+              <button className="btn btn-primary" style={{ flex: 1.4 }} disabled={editBusy} onClick={runEditClass}>{editBusy ? '저장 중…' : '저장'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {deleteTarget && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={() => !deletingCode && setDeleteTarget(null)}>
