@@ -110,7 +110,7 @@
 ## 7. 구조
 
 **경로**
-`/` 학생 첫 화면(학급 코드 입력, 분석 이야기 없음) · `/teachers` 선생님 소개·로그인 · `/seating` 공개 자리 배치 · `/teacher-setup` 학급 만들기 · `/teacher` 교사 대시보드 · `/student` 학생 · `/tree/:code` TV · `/consent/:code` 동의 안내문 인쇄 · `/consent/:code/sign` 전자 동의 · `/family/:code/report` 학급 리포트 · `/family/:code/:kind` 가정통신문
+`/` 학생 첫 화면(학급 코드 입력, 분석 이야기 없음) · `/teachers` 선생님 로그인(기능 설명 없음) · `/seating` 공개 자리 배치 · `/teacher-setup` 학급 만들기 · `/teacher` 교사 대시보드 · `/student` 학생 · `/tree/:code` TV · `/consent/:code` 동의 안내문 인쇄 · `/consent/:code/sign` 전자 동의 · `/family/:code/report` 학급 리포트 · `/family/:code/:kind` 가정통신문
 
 **Firestore 컬렉션(9)**
 `classes` · `teachers`(chatConfig, selLevel, gradeYear, guidelineChecks) · `studentSessions` · `students`(신호·skillLog·missions·consent·alerts·aiPrescriptionData) · `seatingCharts` · `classReports/{code}_{시각}` · `classBoards/{code}` · `consents` · `familyFeedback`
