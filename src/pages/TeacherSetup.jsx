@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Plus, LogIn, Trash2, Users } from 'lucide-react';
+import { Shield, Plus, LogIn, Trash2 } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
@@ -253,70 +253,60 @@ const TeacherSetup = () => {
     <div className="setup-page">
       <div className="setup-wrap">
         <div className="setup-head">
-          <div className="setup-brand"><Shield size={20} /> SEN SEL</div>
-          <div>
+          <div className="setup-brand"><Shield size={18} /> SEN SEL</div>
+          <div className="setup-head-text">
             <h2>{teacherName ? `${teacherName.replace(/선생님|님/g, '').trim()} 선생님, 어서 오세요` : '어서 오세요'}</h2>
-            <p>입장할 학급을 고르세요. 새 학급은 아래에서 1분이면 만듭니다.</p>
+            <p>학급을 고르면 바로 대시보드로 들어갑니다.</p>
+          </div>
+          <div className="setup-actions">
+            {demoClass && <button className="btn-demo" disabled={!!demoWorking} onClick={() => enterClass(demoClass)} title="가상 학생 23명이 내장된 학급으로 모든 기능을 체험합니다">🎬 {demoWorking ? demoWorking : '데모 학급 체험'}</button>}
+            <button className="btn-new" onClick={() => setShowCreate(v => !v)}><Plus size={16} /> 새 학급</button>
           </div>
         </div>
 
-        {/* 내 학급 — 가장 먼저 */}
-        <section className="setup-card">
-          <div className="setup-card-head">
-            <h3><Users size={18} /> 내 학급</h3>
-            <button className="btn btn-primary" style={{ padding: '8px 14px', fontSize: '0.88rem' }} onClick={() => setShowCreate(v => !v)}><Plus size={15} /> 새 학급</button>
-          </div>
-          {isLoading ? (
-            <p className="setup-empty">불러오는 중…</p>
-          ) : myClasses.length === 0 ? (
-            <p className="setup-empty">아직 만든 학급이 없어요. 아래에서 첫 학급을 만들거나, 데모 학급으로 먼저 둘러보세요.</p>
-          ) : (
-            <div className="class-grid">
-              {myClasses.map(cls => (
-                <div key={cls.classCode} className="class-tile" role="button" tabIndex={0} onClick={() => enterClass(cls)} onKeyDown={e => e.key === 'Enter' && enterClass(cls)}>
-                  <div className="class-tile-top">
-                    <span className="class-tile-icon">🏫</span>
-                    <button className="class-tile-del" title="학급 삭제" onClick={e => { e.stopPropagation(); handleDeleteClass(cls); }} disabled={deletingCode === cls.classCode}><Trash2 size={15} /></button>
-                  </div>
-                  <div className="class-tile-name">{cls.className}</div>
-                  <div className="class-tile-code">코드 <b>{cls.classCode}</b></div>
-                  <div className="class-tile-enter"><LogIn size={15} /> 입장</div>
-                </div>
-              ))}
+        {createOpen && (
+          <section className="setup-card create-card">
+            <div className="create-form-title"><Plus size={16} /> 새 학급 만들기 <span>학생 명단·자리 배치·가정 연계까지 5분이면 준비돼요</span></div>
+            <div className="create-grid">
+              <label>선생님 이름<input type="text" placeholder="예: 김선생님" value={teacherName} onChange={e => setTeacherName(e.target.value)} /></label>
+              <label>학급 이름<input type="text" placeholder="예: 5학년 2반" value={newClassName} onChange={e => setNewClassName(e.target.value)} /></label>
+              <label>학급 코드 <span>학생 입장용 · 영문/숫자</span><input type="text" placeholder="예: SNU5B" value={newClassCode} onChange={e => setNewClassCode(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateClass()} /></label>
             </div>
-          )}
-
-          {createOpen && (
-            <div className="create-form">
-              <div className="create-form-title"><Plus size={16} /> 새 학급 만들기</div>
-              <div className="create-grid">
-                <label>선생님 이름<input type="text" placeholder="예: 김선생님" value={teacherName} onChange={e => setTeacherName(e.target.value)} /></label>
-                <label>학급 이름<input type="text" placeholder="예: 5학년 2반" value={newClassName} onChange={e => setNewClassName(e.target.value)} /></label>
-                <label>학급 코드 <span>학생 입장용 · 영문/숫자</span><input type="text" placeholder="예: SNU5B" value={newClassCode} onChange={e => setNewClassCode(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateClass()} /></label>
-              </div>
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                {myClasses.length > 0 && <button className="btn btn-secondary" onClick={() => setShowCreate(false)}>닫기</button>}
-                <button className="btn btn-primary" disabled={isCreating} onClick={handleCreateClass}>{isCreating ? '만드는 중…' : '학급 만들기'}</button>
-              </div>
-            </div>
-          )}
-        </section>
-
-        {/* 데모 학급 — 내장 */}
-        {demoClass && (
-          <section className="setup-card demo">
-            <div className="demo-row">
-              <span className="class-tile-icon" style={{ fontSize: '1.7rem' }}>🎬</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="class-tile-name">{DEMO_CLASS_NAME}</div>
-                <div className="class-tile-code" style={{ color: 'var(--text-muted)' }}>{demoWorking || '가상 학생 23명 · 관계망·신호·성장 기록·리포트가 내장되어 있어요. 입장 후 상단 [1분 체험]으로 둘러보세요.'}</div>
-              </div>
-              <button className="btn btn-primary" disabled={!!demoWorking} onClick={() => enterClass(demoClass)} style={{ background: 'linear-gradient(135deg, #7c5cd6, #9f7aea)' }}><LogIn size={16} /> {demoWorking ? '준비 중…' : '체험'}</button>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+              {myClasses.length > 0 && <button className="btn btn-secondary" onClick={() => setShowCreate(false)}>닫기</button>}
+              <button className="btn btn-primary" disabled={isCreating} onClick={handleCreateClass}>{isCreating ? '만드는 중…' : '학급 만들기'}</button>
             </div>
           </section>
         )}
 
-        {/* 선생님만 보는 소개 */}
+        {isLoading ? (
+          <p className="setup-empty">불러오는 중…</p>
+        ) : myClasses.length === 0 ? (
+          <div className="setup-card" style={{ textAlign: 'center', padding: '28px' }}>
+            <div style={{ fontSize: '2rem' }}>🏫</div>
+            <div style={{ fontWeight: 800, color: 'var(--text-strong)', marginTop: '6px' }}>아직 만든 학급이 없어요</div>
+            <div className="setup-empty" style={{ marginTop: '4px' }}>위에서 새 학급을 만들거나, 데모 학급 체험으로 먼저 둘러보세요.</div>
+          </div>
+        ) : (
+          <div className="class-grid">
+            {myClasses.map((cls, i) => (
+              <div key={cls.classCode} className={`class-tile tone-${i % 4}`} role="button" tabIndex={0} onClick={() => enterClass(cls)} onKeyDown={e => e.key === 'Enter' && enterClass(cls)}>
+                <div className="class-tile-band">
+                  <span className="class-tile-emoji">🏫</span>
+                  <button className="class-tile-del" title="학급 삭제" onClick={e => { e.stopPropagation(); handleDeleteClass(cls); }} disabled={deletingCode === cls.classCode}><Trash2 size={15} /></button>
+                </div>
+                <div className="class-tile-body">
+                  <div className="class-tile-name">{cls.className}</div>
+                  <div className="class-tile-foot">
+                    <span className="class-tile-code">{cls.classCode}</span>
+                    <span className="class-tile-enter">입장 <LogIn size={14} /></span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="setup-steps">
           <div><b>1. 학생이 대화합니다</b>긍정적인 질문만으로 오늘의 기분과 함께하고 싶은 친구를 자연스럽게 이야기합니다.</div>
           <div><b>2. 선생님이 한눈에 봅니다</b>소시오그램, 갈등·외로움 신호, 긴급 알림이 실시간으로 정리됩니다. 이 화면은 선생님만 봅니다.</div>
