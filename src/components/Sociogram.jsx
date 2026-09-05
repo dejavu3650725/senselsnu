@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import CurriculumEvidence from './CurriculumEvidence';
 import { X } from 'lucide-react';
 
 /**
@@ -43,7 +44,7 @@ const CX = VIEW_W / 2;
 const CY = VIEW_H / 2 + 6;
 const RADIUS = Math.min(VIEW_W, VIEW_H) / 2 - 78; // 라벨 공간 확보
 
-const Sociogram = ({ studentsData = [] }) => {
+const Sociogram = ({ studentsData = [], teacherProfile }) => {
   const [selectedId, setSelectedId] = useState(null);
 
   const { nodes, links } = useMemo(() => {
@@ -236,6 +237,9 @@ const Sociogram = ({ studentsData = [] }) => {
         학생 관계망 소시오그램
         <div style={{ fontSize: '0.72rem', fontWeight: 'normal', color: '#94a3b8', marginTop: '3px' }}>
           별을 클릭하면 그 학생의 관계만 강조됩니다
+        </div>
+        <div style={{ marginTop: '6px', fontWeight: 'normal', textShadow: 'none', maxWidth: '420px' }}>
+          <CurriculumEvidence activity="peerNomination" teacherProfile={teacherProfile} seoulAreas={['대인관계']} dark compact />
         </div>
       </div>
 

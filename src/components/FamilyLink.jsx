@@ -2,7 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { Mail, Printer, Copy, Check, Info, Users, ShieldCheck } from 'lucide-react';
 import { assessClass } from '../utils/studentSignals';
 import { seoulGradeLabel } from '../utils/seoulSel';
-import { LETTER_KINDS, buildLetter, buildParentCard, parentCardToText } from '../utils/familyLink';
+import { LETTER_KINDS, buildLetter, buildParentCard, parentCardToText, buildLessonNotice } from '../utils/familyLink';
+import CurriculumEvidence from './CurriculumEvidence';
+import { lessonsFor } from '../utils/seoulSel';
 
 /**
  * 가정 연계 (학교–가정)
@@ -17,6 +19,14 @@ const FamilyLink = ({ studentsData = [], teacherProfile, classCode, classLabel }
   const [selectedId, setSelectedId] = useState('');
   const [copied, setCopied] = useState(false);
   const [draft, setDraft] = useState('');
+  const [lessonIdx, setLessonIdx] = useState('');
+  const [noticeDraft, setNoticeDraft] = useState('');
+  const [noticeCopied, setNoticeCopied] = useState(false);
+  const gradeLessons = lessonsFor(gradeLabel, [], 60);
+  const lesson = lessonIdx !== '' ? gradeLessons[Number(lessonIdx)] : null;
+  const noticeText = lesson ? buildLessonNotice({ lesson, gradeLabel, className, teacherName }) : '';
+  const notice = noticeDraft !== '' ? noticeDraft : noticeText;
+  const copyNotice = async () => { try { await navigator.clipboard.writeText(notice); setNoticeCopied(true); setTimeout(() => setNoticeCopied(false), 1800); } catch { /* ignore */ } };
 
   const selected = results.find(r => r.id === selectedId);
   const card = selected ? buildParentCard({
@@ -47,6 +57,7 @@ const FamilyLink = ({ studentsData = [], teacherProfile, classCode, classLabel }
         <ShieldCheck size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
         <span>가정으로 나가는 문서에는 학생의 기분·지목·갈등 신호·대화 내용이 <b>절대 포함되지 않습니다</b>. 학부모에게 전하는 것은 "이 시기 학교에서 배우는 것"과 "집에서 함께 나눌 대화"뿐입니다. 개별 상담이 필요한 사안은 학교 절차(담임 상담·Wee클래스·보호자 면담)로 진행하세요.</span>
       </div>
+      <CurriculumEvidence activity="familyLink" teacherProfile={teacherProfile} />
 
       {/* 1. 가정통신문 */}
       <section>
@@ -70,9 +81,41 @@ const FamilyLink = ({ studentsData = [], teacherProfile, classCode, classLabel }
         </div>
       </section>
 
-      {/* 2. 학생별 학부모 대화 카드 */}
+      {/* 2. 이번 주 수업 연계 알림 (3줄) */}
       <section>
-        <h3 style={{ margin: '0 0 4px', fontSize: '1.05rem', color: '#2d3748' }}>2. 학생별 학부모 대화 카드 (개별 전달)</h3>
+        <h3 style={{ margin: '0 0 4px', fontSize: '1.05rem', color: '#2d3748' }}>2. 이번 주 수업 연계 알림 (알림장·문자용 3줄)</h3>
+        <p style={{ margin: '0 0 12px', color: '#718096', fontSize: '0.88rem', lineHeight: 1.55 }}>
+          이번 주에 한 사회정서 수업(또는 도덕 수업)을 고르면, 학부모가 저녁에 아이에게 건넬 질문 한 줄이 들어간 짧은 알림을 만듭니다. 초·중·고 모두 같은 방식입니다.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 320px) 1fr', gap: '16px', alignItems: 'start' }}>
+          <select value={lessonIdx} onChange={e => { setLessonIdx(e.target.value); setNoticeDraft(''); }} style={{ width: '100%', padding: '10px 12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontFamily: 'inherit', fontSize: '0.9rem', background: 'white' }}>
+            <option value="">{gradeLabel} 차시 선택 ({gradeLessons.length}개)</option>
+            {gradeLessons.map((l, i) => <option key={i} value={i}>[{l.area}] {l.seq ? `${l.seq}차시 ` : ''}{l.title}</option>)}
+          </select>
+          <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
+            {!lesson ? (
+              <div style={{ color: '#a0aec0', fontSize: '0.9rem', textAlign: 'center', padding: '12px' }}>차시를 선택하면 알림 문구가 만들어집니다.</div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span className="chip">{lesson.area}</span>
+                  <span style={{ fontSize: '0.78rem', color: '#718096' }}>{lesson.skill} · 근거 {lesson.standards.join(', ')}</span>
+                  <span style={{ marginLeft: 'auto', display: 'flex', gap: '6px' }}>
+                    <button className="btn btn-secondary" style={{ padding: '6px 10px', fontSize: '0.82rem' }} onClick={() => setNoticeDraft('')}>원문으로</button>
+                    <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '0.82rem' }} onClick={copyNotice}>{noticeCopied ? <Check size={14} /> : <Copy size={14} />} {noticeCopied ? '복사됨' : '복사'}</button>
+                  </span>
+                </div>
+                <textarea value={notice} onChange={e => setNoticeDraft(e.target.value)} rows={6}
+                  style={{ width: '100%', fontFamily: 'inherit', fontSize: '0.9rem', lineHeight: 1.6, padding: '12px', borderRadius: '12px', border: '1px solid #e2e8f0', resize: 'vertical', color: '#2d3748' }} />
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* 3. 학생별 학부모 대화 카드 */}
+      <section>
+        <h3 style={{ margin: '0 0 4px', fontSize: '1.05rem', color: '#2d3748' }}>3. 학생별 학부모 대화 카드 (개별 전달)</h3>
         <p style={{ margin: '0 0 12px', color: '#718096', fontSize: '0.88rem', lineHeight: 1.55 }}>
           학생을 고르면 그 학생의 <b>초점 영역</b>에 맞는 가정 대화 팁만 담긴 짧은 안내문을 만듭니다. 학생의 상태나 신호는 쓰지 않으며, 문구를 고쳐서 알림장·문자·상담 자료로 쓰세요.
         </p>

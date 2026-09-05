@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import CurriculumEvidence from './CurriculumEvidence';
 import { LayoutGrid, Save, Shuffle, RotateCcw, X, Plus, Minus, Printer, Sparkles, Layers, CheckCircle2, AlertCircle, MinusCircle, ChevronDown, ChevronUp, Loader } from 'lucide-react';
 import { db } from '../firebase';
 import { apiPost } from '../utils/apiClient';
@@ -38,7 +39,7 @@ const groupColor = (gid) => GROUP_COLORS[(Math.abs(Number(gid)) - 1) % GROUP_COL
  * - 드래그가 어려운 환경(태블릿 등)에서는 학생을 클릭 → 좌석 클릭으로 배치 가능
  * - 배치 결과는 Firestore(seatingCharts/{classCode})에 저장되어 다시 접속해도 유지됩니다.
  */
-const SeatingChart = ({ studentsData, classCode, classLabel }) => {
+const SeatingChart = ({ studentsData, classCode, classLabel, teacherProfile }) => {
   const [rows, setRows] = useState(DEFAULT_ROWS);
   const [cols, setCols] = useState(DEFAULT_COLS);
   const [seats, setSeats] = useState({}); // { "row_col": studentId }
@@ -483,6 +484,9 @@ const SeatingChart = ({ studentsData, classCode, classLabel }) => {
       <p className="no-print" style={{ color: '#718096', marginBottom: '8px', fontSize: '1.05rem', paddingLeft: '52px' }}>
         아래 명단의 학생을 좌석으로 <b>드래그</b>하여 배치하세요. 좌석끼리 드래그하면 자리가 서로 바뀝니다. (클릭으로 선택 → 좌석 클릭도 가능)
       </p>
+      <div className="no-print" style={{ paddingLeft: '52px', marginBottom: '10px' }}>
+        <CurriculumEvidence activity="seatingFairness" teacherProfile={teacherProfile} seoulAreas={['공동체']} compact />
+      </div>
       <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center', marginBottom: '20px', paddingLeft: '52px', fontSize: '0.85rem', color: '#718096' }}>
         <span>이름 색:</span>
         <span style={{ fontWeight: 'bold', color: '#2b6cb0' }}>■ 파랑 = 남학생</span>

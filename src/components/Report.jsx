@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Download } from 'lucide-react';
 import { seoulGradeLabel, standardsFor } from '../utils/seoulSel';
+import { MORAL, moralLevelOf, moralLevelLabel, codesForActivity, isNextBandNote } from '../utils/moralCurriculum';
 
 const Report = ({ studentsData, teacherProfile }) => {
   const [customPlan, setCustomPlan] = useState('');
@@ -8,6 +9,9 @@ const Report = ({ studentsData, teacherProfile }) => {
   const gradeLabel = seoulGradeLabel(teacherProfile?.selLevel, teacherProfile?.gradeYear);
   const gradeStandards = standardsFor(gradeLabel, []);
   const citedCodes = Array.from(new Set(studentsData.flatMap(s => s.aiPrescriptionData?.standards || [])));
+  const moralLevel = moralLevelOf(teacherProfile?.selLevel, teacherProfile?.gradeYear);
+  const citedMoral = Array.from(new Set(studentsData.flatMap(s => s.aiPrescriptionData?.moralStandards || [])));
+  const evidenceActivities = ['peerNomination', 'moodCheckin', 'conflictHandling', 'seatingFairness', 'isolatedSupport', 'familyLink'];
   const totalStudents = studentsData.length;
   const healthCount = studentsData.filter(s => s.mood === '건강').length;
   const normalCount = studentsData.filter(s => s.mood === '보통').length;
@@ -63,6 +67,28 @@ const Report = ({ studentsData, teacherProfile }) => {
             </li>
           ))}
         </ul>
+
+        <h3 style={{ color: '#4a5568', borderBottom: '2px solid var(--primary-color)', paddingBottom: '8px' }}>1-2. 교과 근거 — 2022 개정 도덕과 교육과정 ({moralLevelLabel(moralLevel)}{isNextBandNote(teacherProfile?.selLevel, teacherProfile?.gradeYear) ? ', 초1~2는 다음 학년군 연계' : ''})</h3>
+        <p style={{ lineHeight: 1.6, color: '#4a5568', fontSize: '0.92rem' }}>
+          {MORAL.design.process} 이 학급의 사회정서 활동은 다음 성취기준을 구현합니다.
+        </p>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.88rem', marginBottom: '32px' }}>
+          <tbody>
+            {evidenceActivities.map(k => {
+              const act = MORAL.senselMapping.activities.find(a => a.key === k);
+              const codes = codesForActivity(k, moralLevel);
+              if (!act || !codes.length) return null;
+              return (
+                <tr key={k}>
+                  <td style={{ border: '1px solid #e2e8f0', padding: '6px 8px', width: '28%', fontWeight: 700, verticalAlign: 'top' }}>{act.name}</td>
+                  <td style={{ border: '1px solid #e2e8f0', padding: '6px 8px', lineHeight: 1.6 }}>
+                    {codes.map(s => <div key={s.code} style={{ fontWeight: citedMoral.includes(s.code) ? 'bold' : 'normal' }}>[{s.code}] {s.text}{citedMoral.includes(s.code) && ' ★'}</div>)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
 
         <h3 style={{ color: '#4a5568', borderBottom: '2px solid var(--primary-color)', paddingBottom: '8px' }}>2. 교우 관계망 (소시오그램) 요약</h3>
         <p style={{ lineHeight: '1.6', color: '#4a5568' }}>

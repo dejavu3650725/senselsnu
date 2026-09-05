@@ -5,6 +5,7 @@ import { apiPost } from '../utils/apiClient';
 import { doc, updateDoc } from 'firebase/firestore';
 import { assessClass, buildAnonymizedProfile, deanonymizeText, CASEL } from '../utils/studentSignals';
 import { seoulGradeLabel, standardByCode } from '../utils/seoulSel';
+import { moralByCode, moralLevelLabel } from '../utils/moralCurriculum';
 
 const TIER_STYLE = {
   urgent: { label: '긴급', color: '#c53030', bg: '#fff5f5', border: '#feb2b2' },
@@ -33,8 +34,10 @@ export const prescriptionToText = (p) => {
     if (a.script) lines.push(`   교사 말: "${a.script}"`);
     if (a.resource) lines.push(`   자료: ${a.resource}`);
     if (a.standard) lines.push(`   성취기준: [${a.standard}]`);
+    if (a.moral) lines.push(`   교과 근거(도덕): [${a.moral}]`);
   });
   if (p.standards?.length) lines.push(`■ 근거 성취기준(서울 사회정서교육): ${p.standards.map(c => `[${c}]`).join(' ')}`);
+  if (p.moralStandards?.length) lines.push(`■ 교과 근거(2022 도덕과 교육과정): ${p.moralStandards.map(c => `[${c}]`).join(' ')}`);
   if (p.peerPlan) lines.push(`■ 또래 연결: ${p.peerPlan}`);
   if (p.caution) lines.push(`■ 주의: ${p.caution}`);
   if (p.checkpoints?.length) lines.push(`■ 1주 후 확인: ${p.checkpoints.join(' · ')}`);
@@ -102,9 +105,11 @@ const CustomPrescription = ({ studentsData, teacherProfile, focusStudentId }) =>
           title: dz(a.title), competency: a.competency, how: dz(a.how), script: dz(a.script),
           peers: (a.peers || []).map(dz), resource: a.resource ? String(a.resource) : '',
           standard: a.standard ? String(a.standard) : '',
+          moral: a.moral ? String(a.moral) : '',
         })),
         standards: Array.isArray(p.standards) ? p.standards.map(String) : [],
-        gradeLabel: data.gradeLabel || '',
+        moralStandards: Array.isArray(p.moralStandards) ? p.moralStandards.map(String) : [],
+        gradeLabel: data.gradeLabel || '', moralLevel: data.moralLevel || '',
         peerPlan: dz(p.peerPlan), caution: dz(p.caution),
         checkpoints: (p.checkpoints || []).map(dz), escalation: dz(p.escalation),
         level: data.level, generatedAt: new Date().toISOString(),
@@ -292,6 +297,7 @@ const PrescriptionView = ({ p }) => (
           {a.script && <div style={{ fontSize: '0.85rem', color: '#2b6cb0', marginTop: '6px', fontStyle: 'italic', lineHeight: 1.5 }}>🗣 "{a.script}"</div>}
           {a.resource && <div style={{ fontSize: '0.75rem', color: '#718096', marginTop: '4px' }}>📚 {a.resource}</div>}
           {a.standard && <div style={{ fontSize: '0.72rem', color: '#805ad5', marginTop: '2px' }} title={standardByCode(a.standard)?.text || ''}>🎯 [{a.standard}] {standardByCode(a.standard)?.text || ''}</div>}
+          {a.moral && <div style={{ fontSize: '0.72rem', color: '#2f855a', marginTop: '2px' }} title={moralByCode(a.moral)?.text || ''}>📖 도덕 [{a.moral}] {moralByCode(a.moral)?.text || ''}</div>}
         </div>
       ))}
     </div>
@@ -300,6 +306,12 @@ const PrescriptionView = ({ p }) => (
       <div style={{ background: '#faf5ff', border: '1px solid #e9d8fd', borderRadius: '10px', padding: '8px 12px', fontSize: '0.78rem', color: '#553c9a', lineHeight: 1.55 }}>
         <b>근거 성취기준 · 서울 사회정서교육{p.gradeLabel ? ` ${p.gradeLabel}` : ''}</b>
         {p.standards.map(c => { const st = standardByCode(c); return <div key={c}>[{c}] {st ? `(${st.area}) ${st.text}` : ''}</div>; })}
+      </div>
+    )}
+    {p.moralStandards?.length > 0 && (
+      <div style={{ background: '#f0fff4', border: '1px solid #c6f6d5', borderRadius: '10px', padding: '8px 12px', fontSize: '0.78rem', color: '#276749', lineHeight: 1.55 }}>
+        <b>교과 근거 · 2022 개정 도덕과 교육과정{p.moralLevel ? ` (${moralLevelLabel(p.moralLevel)})` : ''}</b>
+        {p.moralStandards.map(c => { const st = moralByCode(c); return <div key={c}>[{c}] {st ? `(${st.area}) ${st.text}` : ''}</div>; })}
       </div>
     )}
 

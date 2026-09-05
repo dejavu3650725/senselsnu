@@ -6,6 +6,7 @@
  */
 import family from '../data/seoulFamily.json' with { type: 'json' };
 import { SEOUL, seoulLevelOf, lessonsFor, areasForCompetencies } from './seoulSel.js';
+import { codesForActivity, moralLevelOf } from './moralCurriculum.js';
 
 export const FAMILY = family;
 export const AREA_ORDER = ['자기', '대인관계', '공동체', '마음건강'];
@@ -126,7 +127,21 @@ export const buildParentCard = ({ focusKeys = [], gradeLabel, studentName = '', 
     const list = level === 'high' ? (family.high.areas[area]?.tips || []) : tipsFromLessons(gradeLabel, area);
     list.slice(0, 2).forEach(t => tips.push({ area, ...t }));
   });
-  return { areas, tips: tips.slice(0, 4), gradeLabel, studentName, teacherName, className };
+  const moralCodes = codesForActivity('familyLink', moralLevelOf(level === 'high' ? 'high' : level === 'middle' ? 'middle' : 'elementary_high', Number(gradeLabel.slice(1)))).map(s => s.code);
+  return { areas, tips: tips.slice(0, 4), gradeLabel, studentName, teacherName, className, moralCodes };
+};
+
+/** 이번 주 수업 연계 알림 — 차시 하나 → 알림장·문자용 3줄 (초·중·고 공통) */
+export const buildLessonNotice = ({ lesson, gradeLabel, className = '', teacherName = '' }) => {
+  const kid = childWord(gradeLabel);
+  const topic = lesson.gradeTopic || lesson.lessonTopic || lesson.title;
+  const q = (lesson.lessonTopic || topic).replace(/하기$/, '');
+  return [
+    `[${className || '우리 반'} 사회정서 수업 안내] 이번 주에는 ${lesson.area} 영역 「${lesson.title}」 수업을 했습니다. (${lesson.skill || topic})`,
+    `수업 목표: ${lesson.goal}`,
+    `오늘 저녁, ${kid}에게 한 번만 물어봐 주세요. "학교에서 '${q}' 배웠다던데, 어땠어?" 평가 없이 끝까지 들어 주시면 충분합니다.`,
+    `— ${teacherName || '담임교사'} (근거: 서울 사회정서교육 ${lesson.standards.join(', ')})`,
+  ].join('\n');
 };
 
 export const parentCardToText = (card) => {
@@ -142,6 +157,6 @@ export const parentCardToText = (card) => {
   });
   lines.push('');
   lines.push('잘 안 되어도 괜찮습니다. 사회정서기술은 연습으로 자라는 기술입니다. 궁금한 점은 언제든 연락 주세요.');
-  lines.push('(출처: 서울특별시교육청 사회정서교육자료 가정연계 안내)');
+  lines.push(`(출처: 서울특별시교육청 사회정서교육자료 가정연계 안내${card.moralCodes?.length ? ` · 2022 도덕과 교육과정 ${card.moralCodes.join(', ')}` : ''})`);
   return lines.join('\n');
 };

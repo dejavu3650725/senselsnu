@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import CurriculumEvidence from './CurriculumEvidence';
 import { AlertTriangle, UserX, CloudRain, HeartHandshake, Repeat, Eye, Info } from 'lucide-react';
 import { buildClassGraph, crossCheckConflict } from '../utils/studentSignals';
 
@@ -16,7 +17,7 @@ const Name = ({ s }) => (
   </span>
 );
 
-const RelationshipWatch = ({ studentsData = [] }) => {
+const RelationshipWatch = ({ studentsData = [], teacherProfile }) => {
   const a = useMemo(() => {
     const graph = buildClassGraph(studentsData);
     const edges = [];
@@ -63,6 +64,9 @@ const RelationshipWatch = ({ studentsData = [] }) => {
       <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', background: '#fffbea', border: '1px solid #f6e05e', borderRadius: '12px', padding: '10px 14px', margin: '8px 0 20px', fontSize: '0.86rem', color: '#744210', lineHeight: 1.55 }}>
         <Info size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
         <span>여기 표시되는 갈등은 모두 <b>학생이 챗봇에게 말한 내용</b>입니다. 프로그램은 사실 여부를 판정하지 않습니다. 각 항목의 교차 정보를 참고해 직접 관찰·확인한 뒤 판단해 주세요. 특히 같은 친구를 반복해서 이르는 경우, 보고하는 학생 쪽의 어려움(관계 기술, 관점 취하기)도 함께 살펴 주세요.</span>
+      </div>
+      <div style={{ marginBottom: '16px' }}>
+        <CurriculumEvidence activity="conflictHandling" teacherProfile={teacherProfile} seoulAreas={['대인관계']} compact />
       </div>
 
       {/* 1. 갈등 보고 */}

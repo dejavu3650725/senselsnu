@@ -17,6 +17,29 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const FW = require('../src/data/selFramework.json'); // 교육부 한국형 사회정서교육 프레임워크 색인 (1차 로직)
 const SEOUL = require('../src/data/seoulSel.json');   // 서울 사회정서교육 학년별 성취기준·차시 색인 (2차 로직)
+const MORAL = require('../src/data/moralCurriculum.json'); // 2022 개정 도덕과 교육과정 (3차 로직: 교과 근거)
+
+// ===== 도덕과 헬퍼 (src/utils/moralCurriculum.js와 동일 로직) =====
+const MORAL_INDEX = {}; Object.values(MORAL.standards).forEach(l => l.forEach(s => { MORAL_INDEX[s.code] = s; }));
+const moralLevelOf = (selLevel, gradeYear) => {
+  const n = Number(gradeYear) || 0;
+  if (selLevel === 'middle') return 'middle';
+  if (selLevel === 'high') return 'high';
+  if (n >= 5) return 'elementary56';
+  if (n >= 1 && n <= 4) return 'elementary34';
+  return selLevel === 'elementary_low' ? 'elementary34' : 'elementary56';
+};
+const MORAL_LEVEL_LABEL = { elementary34: '초등 3~4학년군', elementary56: '초등 5~6학년군', middle: '중학교', high: '고등학교 선택과목' };
+const moralGuideText = (level, signalTypes, keys) => {
+  const acts = []; signalTypes.forEach(t => { const a = MORAL.senselMapping.signalToActivity[t]; if (a && !acts.includes(a)) acts.push(a); });
+  const seen = new Set(); const list = [];
+  acts.forEach(k => { const act = MORAL.senselMapping.activities.find(a => a.key === k); (act?.codes[level] || []).forEach(c => { if (!seen.has(c) && MORAL_INDEX[c]) { seen.add(c); list.push(MORAL_INDEX[c]); } }); });
+  const areas = []; keys.forEach(k => (MORAL.selCrosswalk[k] || []).forEach(a => { if (!areas.includes(a)) areas.push(a); }));
+  const pool = (MORAL.standards[level] || []).filter(s => level === 'high' ? ['타인과 관계 맺기', '성찰 대상으로서 나', '다양성과 포용성'].includes(s.area) : areas.includes(s.area));
+  pool.forEach(s => { if (!seen.has(s.code) && list.length < 8) { seen.add(s.code); list.push(s); } });
+  const ideas = MORAL.areas.filter(a => areas.includes(a.name)).map(a => `- ${a.name}(핵심 가치 ${a.coreValue}): ${a.coreIdeas.join(' / ')}`).join('\n');
+  return `[2022 개정 도덕과 교육과정 — ${MORAL_LEVEL_LABEL[level]} 성취기준 (교과 근거로 인용할 것)]\n${list.map(s => `[${s.code}] (${s.area}) ${s.text}${s.note ? ` — 취지: ${s.note.slice(0, 120)}` : ''}`).join('\n') || '(해당 없음)'}\n[도덕과 핵심 아이디어]\n${ideas || '-'}`;
+};
 
 // ===== 서울 2차 로직 헬퍼 (src/utils/seoulSel.js와 동일 로직) =====
 const seoulGradeLabel = (selLevel, gradeYear) => {
@@ -136,10 +159,12 @@ const OUTPUT_SCHEMA = `
       "script": "교사가 실제로 학생에게 건넬 말 1~2문장 (따옴표 없이)",
       "peers": ["활용할 급우 익명 ID (없으면 빈 배열)"],
       "resource": "활용한 공식 자료 (예: 서울 초5 8~9차시 갈등, 이렇게 해결해요 / 교육부 초(고) 4차시 경청과 공감을 실천해요 / 아침조회 주제: 타인 이해 · 타인의 생각과 느낌) 또는 빈 문자열",
-      "standard": "이 실천이 겨냥하는 서울 성취기준 코드 1개 (예: 5사회정서02-03) 또는 빈 문자열"
+      "standard": "이 실천이 겨냥하는 서울 성취기준 코드 1개 (예: 5사회정서02-03) 또는 빈 문자열",
+      "moral": "이 실천이 구현하는 도덕과 성취기준 코드 1개 (예: 6도02-02) 또는 빈 문자열"
     }
   ],
   "standards": ["이 처방 전체가 근거로 삼은 서울 성취기준 코드 1~3개 (제공된 목록에서만)"],
+  "moralStandards": ["이 처방이 구현하는 2022 도덕과 성취기준 코드 1~2개 (제공된 목록에서만)"],
   "peerPlan": "또래 자원(상호 지목·받은 지목 친구)을 활용한 관계 연결 계획 1~2문장. 자리·모둠·역할 배치 제안 포함",
   "caution": "이 학생에게 특히 피해야 할 접근 1~2문장",
   "checkpoints": ["1주 후 확인할 관찰 지표 2~3개 (측정 가능하게)"],
@@ -200,6 +225,8 @@ export default async function handler(req, res) {
     const gradeLabel = seoulGradeLabel(level, gradeYear);
     const seoulAreas = seoulAreasForSignals(signalTypes);
     const seoulText = seoulGuideText(gradeLabel, seoulAreas);
+    const moralLevel = moralLevelOf(level, gradeYear);
+    const moralText = moralGuideText(moralLevel, signalTypes, keys);
 
     let systemText = `너는 사회정서교육(SEL) 전문 장학사이자 20년차 담임교사 멘토야. 담임교사가 학생 한 명을 위한 이번 주 맞춤 지도 계획을 세울 수 있도록, 제공된 데이터를 근거로 개별화된 처방을 작성해.\n`;
     systemText += `대상 학교급: ${LEVEL_LABEL[level]}\n`;
@@ -210,6 +237,7 @@ export default async function handler(req, res) {
     systemText += `- 아침조회 대화 주제(교육부 2026): ${topics.join(' / ') || '없음'}\n`;
     if (excerpts) systemText += `\n[지도서 발췌 — 활동을 변형해 개별 처방에 활용]\n${excerpts}\n`;
     systemText += `\n[2차 로직 — 서울특별시교육청 사회정서교육자료 (${gradeLabel})]\n이 학년에서 실제로 가르치는 성취기준과 차시입니다. 처방의 focus·actions는 가능한 한 아래 성취기준 코드로 근거를 밝히고, 차시 활동을 개별 학생용으로 변형해 제안하세요.\n${seoulText}\n`;
+    systemText += `\n[3차 로직 — 교과 근거]\n${moralText}\n담임교사가 이 처방을 도덕(또는 통합교과·창체) 수업과 연결할 수 있도록, 각 실천에 도덕과 성취기준 코드(moral)를 붙이세요. 초1~2 학급이면 3~4학년군 코드를 '다음 학년군 연계'로 씁니다.\n`;
 
     let userText = `[학생 데이터 (익명화)]\n${buildProfileText(profile)}\n`;
     if (avoid.length) {
@@ -257,7 +285,10 @@ export default async function handler(req, res) {
     const validCodes = new Set(seoulStandardsFor(gradeLabel, []).map(s => s.code));
     if (Array.isArray(parsed.standards)) parsed.standards = parsed.standards.filter(c => validCodes.has(c)).slice(0, 3);
     parsed.actions.forEach(a => { if (a && a.standard && !validCodes.has(a.standard)) a.standard = ''; });
-    return res.status(200).json({ prescription: parsed, level, gradeLabel });
+    const validMoral = new Set((MORAL.standards[moralLevel] || []).map(s => s.code));
+    if (Array.isArray(parsed.moralStandards)) parsed.moralStandards = parsed.moralStandards.filter(c => validMoral.has(c)).slice(0, 2); else parsed.moralStandards = [];
+    parsed.actions.forEach(a => { if (a && a.moral && !validMoral.has(a.moral)) a.moral = ''; });
+    return res.status(200).json({ prescription: parsed, level, gradeLabel, moralLevel });
   } catch (error) {
     console.error('Gemini Prescription Error:', error);
     return res.status(500).json({ error: `서버 처리 중 오류: ${error.message || 'Unknown error'}` });

@@ -269,7 +269,7 @@ const TeacherDashboard = () => {
 
           {activeMenu === '대시보드' && (
             <div className="dashboard-grid">
-              <Sociogram studentsData={studentsData} />
+              <Sociogram studentsData={studentsData} teacherProfile={teacherProfile} />
               <div className="dashboard-side">
                 <EmotionalSignal studentsData={studentsData} />
                 <InterventionTable
@@ -285,8 +285,8 @@ const TeacherDashboard = () => {
           {activeMenu === '감정 트래커' && <EmotionTracker studentsData={studentsData} />}
           {activeMenu === '맞춤 처방' && <CustomPrescription studentsData={studentsData} teacherProfile={teacherProfile} focusStudentId={focusStudentId} />}
           {activeMenu === '학생 관리' && <StudentManagement studentsData={studentsData} classCode={currentClassCode} />}
-          {activeMenu === '자리 배치' && <SeatingChart studentsData={studentsData} classCode={currentClassCode} classLabel={activeClass?.className || teacherProfile.className} />}
-          {activeMenu === '관계 신호' && <RelationshipWatch studentsData={studentsData} />}
+          {activeMenu === '자리 배치' && <SeatingChart studentsData={studentsData} classCode={currentClassCode} classLabel={activeClass?.className || teacherProfile.className} teacherProfile={teacherProfile} />}
+          {activeMenu === '관계 신호' && <RelationshipWatch studentsData={studentsData} teacherProfile={teacherProfile} />}
           {activeMenu === '가정 연계' && <FamilyLink studentsData={studentsData} teacherProfile={teacherProfile} classCode={currentClassCode} classLabel={activeClass?.className || teacherProfile.className} />}
           {activeMenu === '리포트' && <Report studentsData={studentsData} teacherProfile={teacherProfile} />}
           {activeMenu === '에듀테크 리소스' && <EdutechResource />}
