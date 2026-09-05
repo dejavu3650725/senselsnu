@@ -88,7 +88,7 @@ const FamilyLink = ({ studentsData = [], teacherProfile, classCode, classLabel, 
   };
 
   return (
-    <div className="glass-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
+    <div data-tour="page" className="glass-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '20px', flex: 1 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <div style={{ background: 'var(--primary-light)', padding: '12px', borderRadius: '16px' }}><Mail size={26} color="var(--primary-color)" /></div>
         <div>

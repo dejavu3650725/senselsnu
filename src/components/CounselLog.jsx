@@ -87,7 +87,7 @@ const CounselLog = ({ studentsData = [], teacherProfile, classLabel }) => {
   };
 
   return (
-    <div className="glass-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, minWidth: 0 }}>
+    <div data-tour="page" className="glass-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
         <div style={{ background: 'var(--primary-light)', padding: '12px', borderRadius: '16px' }}><NotebookPen size={26} color="var(--primary-color)" /></div>
         <div>

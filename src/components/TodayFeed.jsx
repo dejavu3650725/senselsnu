@@ -47,7 +47,7 @@ const TodayFeed = ({ studentsData = [], teacherProfile, classCode, classInfo, on
   const t = TIER[who?.tier] || TIER.ok;
 
   return (
-    <div className="today-feed">
+    <div className="today-feed" data-tour="today">
       <div className="today-card" style={{ borderTop: `4px solid ${t.color}` }}>
         <div className="today-title"><UserCheck size={16} /> 오늘 챙길 학생 <span className="today-sub">교사만 보는 정보</span></div>
         {who ? (

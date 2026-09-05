@@ -6,7 +6,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import {
   doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, deleteDoc, serverTimestamp
 } from 'firebase/firestore';
-import { DEMO_CLASS_CODE, DEMO_CLASS_NAME, generateDemoStudents } from '../data/demoStudents';
+import { DEMO_CLASS_CODE, DEMO_CLASS_NAME, generateDemoStudents, generateDemoClassExtras } from '../data/demoStudents';
 
 /**
  * 학급 관리: 한 교사가 여러 학급을 만들고 선택해서 입장하는 화면
@@ -201,9 +201,18 @@ const TeacherSetup = () => {
         done++;
         setDemoWorking(`가상 학생 생성 중... (${done}/${students.length})`);
       }
+      // 학급 단위 시연 데이터: 이번 주 미션, 최근 발행 리포트, 가정 회신, 전자 동의 제출
+      setDemoWorking('학급 리포트·가정 회신·동의 현황 생성 중...');
+      try {
+        const extras = generateDemoClassExtras(students);
+        await setDoc(doc(db, 'classes', DEMO_CLASS_CODE), { mission: extras.classMission }, { merge: true });
+        await setDoc(doc(db, 'classReports', extras.report.id), extras.report.data);
+        for (const f of extras.feedback) await addDoc(collection(db, 'familyFeedback'), f);
+        for (const c of extras.consents) await addDoc(collection(db, 'consents'), c);
+      } catch (e) { console.warn('demo extras skipped', e); }
       await loadClasses(user);
       setDemoWorking('');
-      if (window.confirm(`데모 학급(${DEMO_CLASS_CODE})에 가상 학생 ${students.length}명이 생성되었습니다! 바로 입장할까요?`)) {
+      if (window.confirm(`데모 학급(${DEMO_CLASS_CODE})에 가상 학생 ${students.length}명과 성장 기록·미션·리포트·동의 현황이 생성되었습니다! 바로 입장할까요?`)) {
         enterClass({ classCode: DEMO_CLASS_CODE, className: DEMO_CLASS_NAME });
       }
     } catch (error) {
@@ -223,8 +232,15 @@ const TeacherSetup = () => {
       for (const d of dSnap.docs) {
         await deleteDoc(doc(db, 'students', d.id));
       }
-      // 데모 자리배치도도 함께 삭제
+      // 데모 자리배치도·리포트·가정 회신·동의 제출·TV 보드도 함께 삭제
       await deleteDoc(doc(db, 'seatingCharts', DEMO_CLASS_CODE)).catch(() => {});
+      await deleteDoc(doc(db, 'classBoards', DEMO_CLASS_CODE)).catch(() => {});
+      for (const col of ['classReports', 'familyFeedback', 'consents']) {
+        try {
+          const snap = await getDocs(query(collection(db, col), where('classCode', '==', DEMO_CLASS_CODE)));
+          for (const d of snap.docs) await deleteDoc(doc(db, col, d.id)).catch(() => {});
+        } catch { /* 권한/인덱스 문제는 무시 */ }
+      }
       await loadClasses(user);
     } catch (error) {
       console.error('Failed to delete demo students', error);
@@ -327,8 +343,9 @@ const TeacherSetup = () => {
           </h3>
           <p style={{ color: '#718096', fontSize: '0.9rem', margin: '0 0 16px 0', lineHeight: 1.6 }}>
             학급 코드 <b style={{ color: '#805ad5' }}>{DEMO_CLASS_CODE}</b>에 가상 학생 23명을 생성합니다.
-            관계망(지목), 상호 갈등, 고립·외로움 신호, 성별, 대화 샘플까지 포함되어 소시오그램·관계 신호·AI 자리 배치를 바로 시연할 수 있어요.
-            실제 학급 데이터와는 완전히 분리됩니다.
+            관계망(지목)·상호 갈등·고립·외로움 신호·대화 샘플에 더해, 성장 기록과 배지, 주간 미션 "했어요", 반복 호소 사례, 확인·조치 메모가 남은 알림, 보호자 동의 현황(동의·미동의·미회신), 학생별 자유 대화 모드, 최근 발행 학급 리포트와 가정 회신까지 채워져
+            오늘 피드·소시오그램·관계 신호·자리 배치·맞춤 처방·기록·가정 연계·서류함·TV 나무를 전부 시연할 수 있어요. 입장 후 상단 [1분 체험]을 누르면 순서대로 둘러봅니다. 실제 학급 데이터와는 완전히 분리됩니다.
+            {demoStudentCount > 0 ? ' 이전에 만든 데모 학급이라면 [데모 데이터 다시 생성]으로 최신 항목(성장 기록·미션·동의 현황·리포트)을 채우세요.' : ''}
           </p>
           {demoWorking ? (
             <p style={{ color: '#805ad5', fontWeight: 'bold', margin: 0 }}>⏳ {demoWorking}</p>

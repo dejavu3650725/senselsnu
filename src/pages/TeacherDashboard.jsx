@@ -7,6 +7,7 @@ import InterventionTable from '../components/InterventionTable';
 import DailyFlow from '../components/DailyFlow';
 import Topbar from '../components/Topbar';
 import TeacherTutorial from '../components/TeacherTutorial';
+import QuickTour from '../components/QuickTour';
 import ChatbotSettingsModal from '../components/ChatbotSettingsModal';
 import TeacherSettingsModal from '../components/TeacherSettingsModal';
 import ClassAnalysis from '../components/ClassAnalysis';
@@ -30,6 +31,7 @@ import { Check, Users, Settings, FileSignature, Copy, X } from 'lucide-react';
 const TeacherDashboard = () => {
   const navigate = useNavigate();
   const [activeMenu, setActiveMenu] = useState('대시보드');
+  const [tourOpen, setTourOpen] = useState(false);
   const [isChatbotModalOpen, setIsChatbotModalOpen] = useState(false);
   const [isGuidelineOpen, setIsGuidelineOpen] = useState(false);
   const [isTeacherModalOpen, setIsTeacherModalOpen] = useState(false);
@@ -154,7 +156,8 @@ const TeacherDashboard = () => {
 
   return (
     <div className="app-container">
-      <TeacherTutorial />
+      <TeacherTutorial onStartTour={() => setTourOpen(true)} isDemo={activeClass?.isDemo === true} />
+      <QuickTour open={tourOpen} onClose={() => setTourOpen(false)} setActiveMenu={setActiveMenu} />
       <Topbar
         teacherProfile={teacherProfile}
         classCode={currentClassCode}
@@ -162,6 +165,7 @@ const TeacherDashboard = () => {
         onSwitchClass={() => navigate('/teacher-setup')}
         onLogout={handleLogout}
         onOpenConsent={openConsent}
+        onStartTour={() => setTourOpen(true)}
       />
       <div className="main-layout">
         <Sidebar 

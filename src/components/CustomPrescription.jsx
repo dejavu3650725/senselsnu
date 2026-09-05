@@ -142,7 +142,7 @@ const CustomPrescription = ({ studentsData, teacherProfile, focusStudentId }) =>
   const pendingCount = atRisk.filter(r => !getStored(r.student)).length;
 
   return (
-    <div className="glass-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+    <div data-tour="page" className="glass-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', flex: 1 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', flexWrap: 'wrap' }}>
         <div style={{ background: 'var(--primary-light)', padding: '12px', borderRadius: '16px' }}>
           <HeartPulse size={28} color="var(--primary-color)" />

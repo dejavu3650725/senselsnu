@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Shield, Copy, Check, LogOut, RefreshCw, FileSignature } from 'lucide-react';
+import { Shield, Copy, Check, LogOut, RefreshCw, FileSignature, Sparkles } from 'lucide-react';
 
 /**
  * 교사용 상단바
  * - 학급 코드 복사, 보호자 안내문, 학급 전환, 로그아웃 — 실제로 동작하는 것만 둔다.
  */
-const Topbar = ({ teacherProfile, classCode, className, onSwitchClass, onLogout, onOpenConsent }) => {
+const Topbar = ({ teacherProfile, classCode, className, onSwitchClass, onLogout, onOpenConsent, onStartTour }) => {
   const [copied, setCopied] = useState(false);
   const name = teacherProfile?.teacherName ? (teacherProfile.teacherName.endsWith('님') ? teacherProfile.teacherName : `${teacherProfile.teacherName} 선생님`) : '선생님';
 
@@ -32,6 +32,11 @@ const Topbar = ({ teacherProfile, classCode, className, onSwitchClass, onLogout,
           <button className="topbar-chip" onClick={copyCode} title="학생들에게 알려줄 학급 입장 코드 (클릭하면 복사)">
             {copied ? <Check size={14} /> : <Copy size={14} />}
             <span className="hide-sm">학급 코드</span> <b>{classCode}</b>
+          </button>
+        )}
+        {onStartTour && (
+          <button className="topbar-chip" onClick={onStartTour} title="대시보드를 9단계로 둘러보는 인터랙티브 체험 (약 1분)" style={{ background: 'rgba(255,255,255,0.22)' }}>
+            <Sparkles size={14} /> <span>1분 체험</span>
           </button>
         )}
         {onOpenConsent && (

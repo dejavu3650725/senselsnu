@@ -23,7 +23,7 @@ const InterventionTable = ({ studentsData = [], onOpenPrescription }) => {
   const counts = atRisk.reduce((acc, r) => { acc[r.tier] = (acc[r.tier] || 0) + 1; return acc; }, {});
 
   return (
-    <div className="glass-card widget intervention-widget" style={{ padding: '20px', gap: '10px' }}>
+    <div data-tour="intervention" className="glass-card widget intervention-widget" style={{ padding: '20px', gap: '10px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
         <div className="widget-title">개입 및 처방 (실시간)</div>
         {atRisk.length > 0 && (

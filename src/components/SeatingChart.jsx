@@ -458,7 +458,7 @@ const SeatingChart = ({ studentsData, classCode, classLabel, teacherProfile }) =
   });
 
   return (
-    <div className="glass-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', flex: 1 }} id="print-area">
+    <div data-tour="page" className="glass-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', flex: 1 }} id="print-area">
       {/* 인쇄 전용 헤더 (화면에서는 숨김) */}
       <div className="print-only" style={{ marginBottom: '16px', textAlign: 'center' }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#2d3748' }}>

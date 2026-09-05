@@ -232,7 +232,7 @@ const Sociogram = ({ studentsData = [], teacherProfile }) => {
   );
 
   return (
-    <div className="glass-card widget sociogram-widget" style={{ padding: 0, overflow: 'hidden', background: '#0f172a', position: 'relative' }}>
+    <div data-tour="sociogram" className="glass-card widget sociogram-widget" style={{ padding: 0, overflow: 'hidden', background: '#0f172a', position: 'relative' }}>
       <div className="widget-title" style={{ position: 'absolute', top: 16, left: 20, zIndex: 10, color: 'white', textShadow: '0 0 10px rgba(255,255,255,0.5)' }}>
         학생 관계망 소시오그램
         <div style={{ fontSize: '0.72rem', fontWeight: 'normal', color: '#94a3b8', marginTop: '3px' }}>

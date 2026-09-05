@@ -56,7 +56,7 @@ const RelationshipWatch = ({ studentsData = [], teacherProfile }) => {
   const hint = { fontSize: '0.8rem', color: '#4a5568', lineHeight: 1.5 };
 
   return (
-    <div className="glass-card" style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+    <div data-tour="page" className="glass-card" style={{ padding: '28px 32px', display: 'flex', flexDirection: 'column', flex: 1 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
         <div style={{ background: 'rgba(229, 62, 62, 0.1)', padding: '12px', borderRadius: '16px' }}><HeartHandshake size={26} color="#e53e3e" /></div>
         <h2 style={{ margin: 0, fontSize: '1.6rem' }}>관계 신호</h2>

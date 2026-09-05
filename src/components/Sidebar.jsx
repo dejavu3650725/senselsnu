@@ -39,6 +39,7 @@ const Sidebar = ({ activeMenu, setActiveMenu, teacherProfile, badges = {} }) => 
               role="button"
               tabIndex={0}
               title={item.name}
+              data-tour={`menu-${item.name}`}
               className={`nav-item ${activeMenu === item.name && !item.isModal ? 'active' : ''}`}
               onClick={() => setActiveMenu(item.name)}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveMenu(item.name); } }}
