@@ -208,7 +208,7 @@ const TeacherDashboard = () => {
                       <input
                         value={ackNotes[a.studentId] || ''}
                         onChange={e => setAckNotes(prev => ({ ...prev, [a.studentId]: e.target.value }))}
-                        placeholder="조치 메모 (예: 점심시간 면담, 보호자 통화)"
+                        placeholder="조치 메모 (예: 면담, 보호자 통화)"
                         style={{ padding: '8px 10px', borderRadius: '10px', border: '1px solid #feb2b2', fontSize: '0.82rem', minWidth: '220px' }}
                       />
                       <button

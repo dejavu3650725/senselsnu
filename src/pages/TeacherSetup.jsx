@@ -6,13 +6,13 @@ import { onAuthStateChanged } from 'firebase/auth';
 import {
   doc, getDoc, setDoc, collection, query, where, getDocs, addDoc, deleteDoc, serverTimestamp
 } from 'firebase/firestore';
-import { DEMO_CLASS_CODE, DEMO_CLASS_NAME, generateDemoStudents, generateDemoClassExtras } from '../data/demoStudents';
+import { DEMO_CLASS_CODE, DEMO_CLASS_NAME, LEGACY_DEMO_CODES, generateDemoStudents, generateDemoClassExtras } from '../data/demoStudents';
 
 /**
  * 학급 관리: 한 교사가 여러 학급을 만들고 선택해서 입장하는 화면
  * - classes/{classCode} 문서로 학급을 관리 (다중 학급 지원)
  * - 기존 단일 학급(teachers/{uid}.classCode)도 목록에 자동 표시 (하위 호환)
- * - 체험 학급(2026ai): 프로그램에 내장. 입장 시 없거나 옛 구조면 자동으로 채움. 삭제 불가
+ * - 체험 학급(SENSEL): 프로그램에 내장. 입장 시 없거나 옛 구조면 자동으로 채움. 삭제 불가
  */
 const TeacherSetup = () => {
   const navigate = useNavigate();
@@ -59,6 +59,7 @@ const TeacherSetup = () => {
       const snap = await getDocs(q);
       snap.forEach(d => {
         const data = d.data();
+        if (LEGACY_DEMO_CODES.includes(data.classCode)) return;
         if (!seen.has(data.classCode)) {
           seen.add(data.classCode);
           list.push(data);
@@ -127,21 +128,24 @@ const TeacherSetup = () => {
   // 새 학급 만들기
   const handleCreateClass = async () => {
     const className = newClassName.trim();
-    const classCode = newClassCode.trim();
+    const classCode = newClassCode.trim().toUpperCase();
     const tName = newTeacherName.trim();
     if (!tName || !className || !classCode) {
       alert('선생님 이름, 학급 이름, 학급 코드를 모두 입력해주세요.');
       return;
     }
+    if (!/^[A-Z0-9]{3,12}$/.test(classCode)) { alert('학급 코드는 영문·숫자 3~12자로 정해주세요.'); return; }
+    if (classCode === DEMO_CLASS_CODE || LEGACY_DEMO_CODES.map(c => c.toUpperCase()).includes(classCode)) { alert('이 코드는 체험 학급용이라 사용할 수 없습니다.'); return; }
     setIsCreating(true);
     try {
       // 중복 코드 확인 (classes + 기존 teachers)
       const existing = await getDoc(doc(db, 'classes', classCode));
       const legacyQ = query(collection(db, 'teachers'), where('classCode', '==', classCode));
       const legacySnap = await getDocs(legacyQ);
-      const legacyOwnedByOther = legacySnap.docs.some(d => d.id !== user.uid);
-      if ((existing.exists() && existing.data().teacherUid !== user.uid) || legacyOwnedByOther) {
-        alert('이미 다른 선생님이 사용 중인 학급 코드입니다. 다른 코드를 정해주세요.');
+      // 소문자로 저장된 옛 코드와도 겹치지 않게 확인
+      const existingLower = classCode !== classCode.toLowerCase() ? await getDoc(doc(db, 'classes', classCode.toLowerCase())) : null;
+      if (existing.exists() || (existingLower && existingLower.exists()) || !legacySnap.empty) {
+        alert('이미 사용 중인 학급 코드입니다. 다른 코드를 정해주세요.');
         setIsCreating(false);
         return;
       }
@@ -194,6 +198,13 @@ const TeacherSetup = () => {
 
   // 내장 체험 학급: 없으면 만들고, 구조가 옛것이거나 학생 수가 맞지 않으면 조용히 다시 채운다
   const ensureDemoClass = async () => {
+    // 옛 코드(2026ai)로 남은 체험 학급 데이터는 조용히 정리
+    for (const old of LEGACY_DEMO_CODES) {
+      try {
+        const oldSnap = await getDoc(doc(db, 'classes', old));
+        if (oldSnap.exists() && oldSnap.data().isDemo) { await purgeClassData(old); await deleteDoc(doc(db, 'classes', old)).catch(() => {}); }
+      } catch { /* 권한 없으면 무시 */ }
+    }
     const ref = doc(db, 'classes', DEMO_CLASS_CODE);
     const snap = await getDoc(ref);
     const sSnap = await getDocs(query(collection(db, 'students'), where('classCode', '==', DEMO_CLASS_CODE)));
@@ -247,7 +258,8 @@ const TeacherSetup = () => {
         await setDoc(doc(db, 'classes', oldCode), { classCode: oldCode, className: name, teacherUid: user.uid, updatedAt: serverTimestamp() }, { merge: true });
       } else {
         const existing = await getDoc(doc(db, 'classes', code));
-        if (existing.exists()) { setEditProgress('이미 사용 중인 학급 코드입니다.'); setEditBusy(false); return; }
+        const legacy = await getDocs(query(collection(db, 'teachers'), where('classCode', '==', code)));
+        if (existing.exists() || !legacy.empty || code === DEMO_CLASS_CODE) { setEditProgress('이미 사용 중인 학급 코드입니다.'); setEditBusy(false); return; }
         // 1) 새 학급 문서 (기존 설정 유지)
         const oldSnap = await getDoc(doc(db, 'classes', oldCode));
         const base = oldSnap.exists() ? oldSnap.data() : {};
@@ -333,7 +345,7 @@ const TeacherSetup = () => {
             <div className="create-grid">
               <label><span className="lbl">선생님 이름</span><input type="text" placeholder="예: 김선생님" value={newTeacherName} onChange={e => setNewTeacherName(e.target.value)} /></label>
               <label><span className="lbl">학급 이름</span><input type="text" placeholder="예: 5학년 2반" value={newClassName} onChange={e => setNewClassName(e.target.value)} /></label>
-              <label><span className="lbl">학급 코드 <em>학생 입장용 · 영문/숫자</em></span><input type="text" placeholder="예: SNU5B" value={newClassCode} onChange={e => setNewClassCode(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateClass()} /></label>
+              <label><span className="lbl">학급 코드 <em>학생 입장용 · 영문/숫자</em></span><input type="text" placeholder="예: SNU5B" value={newClassCode} onChange={e => setNewClassCode(e.target.value.toUpperCase().replace(/[^A-Za-z0-9]/g, ''))} maxLength={12} style={{ fontFamily: 'Inter, monospace', letterSpacing: '2px', fontWeight: 700 }} onKeyDown={e => e.key === 'Enter' && handleCreateClass()} /></label>
             </div>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               {myClasses.length > 0 && <button className="btn btn-secondary" onClick={() => setShowCreate(false)}>닫기</button>}

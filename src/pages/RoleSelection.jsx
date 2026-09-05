@@ -36,7 +36,9 @@ const RoleSelection = () => {
     setIsVerifying(true); setError('');
     try {
       await ensureStudentSession(null);
-      const classSnap = await getDoc(doc(db, 'classes', code));
+      let joinCode = code;
+      let classSnap = await getDoc(doc(db, 'classes', joinCode));
+      if (!classSnap.exists() && code.toUpperCase() !== code) { joinCode = code.toUpperCase(); classSnap = await getDoc(doc(db, 'classes', joinCode)); }
       let isValid = classSnap.exists();
       if (!isValid) {
         try {
@@ -45,8 +47,8 @@ const RoleSelection = () => {
         } catch { /* 권한 없음 → 무효 처리 */ }
       }
       if (isValid) {
-        await ensureStudentSession(code);
-        sessionStorage.setItem('studentClassCode', code);
+        await ensureStudentSession(joinCode);
+        sessionStorage.setItem('studentClassCode', joinCode);
         navigate('/student');
       } else {
         setError('그 코드는 없는 것 같아. 선생님께 다시 물어봐 줘.');
