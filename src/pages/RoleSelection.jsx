@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, BookOpen, Users, LogIn } from 'lucide-react';
+import { Shield, BookOpen, Users, LogIn, KeyRound, X } from 'lucide-react';
 import { auth, googleProvider, db } from '../firebase';
 import { signInWithPopup } from 'firebase/auth';
 import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
@@ -15,7 +15,26 @@ const RoleSelection = () => {
   const [classCodeInput, setClassCodeInput] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [codeModal, setCodeModal] = useState(false);
+  const [teacherCode, setTeacherCode] = useState('');
+  const [codeError, setCodeError] = useState('');
+  const TEACHER_CODE = 'SENSELSNU';
   const [error, setError] = useState('');
+
+  // 선생님 확인: 구글 로그인 전에 교사용 코드를 한 번 받는다 (이 브라우저에 기억)
+  const startTeacher = () => {
+    let saved = '';
+    try { saved = localStorage.getItem('sensel-teacher-code') || ''; } catch { /* ignore */ }
+    if (saved) handleTeacherLogin(); else { setTeacherCode(''); setCodeError(''); setCodeModal(true); }
+  };
+  const confirmCode = () => {
+    const code = teacherCode.trim().toUpperCase();
+    if (!code) { setCodeError('교사용 코드를 입력해 주세요.'); return; }
+    if (code !== TEACHER_CODE) { setCodeError('코드가 맞지 않아요. 연수·안내에서 받은 교사용 코드를 확인해 주세요.'); return; }
+    try { localStorage.setItem('sensel-teacher-code', code); } catch { /* ignore */ }
+    setCodeModal(false);
+    handleTeacherLogin();
+  };
 
   const handleTeacherLogin = async () => {
     setIsSigningIn(true);
@@ -80,7 +99,7 @@ const RoleSelection = () => {
           </div>
           <div className="role-bottom">
             <div className="role-tags"><span>가상 학급으로 바로 체험</span><span>1분 체험 안내</span></div>
-            <button className="role-btn teacher" onClick={handleTeacherLogin} disabled={isSigningIn}><LogIn size={18} /> {isSigningIn ? '로그인 중…' : '구글 계정으로 로그인'}</button>
+            <button className="role-btn teacher" onClick={startTeacher} disabled={isSigningIn}><LogIn size={18} /> {isSigningIn ? '로그인 중…' : '구글 계정으로 로그인'}</button>
           </div>
         </div>
 
@@ -106,6 +125,25 @@ const RoleSelection = () => {
           </div>
         </div>
       </div>
+
+      {codeModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.55)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={() => setCodeModal(false)}>
+          <div className="glass-card" style={{ width: '100%', maxWidth: '420px', background: '#fff', borderRadius: '22px', padding: '26px', boxShadow: '0 24px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+              <div style={{ width: 44, height: 44, borderRadius: '14px', background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><KeyRound size={22} color="var(--primary-color)" /></div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 800, fontSize: '1.15rem', color: 'var(--text-strong)' }}>선생님 확인</div>
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>교사용 코드를 한 번만 입력하면 다음부터는 바로 로그인돼요.</div>
+              </div>
+              <button onClick={() => setCodeModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', display: 'flex' }}><X size={18} /></button>
+            </div>
+            <input className="code-input" autoFocus value={teacherCode} onChange={e => { setTeacherCode(e.target.value.toUpperCase()); setCodeError(''); }} placeholder="교사용 코드" onKeyDown={e => e.key === 'Enter' && confirmCode()} />
+            {codeError && <div className="code-error" style={{ marginTop: '8px' }}>{codeError}</div>}
+            <button className="role-btn teacher" style={{ marginTop: '14px' }} onClick={confirmCode}><LogIn size={18} /> 확인하고 구글 로그인</button>
+            <div style={{ fontSize: '0.76rem', color: 'var(--text-faint)', textAlign: 'center', marginTop: '10px' }}>학생은 이 코드가 필요 없어요. 왼쪽 [학생] 칸에 학급 코드를 적으면 돼요.</div>
+          </div>
+        </div>
+      )}
 
       <div className="landing-steps">
         <div className="landing-step"><b>🙂 어떤 이야기든 괜찮아</b>정답은 없어. 나무는 네 말을 듣고, 궁금한 걸 하나씩만 물어봐.</div>

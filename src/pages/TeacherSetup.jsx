@@ -105,6 +105,14 @@ const TeacherSetup = () => {
     if (user) loadClasses(user);
   }, [user, loadClasses]);
 
+  // 첫 화면에서 입력한 교사용 코드로 자동 확인 (실패하면 아래 확인 상자가 남는다)
+  useEffect(() => {
+    if (!user || verified !== false) return;
+    let saved = '';
+    try { saved = localStorage.getItem('sensel-teacher-code') || ''; } catch { /* ignore */ }
+    if (saved) { setInviteInput(saved); verifyTeacherWith(saved); }
+  }, [user, verified]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 학급 입장 (classes 문서가 없던 기존 학급이면 자동 생성해서 이관)
   const enterClass = async (cls) => {
     if (cls.classCode === DEMO_CLASS_CODE) {
@@ -239,8 +247,9 @@ const TeacherSetup = () => {
   // 내 학급 삭제 (학생·자리 배치·리포트·회신·동의·TV 보드까지 모두) — 체험 학급은 삭제 불가
   // 교사 확인 — 초대 코드(설정 문서 settings/teacherAccess.inviteCode, 없으면 기본값)를 한 번 입력하면 학급을 만들 수 있다.
   const DEFAULT_INVITE = 'SENSELSNU';
-  const verifyTeacher = async () => {
-    const code = inviteInput.trim().toUpperCase();
+  const verifyTeacher = () => verifyTeacherWith(inviteInput);
+  const verifyTeacherWith = async (raw) => {
+    const code = String(raw || '').trim().toUpperCase();
     if (!code) { setInviteError('코드를 입력하세요.'); return; }
     setInviteBusy(true); setInviteError('');
     try {
@@ -249,6 +258,7 @@ const TeacherSetup = () => {
       if (code !== expected) { setInviteError('코드가 맞지 않아요. 연수·안내에서 받은 교사용 코드를 확인해 주세요.'); return; }
       await setDoc(doc(db, 'teachers', user.uid), { uid: user.uid, email: user.email, verified: true, verifiedWith: code, verifiedAt: serverTimestamp() }, { merge: true });
       setVerified(true);
+      try { localStorage.setItem('sensel-teacher-code', code); } catch { /* ignore */ }
     } catch (e) {
       console.error(e);
       setInviteError(`확인 중 오류: ${e?.code || e?.message || '알 수 없음'}`);
