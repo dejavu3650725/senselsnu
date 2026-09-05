@@ -35,7 +35,6 @@ const TeacherLanding = () => {
         <button onClick={handleTeacherLogin} style={{ background: 'var(--primary-color)' }}>구글 계정으로 로그인</button>
       </div>
 
-      <p className="landing-note">서울특별시교육청 교사 개발자 해커톤에서 시작된 현직 교사의 프로젝트입니다. 자세한 안내는 로그인 후 확인할 수 있습니다.</p>
     </div>
   );
 };
