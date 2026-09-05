@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Sparkles, Users, HeartHandshake, LayoutGrid, Mail } from 'lucide-react';
+import { Shield, Sparkles, Users, HeartHandshake, LayoutGrid, Mail, ShieldCheck } from 'lucide-react';
 
 /**
  * 첫 로그인 환영 창 — 한 번만(브라우저 기준). "1분 체험 시작"이 QuickTour를 연다.
@@ -17,6 +17,7 @@ const TeacherTutorial = ({ onStartTour, isDemo }) => {
     { icon: <HeartHandshake size={18} />, t: '선생님이 한눈에 봅니다', d: '소시오그램, 갈등·외로움 신호, 긴급 알림(5개 중대 범주만)이 정리됩니다. 관계망은 선생님만 봅니다.' },
     { icon: <LayoutGrid size={18} />, t: '교실이 달라집니다', d: '근거 성취기준이 붙은 자리 배치·맞춤 처방·상담 기록 초안으로 이어집니다.' },
     { icon: <Mail size={18} />, t: '가정과 학교로 잇습니다', d: '가정통신문·학급 리포트·"집에서 해봤어요" 회신, 학운위 심의·보호자 동의 서식까지 한곳에서.' },
+    { icon: <ShieldCheck size={18} />, t: '하지 않는 것도 분명합니다', d: '위기 알림은 5개 중대 범주만, 진단하지 않고, 아이 말을 사실로 치지 않으며, 대화 원문은 어른이 볼 수 없습니다. 상담·특수 선생님께는 이것부터 말씀하세요.' },
   ];
 
   return (
