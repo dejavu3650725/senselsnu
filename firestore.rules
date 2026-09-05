@@ -91,6 +91,24 @@ service cloud.firestore {
       allow read, write: if ownsClass(code);
     }
 
+    // ===== 학급 월간 가정 리포트 (학급 단위 집계, 개인 정보 없음) =====
+    // 문서 ID: {classCode}_{YYYY-MM}. 교사가 발행, 학부모(익명 로그인)가 읽음
+    match /classReports/{id} {
+      allow read: if signedIn();
+      allow create, update: if ownsClass(request.resource.data.get('classCode', '')) && id == request.resource.data.get('classCode', '') + '_' + request.resource.data.get('month', '');
+      allow delete: if ownsClass(resource.data.get('classCode', ''));
+    }
+
+    // ===== 가정 실천 회신 ("집에서 해봤어요") — 익명, 학급 코드·주차·월만 =====
+    match /familyFeedback/{id} {
+      allow create: if signedIn()
+        && classExists(request.resource.data.get('classCode', ''))
+        && request.resource.data.keys().hasOnly(['classCode', 'weekKey', 'month', 'at'])
+        && request.resource.data.weekKey is string && request.resource.data.month is string;
+      allow read: if ownsClass(resource.data.get('classCode', ''));
+      allow update, delete: if false;
+    }
+
     // 그 외 컬렉션은 모두 차단
     match /{document=**} {
       allow read, write: if false;

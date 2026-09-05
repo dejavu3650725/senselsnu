@@ -131,6 +131,17 @@ export const buildParentCard = ({ focusKeys = [], gradeLabel, studentName = '', 
   return { areas, tips: tips.slice(0, 4), gradeLabel, studentName, teacherName, className, moralCodes };
 };
 
+/** 영역명 배열 → 가정 대화 팁 (학급 단위 리포트용, 학생 정보 없음) */
+export const familyTipsForAreas = (areas = [], gradeLabel, perArea = 2) => {
+  const level = seoulLevelOf(gradeLabel);
+  const tips = [];
+  (areas.length ? areas : AREA_ORDER.slice(0, 2)).forEach(area => {
+    const list = level === 'high' ? (family.high.areas[area]?.tips || []) : tipsFromLessons(gradeLabel, area);
+    list.slice(0, perArea).forEach(t => tips.push({ area, ...t }));
+  });
+  return tips;
+};
+
 /** 이번 주 수업 연계 알림 — 차시 하나 → 알림장·문자용 3줄 (초·중·고 공통) */
 export const buildLessonNotice = ({ lesson, gradeLabel, className = '', teacherName = '' }) => {
   const kid = childWord(gradeLabel);

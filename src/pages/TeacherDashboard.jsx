@@ -287,7 +287,7 @@ const TeacherDashboard = () => {
           {activeMenu === '학생 관리' && <StudentManagement studentsData={studentsData} classCode={currentClassCode} />}
           {activeMenu === '자리 배치' && <SeatingChart studentsData={studentsData} classCode={currentClassCode} classLabel={activeClass?.className || teacherProfile.className} teacherProfile={teacherProfile} />}
           {activeMenu === '관계 신호' && <RelationshipWatch studentsData={studentsData} teacherProfile={teacherProfile} />}
-          {activeMenu === '가정 연계' && <FamilyLink studentsData={studentsData} teacherProfile={teacherProfile} classCode={currentClassCode} classLabel={activeClass?.className || teacherProfile.className} />}
+          {activeMenu === '가정 연계' && <FamilyLink studentsData={studentsData} teacherProfile={teacherProfile} classCode={currentClassCode} classLabel={activeClass?.className || teacherProfile.className} classInfo={activeClass} />}
           {activeMenu === '리포트' && <Report studentsData={studentsData} teacherProfile={teacherProfile} />}
           {activeMenu === '에듀테크 리소스' && <EdutechResource />}
         </div>

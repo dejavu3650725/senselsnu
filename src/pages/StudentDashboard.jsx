@@ -5,6 +5,9 @@ import StudentTutorial from '../components/StudentTutorial';
 import { db } from '../firebase';
 import { collection, addDoc, updateDoc, doc, arrayUnion, serverTimestamp, getDocs, getDoc, query, where } from 'firebase/firestore';
 import { apiPost, ensureStudentSession } from '../utils/apiClient';
+import { seoulGradeLabel } from '../utils/seoulSel';
+import { skillsForLevel, areaOfSkill, monthlySkillCounts, badgeFor, defaultMission, missionById, weekKey, dayKey } from '../utils/growth';
+import GrowthPanel from '../components/GrowthPanel';
 
 const AVATAR_LIST = [
   '🐻', '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐼', '🐨', '🐯',
@@ -60,6 +63,17 @@ const StudentDashboard = () => {
   // 대화 원문 보관 여부: 교사가 [챗봇 설정]에서 보호자 동의 확인 후 켠 경우에만 저장 (기본: 신호만 저장)
   const storeTranscripts = chatConfig?.storeTranscripts === true && chatConfig?.consentConfirmed === true;
   const [studentMeta, setStudentMeta] = useState({ nominations: [], conflictsCount: 0, lonelyCount: 0, sessionsCount: 1 }); // 학생 맞춤 대화용 이력
+  const [skillLog, setSkillLog] = useState([]);       // 성장 기록: [{skill, area, date}]
+  const [missionsDone, setMissionsDone] = useState([]); // [{weekKey, missionId, doneAt}]
+  const [classMission, setClassMission] = useState(null); // classes/{code}.mission (교사 지정) 없으면 기본 순환
+  const [growthOpen, setGrowthOpen] = useState(false);
+  const [growthToast, setGrowthToast] = useState('');
+  const gradeLabelForSkills = seoulGradeLabel(selLevel, gradeYear);
+  const validSkills = skillsForLevel(gradeLabelForSkills).map(s => s.skill);
+  const thisWeek = weekKey();
+  const mission = (classMission && classMission.weekKey === thisWeek && missionById(classMission.missionId)) || defaultMission(thisWeek);
+  const missionDone = missionsDone.some(m => m && m.weekKey === thisWeek);
+  const monthCounts = monthlySkillCounts(skillLog);
   const [turnsToday, setTurnsToday] = useState(0);            // 오늘 보낸 메시지 수 (하루 상한용, 새로고침해도 유지)
   const [complaintCounts, setComplaintCounts] = useState({}); // 이번 세션 친구별 갈등 언급 횟수 (반복 호소 완화용)
   const [alertedToday, setAlertedToday] = useState(false);    // 오늘 이미 긴급 알림이 기록됐는지 (하루 1건)
@@ -94,6 +108,7 @@ const StudentDashboard = () => {
 
         // 1) 새 구조: classes/{학급코드} → 담당 교사 문서에서 설정 로드 (다중 학급 지원)
         const classSnap = await getDoc(doc(db, 'classes', studentClassCode));
+        if (classSnap.exists() && classSnap.data().mission) setClassMission(classSnap.data().mission);
         if (classSnap.exists() && classSnap.data().teacherUid) {
           const tSnap = await getDoc(doc(db, 'teachers', classSnap.data().teacherUid));
           if (tSnap.exists()) teacherData = tSnap.data();
@@ -160,6 +175,16 @@ const StudentDashboard = () => {
     }
   };
 
+  /** 이번 주 미션 "했어요" — 학생 문서에 주차 키로 기록 (주 1회) */
+  const handleMissionDone = async () => {
+    if (!studentDocId || missionDone) return;
+    const entry = { weekKey: thisWeek, missionId: mission.id, doneAt: new Date().toISOString() };
+    setMissionsDone(prev => [...prev, entry]);
+    try { await updateDoc(doc(db, 'students', studentDocId), { missions: arrayUnion(entry) }); } catch (e) { console.error('mission save error', e); }
+    setGrowthToast('🎉 미션 완료! 선생님도 볼 수 있어.');
+    setTimeout(() => setGrowthToast(''), 3500);
+  };
+
   // Firestore 데이터 가져오기 또는 생성 (계정 연동)
   const handleSetupComplete = async () => {
     if (!realName.trim() || !nickname.trim()) {
@@ -206,6 +231,8 @@ const StudentDashboard = () => {
           lonelyCount: (userData.lonelySignals || []).length,
           sessionsCount: days.size + 1,
         });
+        setSkillLog(Array.isArray(userData.skillLog) ? userData.skillLog : []);
+        setMissionsDone(Array.isArray(userData.missions) ? userData.missions : []);
         if (userData.dailyTurns && userData.dailyTurns.date === new Date().toISOString().slice(0, 10)) setTurnsToday(Number(userData.dailyTurns.count) || 0);
         if ((userData.alerts || []).some(a => a && a.timestamp && String(a.timestamp).slice(0, 10) === new Date().toISOString().slice(0, 10))) setAlertedToday(true);
         
@@ -358,7 +385,10 @@ const StudentDashboard = () => {
       const conflictMatches = [...rawBotText.matchAll(/\[CONFLICT:\s*(.*?)\]/g)];
       const isLonelySignal = /\[LONELY\]/.test(rawBotText);
       const alertMatch = rawBotText.match(/\[ALERT:?\s*(.*?)\]/);
+      const skillMatch = rawBotText.match(/\[SKILL:\s*(.*?)\]/);
+      const practicedSkill = skillMatch && validSkills.includes(skillMatch[1].trim()) ? skillMatch[1].trim() : null;
       const cleanBotText = rawBotText
+        .replace(/\[SKILL:\s*.*?\]/g, '')
         .replace(/\[NOMINATION:\s*.*?\]/g, '')
         .replace(/\[CONFLICT:\s*.*?\]/g, '')
         .replace(/\[LONELY\]/g, '')
@@ -440,6 +470,14 @@ const StudentDashboard = () => {
         }
         if (isLonelySignal) {
           updates.lonelySignals = arrayUnion(new Date().toISOString()); // 외로움 신호 저장
+        }
+        if (practicedSkill && !skillLog.some(e => e && e.skill === practicedSkill && e.date === dayKey())) {
+          // 성장 기록: 같은 기술은 하루 1회만 기록 (배지 부풀리기 방지)
+          const entry = { skill: practicedSkill, area: areaOfSkill(gradeLabelForSkills, practicedSkill), date: dayKey() };
+          updates.skillLog = arrayUnion(entry);
+          setSkillLog(prev => [...prev, entry]);
+          setGrowthToast(`🌱 「${practicedSkill}」 연습 기록!`);
+          setTimeout(() => setGrowthToast(''), 3500);
         }
         if (alertMatch && !alertedToday) { // 하루 1건: 같은 날 반복 알림은 첫 알림의 '대화 전후'와 반복 호소 로그로 확인
           // 위기 신호(긴급 알림) 저장 → 교사 대시보드에 실시간 Red Alert 표시
@@ -675,10 +713,24 @@ const StudentDashboard = () => {
               <h2 style={{ margin: 0, fontSize: '1.15rem' }}>{botName}</h2>
               <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>네 이야기를 끝까지 들어줄게. 여기서 한 말은 선생님이 너를 돕는 데만 써.</p>
             </div>
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#38a169', display: 'inline-block' }} /> 오늘 기분: {mood}
+              <button onClick={() => setGrowthOpen(true)} title="나의 성장 기록" style={{ background: 'var(--primary-light)', border: '1px solid transparent', color: 'var(--primary-color)', borderRadius: '999px', padding: '4px 10px', cursor: 'pointer', fontWeight: 700, fontSize: '0.78rem' }}>
+                🌱 성장 {monthCounts.length}
+              </button>
             </div>
           </div>
+          <GrowthPanel
+            compact
+            gradeLabel={gradeLabelForSkills}
+            skillLog={skillLog}
+            mission={mission}
+            missionDone={missionDone}
+            onMissionDone={handleMissionDone}
+            open={growthOpen}
+            onClose={() => setGrowthOpen(false)}
+            toast={growthToast}
+          />
 
           <div ref={chatContainerRef} className="chat-log">
             {messages.map((msg, idx) => (

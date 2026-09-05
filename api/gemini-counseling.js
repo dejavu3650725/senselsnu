@@ -29,6 +29,10 @@ const seoulGradeLabel = (selLevel, gradeYear) => {
 };
 const TOPIC_TO_SEOUL_AREA = { friendship: '대인관계', emotion: '자기', school: '공동체', study: '자기', online: '자기', family: '마음건강' };
 /** 서울 자료 학년별 학습 주제 → 대화 씨앗 (이 학년이 지금 수업에서 배우는 것과 연결) */
+const seoulSkillList = (gradeLabel) => {
+  const lv = { '초': 'elementary', '중': 'middle', '고': 'high' }[gradeLabel[0]] || 'elementary';
+  return Object.values(SEOUL.skills[lv] || {}).flat();
+};
 const seoulSeeds = (gradeLabel, focusTopics = []) => {
   const areas = new Set(focusTopics.map(t => TOPIC_TO_SEOUL_AREA[t]).filter(Boolean));
   const seen = new Set();
@@ -244,6 +248,7 @@ const buildSystemPrompt = ({ chatConfig, ptiser, customPrompt, selLevel, gradeYe
     s += `\n[학급 친구 닉네임 명단]\n${roster.join(', ')}\n`;
   }
   s += dataTags(cfg.collectConflicts !== false, Array.isArray(ctx.repeatedPeers) ? ctx.repeatedPeers : []);
+  s += `- [SKILL: 기술명] 이번 턴에서 학생이 실제로 '해 보인' 사회정서기술 1개만 (감정에 이름 붙이기, 친구 입장 말하기, 사과하기, 도움 요청하기 등 학생의 말에 근거가 있을 때만). 기술명은 반드시 다음 목록에서만: ${seoulSkillList(seoulGradeLabel(selLevel, gradeYear)).join(' / ')}. 근거가 없으면 붙이지 마. 이 태그는 학생의 '성장 기록'에 배지로 표시된다.\n`;
   s += FEW_SHOT;
 
   // ===== 학생별 맥락 + 이번 턴 목표 =====
