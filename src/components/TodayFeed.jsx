@@ -49,39 +49,31 @@ const TodayFeed = ({ studentsData = [], teacherProfile, classCode, classInfo, on
   return (
     <div className="today-feed" data-tour="today">
       <div className="today-card" style={{ borderTop: `4px solid ${t.color}` }}>
-        <div className="today-title"><UserCheck size={16} /> 오늘 챙길 학생 <span className="today-sub">교사만 보는 정보</span></div>
+        <div className="today-title"><UserCheck size={16} /> 오늘 챙길 학생 <span className="today-sub">교사만</span></div>
         {who ? (
           <>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-strong)' }}>{who.name}</span>
               <span style={{ fontSize: '0.72rem', fontWeight: 700, color: t.color }}>{t.label}</span>
-              {who.focus.map(f => <span key={f} className="chip" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>{f}</span>)}
+              {who.focus.slice(0, 2).map(f => <span key={f} className="chip" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>{f}</span>)}
             </div>
-            <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>{who.reason}</div>
-            <div style={{ fontSize: '0.88rem', color: 'var(--text-main)', lineHeight: 1.5 }}>{who.action}</div>
-            {onOpenStudent && <button className="btn btn-secondary" style={{ alignSelf: 'flex-start', padding: '5px 10px', fontSize: '0.8rem' }} onClick={() => onOpenStudent(who.id)}>맞춤 처방 보기 <ArrowRight size={13} /></button>}
+            <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: 1.5 }}>{who.action}</div>
+            {onOpenStudent && <button className="btn btn-secondary" style={{ alignSelf: 'flex-start', padding: '5px 10px', fontSize: '0.8rem' }} onClick={() => onOpenStudent(who.id)}>맞춤 처방 <ArrowRight size={13} /></button>}
           </>
-        ) : <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>학생이 등록되면 매일 한 명을 골라 드립니다.</div>}
+        ) : <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>학생이 등록되면 매일 한 명을 골라 드려요.</div>}
       </div>
 
       <div className="today-card" style={{ borderTop: '4px solid #d69e2e' }}>
-        <div className="today-title"><Sun size={16} /> 오늘 아침 활동 <span className="today-sub">{card.minutes}분 · {card.area || '아침 대화'}</span></div>
+        <div className="today-title"><Sun size={16} /> 오늘 아침 활동 <span className="today-sub">{card.minutes}분</span></div>
         <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', lineHeight: 1.35 }}>“{card.topic}”</div>
-        <div style={{ fontSize: '0.84rem', color: 'var(--text-main)', lineHeight: 1.5 }}>{card.questions[0]}</div>
-        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{card.questions[1]}{card.lessonSkill && <> · 이 학년 기술: <b>{card.lessonSkill}</b></>}</div>
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-          <button className="btn btn-primary" style={{ padding: '5px 10px', fontSize: '0.8rem' }} onClick={() => window.open(treeUrl, '_blank', 'noopener')}><Tv size={13} /> TV에 띄우기</button>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)', alignSelf: 'center' }}>학급 나무·아침 카드만 나오고 관계 정보는 없습니다</span>
-        </div>
+        <div style={{ fontSize: '0.86rem', color: 'var(--text-main)', lineHeight: 1.5 }}>{card.questions[0]}</div>
+        <button className="btn btn-primary" style={{ alignSelf: 'flex-start', padding: '5px 10px', fontSize: '0.8rem' }} onClick={() => window.open(treeUrl, '_blank', 'noopener')}><Tv size={13} /> TV에 띄우기</button>
       </div>
 
       <div className="today-card" style={{ borderTop: '4px solid #38a169' }}>
-        <div className="today-title"><Sprout size={16} /> 오늘 알림장 한 줄 <span className="today-sub">이번 주 미션 "했어요" {missionDone}/{studentsData.length}</span></div>
-        <div style={{ fontSize: '0.86rem', color: 'var(--text-main)', lineHeight: 1.55, background: 'var(--surface-3)', borderRadius: '10px', padding: '8px 10px' }}>{notice}</div>
-        <div style={{ display: 'flex', gap: '6px' }}>
-          <button className="btn btn-secondary" style={{ padding: '5px 10px', fontSize: '0.8rem' }} onClick={copy}>{copied ? <Check size={13} /> : <Copy size={13} />} {copied ? '복사됨' : '복사'}</button>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)', alignSelf: 'center' }}>개인 정보 없음 · e알리미·문자에 붙여넣기</span>
-        </div>
+        <div className="today-title"><Sprout size={16} /> 오늘 알림장 한 줄 <span className="today-sub">미션 {missionDone}/{studentsData.length}</span></div>
+        <div style={{ fontSize: '0.84rem', color: 'var(--text-main)', lineHeight: 1.55, background: 'var(--surface-3)', borderRadius: '10px', padding: '8px 10px', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{notice}</div>
+        <button className="btn btn-secondary" style={{ alignSelf: 'flex-start', padding: '5px 10px', fontSize: '0.8rem' }} onClick={copy}>{copied ? <Check size={13} /> : <Copy size={13} />} {copied ? '복사됨' : '복사'}</button>
       </div>
     </div>
   );

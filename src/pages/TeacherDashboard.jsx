@@ -20,6 +20,7 @@ import SeatingChart from '../components/SeatingChart';
 import RelationshipWatch from '../components/RelationshipWatch';
 import FamilyLink from '../components/FamilyLink';
 import GuidelineCheck from '../components/GuidelineCheck';
+import ModalBoundary from '../components/ModalBoundary';
 import TodayFeed from '../components/TodayFeed';
 import AnnualPlan from '../components/AnnualPlan';
 import CounselLog from '../components/CounselLog';
@@ -256,23 +257,17 @@ const TeacherDashboard = () => {
             const doneCount = steps.filter(st => st.done).length;
             if (doneCount === steps.length) return null;
             return (
-              <div className="quickstart">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                  <div style={{ fontWeight: 800, color: 'var(--text-strong)', fontSize: '1rem' }}>🚀 시작하기 {doneCount}/{steps.length}</div>
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>네 단계만 끝내면 학급 운영 준비가 완료됩니다.</div>
-                  <button onClick={hideQuickstart} title="숨기기" style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'var(--text-faint)', cursor: 'pointer', display: 'flex' }}><X size={16} /></button>
-                </div>
-                <div className="quickstart-steps">
+              <div className="quickstart slim">
+                <div className="qs-title">🚀 시작하기 <b>{doneCount}/{steps.length}</b></div>
+                <div className="qs-chips">
                   {steps.map((st, i) => (
-                    <button key={st.key} className={`quickstart-step ${st.done ? 'done' : ''}`} onClick={st.action} style={{ textAlign: 'left', cursor: 'pointer' }}>
-                      <div className="step-num">{st.done ? <Check size={14} /> : i + 1}</div>
-                      <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-strong)', display: 'flex', alignItems: 'center', gap: '6px' }}>{st.icon} {st.title}</div>
-                        <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>{st.desc}</div>
-                      </div>
+                    <button key={st.key} className={`qs-chip ${st.done ? 'done' : ''}`} onClick={st.action} title={st.desc}>
+                      <span className="qs-num">{st.done ? <Check size={12} /> : i + 1}</span>
+                      {st.title}
                     </button>
                   ))}
                 </div>
+                <button onClick={hideQuickstart} title="숨기기" className="qs-close"><X size={16} /></button>
               </div>
             );
           })()}
@@ -310,7 +305,9 @@ const TeacherDashboard = () => {
       
       {/* 챗봇 프롬프트 설정 모달 */}
       {isGuidelineOpen && (
+        <ModalBoundary onClose={() => setIsGuidelineOpen(false)} title="서류함">
         <GuidelineCheck onClose={() => setIsGuidelineOpen(false)} teacherProfile={{ ...teacherProfile, className: activeClass?.className || teacherProfile.className }} onSaved={(d) => setTeacherProfile(prev => ({ ...prev, ...d }))} classCode={currentClassCode} studentsData={studentsData} />
+        </ModalBoundary>
       )}
       {isChatbotModalOpen && (
         <ChatbotSettingsModal onClose={() => setIsChatbotModalOpen(false)} onSaved={(d) => setTeacherProfile(prev => ({ ...prev, ...d }))} />
