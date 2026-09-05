@@ -41,6 +41,28 @@ service cloud.firestore {
       );
     }
 
+    // 교사 확인(초대 코드): settings/teacherAccess.inviteCode, 문서가 없으면 기본값
+    function inviteCode() {
+      return exists(/databases/$(database)/documents/settings/teacherAccess)
+        ? get(/databases/$(database)/documents/settings/teacherAccess).data.get('inviteCode', 'SENSELSNU')
+        : 'SENSELSNU';
+    }
+    function isVerifiedTeacher() {
+      return isTeacher()
+        && exists(/databases/$(database)/documents/teachers/$(request.auth.uid))
+        && get(/databases/$(database)/documents/teachers/$(request.auth.uid)).data.get('verified', false) == true;
+    }
+    // verified 를 true 로 새로 세우려면 verifiedWith 가 현재 초대 코드와 같아야 한다
+    function verifyOkCreate() {
+      return request.resource.data.get('verified', false) != true
+        || request.resource.data.get('verifiedWith', '') == inviteCode();
+    }
+    function verifyOkUpdate() {
+      return request.resource.data.get('verified', false) != true
+        || resource.data.get('verified', false) == true
+        || request.resource.data.get('verifiedWith', '') == inviteCode();
+    }
+
     function sessionPath() {
       return /databases/$(database)/documents/studentSessions/$(request.auth.uid);
     }
@@ -53,7 +75,9 @@ service cloud.firestore {
     // ===== 학급 =====
     match /classes/{code} {
       allow read: if signedIn(); // 학생: 학급 코드 검증 / 교사: 목록·정보
-      allow create: if isTeacher() && request.resource.data.get('teacherUid', '') == request.auth.uid;
+      // 학급 생성은 초대 코드로 확인된 교사만 (내장 데모 학급 SENSEL 은 예외)
+      allow create: if isTeacher() && request.resource.data.get('teacherUid', '') == request.auth.uid
+        && (code == 'SENSEL' || isVerifiedTeacher());
       allow update: if ownsClass(code) && (
         resource.data.get('isDemo', false) == true ||
         request.resource.data.get('teacherUid', '') == resource.data.get('teacherUid', '')
@@ -65,8 +89,15 @@ service cloud.firestore {
     match /teachers/{uid} {
       allow get: if signedIn();      // 학생 챗봇이 담당 교사의 설정을 읽음 (classes.teacherUid 경유)
       allow list: if isTeacher();    // 레거시 classCode 검색은 교사만
-      allow create, update: if isTeacher() && request.auth.uid == uid;
+      allow create: if isTeacher() && request.auth.uid == uid && verifyOkCreate();
+      allow update: if isTeacher() && request.auth.uid == uid && verifyOkUpdate();
       allow delete: if false;
+    }
+
+    // ===== 설정 (교사 초대 코드 등) — 콘솔에서만 수정 =====
+    match /settings/{id} {
+      allow read: if isTeacher();
+      allow write: if false;
     }
 
     // ===== 학생 세션 (익명 uid ↔ 학급 코드) =====

@@ -18,6 +18,10 @@ const TeacherSetup = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [teacherName, setTeacherName] = useState('');       // 프로필에 저장된 이름 (입장 시 학급 문서에 기록)
+  const [verified, setVerified] = useState(null);           // 교사 확인(초대 코드) 여부: null=확인 중
+  const [inviteInput, setInviteInput] = useState('');
+  const [inviteError, setInviteError] = useState('');
+  const [inviteBusy, setInviteBusy] = useState(false);
   const [newTeacherName, setNewTeacherName] = useState(''); // 새 학급 폼 입력값 — 항상 빈칸으로 시작
   const [classes, setClasses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -76,6 +80,7 @@ const TeacherSetup = () => {
 
       // 2) 기존 단일 학급(teachers 문서) 하위 호환
       const tSnap = await getDoc(doc(db, 'teachers', u.uid));
+      setVerified(tSnap.exists() && tSnap.data().verified === true);
       if (tSnap.exists()) {
         const t = tSnap.data();
         if (t.teacherName) setTeacherName(t.teacherName);
@@ -232,6 +237,24 @@ const TeacherSetup = () => {
   };
 
   // 내 학급 삭제 (학생·자리 배치·리포트·회신·동의·TV 보드까지 모두) — 체험 학급은 삭제 불가
+  // 교사 확인 — 초대 코드(설정 문서 settings/teacherAccess.inviteCode, 없으면 기본값)를 한 번 입력하면 학급을 만들 수 있다.
+  const DEFAULT_INVITE = 'SENSELSNU';
+  const verifyTeacher = async () => {
+    const code = inviteInput.trim().toUpperCase();
+    if (!code) { setInviteError('코드를 입력하세요.'); return; }
+    setInviteBusy(true); setInviteError('');
+    try {
+      let expected = DEFAULT_INVITE;
+      try { const st = await getDoc(doc(db, 'settings', 'teacherAccess')); if (st.exists() && st.data().inviteCode) expected = String(st.data().inviteCode).toUpperCase(); } catch { /* 설정 문서 없음 → 기본값 */ }
+      if (code !== expected) { setInviteError('코드가 맞지 않아요. 연수·안내에서 받은 교사용 코드를 확인해 주세요.'); return; }
+      await setDoc(doc(db, 'teachers', user.uid), { uid: user.uid, email: user.email, verified: true, verifiedWith: code, verifiedAt: serverTimestamp() }, { merge: true });
+      setVerified(true);
+    } catch (e) {
+      console.error(e);
+      setInviteError(`확인 중 오류: ${e?.code || e?.message || '알 수 없음'}`);
+    } finally { setInviteBusy(false); }
+  };
+
   // 학급 정보 수정 (이름은 즉시, 코드 변경은 모든 부속 문서를 새 코드로 옮긴다)
   const openEdit = (cls) => { setEditTarget(cls); setEditName(cls.className || ''); setEditCode(cls.classCode); setEditProgress(''); };
 
@@ -335,11 +358,22 @@ const TeacherSetup = () => {
           </div>
           <div className="setup-actions">
             {demoClass && <button className="btn-demo" disabled={!!demoWorking} onClick={() => enterClass(demoClass)} title="가상 학생 23명이 내장된 학급으로 모든 기능을 체험합니다">🎬 {demoWorking ? demoWorking : '데모 학급 체험'}</button>}
-            <button className="btn-new" onClick={() => setShowCreate(v => !v)}><Plus size={16} /> 새 학급</button>
+            {verified && <button className="btn-new" onClick={() => setShowCreate(v => !v)}><Plus size={16} /> 새 학급</button>}
           </div>
         </div>
 
-        {createOpen && (
+        {verified === false && (
+          <section className="setup-card create-card" style={{ borderColor: '#fde68a', boxShadow: '0 12px 30px rgba(214,158,46,0.12)' }}>
+            <div className="create-form-title">🔑 선생님 확인 <span>학급을 만들려면 교사용 코드를 한 번만 입력해 주세요. 데모 학급 체험은 코드 없이 가능해요.</span></div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <input className="code-input" style={{ flex: '1 1 220px', fontSize: '1.15rem', letterSpacing: '3px' }} value={inviteInput} onChange={e => { setInviteInput(e.target.value.toUpperCase()); setInviteError(''); }} placeholder="교사용 코드" onKeyDown={e => e.key === 'Enter' && verifyTeacher()} disabled={inviteBusy} />
+              <button className="btn btn-primary" style={{ padding: '12px 18px' }} disabled={inviteBusy} onClick={verifyTeacher}>{inviteBusy ? '확인 중…' : '확인'}</button>
+            </div>
+            {inviteError && <div className="code-error" style={{ textAlign: 'left' }}>{inviteError}</div>}
+          </section>
+        )}
+
+        {verified && createOpen && (
           <section className="setup-card create-card">
             <div className="create-form-title"><Plus size={16} /> 새 학급 만들기 <span>학생 명단·자리 배치·가정 연계까지 5분이면 준비돼요</span></div>
             <div className="create-grid">
@@ -356,7 +390,7 @@ const TeacherSetup = () => {
 
         {isLoading ? (
           <p className="setup-empty">불러오는 중…</p>
-        ) : myClasses.length === 0 ? (
+        ) : myClasses.length === 0 ? (verified === false ? null :
           <div className="setup-card" style={{ textAlign: 'center', padding: '28px' }}>
             <div style={{ fontSize: '2rem' }}>🏫</div>
             <div style={{ fontWeight: 800, color: 'var(--text-strong)', marginTop: '6px' }}>아직 만든 학급이 없어요</div>
