@@ -37,11 +37,12 @@ const starPoints = (cx, cy, outerR, innerR) => {
   return pts.join(' ');
 };
 
-const VIEW_W = 760;
-const VIEW_H = 560;
+const VIEW_W = 900;
+const VIEW_H = 460;
 const CX = VIEW_W / 2;
-const CY = VIEW_H / 2 + 6;
-const RADIUS = Math.min(VIEW_W, VIEW_H) / 2 - 78; // 라벨 공간 확보
+const CY = VIEW_H / 2;
+const RX = VIEW_W / 2 - 120; // 타원 배치: 가로로 넓은 위젯에 맞춰 좌우로 펼친다 (이름 라벨 여백 확보)
+const RY = VIEW_H / 2 - 40;
 
 const Sociogram = ({ studentsData = [], teacherProfile }) => {
   const [selectedId, setSelectedId] = useState(null);
@@ -152,8 +153,8 @@ const Sociogram = ({ studentsData = [], teacherProfile }) => {
       const angle = -Math.PI / 2 + (i * 2 * Math.PI) / n;
       const node = nodeById.get(id);
       node.angle = angle;
-      node.x = CX + Math.cos(angle) * RADIUS;
-      node.y = CY + Math.sin(angle) * RADIUS;
+      node.x = CX + Math.cos(angle) * RX;
+      node.y = CY + Math.sin(angle) * RY;
     });
 
     return { nodes: nodeList, links: linkList };
@@ -216,8 +217,8 @@ const Sociogram = ({ studentsData = [], teacherProfile }) => {
 
   // 라벨 위치: 원 바깥쪽
   const labelPos = (node) => {
-    const lx = CX + Math.cos(node.angle) * (RADIUS + 20);
-    const ly = CY + Math.sin(node.angle) * (RADIUS + 20);
+    const lx = CX + Math.cos(node.angle) * (RX + 22);
+    const ly = CY + Math.sin(node.angle) * (RY + 18);
     const c = Math.cos(node.angle);
     const anchor = c > 0.35 ? 'start' : c < -0.35 ? 'end' : 'middle';
     return { lx, ly, anchor };
@@ -231,18 +232,14 @@ const Sociogram = ({ studentsData = [], teacherProfile }) => {
   );
 
   return (
-    <div data-tour="sociogram" className="glass-card widget sociogram-widget" style={{ padding: 0, overflow: 'hidden', background: '#0f172a', position: 'relative' }}>
-      <div className="widget-title" style={{ position: 'absolute', top: 16, left: 20, zIndex: 10, color: 'white', textShadow: '0 0 10px rgba(255,255,255,0.5)' }}>
+    <div data-tour="sociogram" className="glass-card widget sociogram-widget" style={{ padding: 0, overflow: 'hidden', background: '#0f172a', position: 'relative', display: 'flex', flexDirection: 'column', gap: 0 }}>
+      <div className="widget-title" style={{ padding: '14px 18px 4px', color: 'white', display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap', flexShrink: 0 }}>
         학생 관계망 소시오그램
-        <div style={{ fontSize: '0.72rem', fontWeight: 'normal', color: '#94a3b8', marginTop: '3px' }}>
-          별을 클릭하면 그 학생의 관계만 강조됩니다
-        </div>
-        <div style={{ marginTop: '6px', fontWeight: 'normal', textShadow: 'none', maxWidth: '420px' }}>
-        </div>
+        <span style={{ fontSize: '0.72rem', fontWeight: 'normal', color: '#94a3b8' }}>별을 클릭하면 그 학생의 관계만 강조됩니다</span>
       </div>
 
       {/* 컴팩트 범례 */}
-      <div style={{ position: 'absolute', bottom: 12, left: 20, zIndex: 10, display: 'flex', flexWrap: 'wrap', gap: '14px', fontSize: '0.75rem', color: '#cbd5e1', background: 'rgba(15,23,42,0.75)', padding: '6px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.1)' }}>
+      <div style={{ order: 3, flexShrink: 0, display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: '0.72rem', color: '#cbd5e1', padding: '6px 18px 10px', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <span><b style={{ color: '#7cc4ff' }}>파랑</b>=남 <b style={{ color: '#ff9ecf' }}>분홍</b>=여</span>
         <span>별색: <b style={{ color: '#60a5fa' }}>좋음</b> <b style={{ color: '#fbbf24' }}>보통</b> <b style={{ color: '#f87171' }}>힘듦</b></span>
         <span><b style={{ color: '#ffd700' }}>― 금색</b>=서로 지목</span>
@@ -301,14 +298,15 @@ const Sociogram = ({ studentsData = [], teacherProfile }) => {
       )}
 
       {nodes.length === 0 ? (
-        <div style={{ width: '100%', height: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#cbd5e1' }}>
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#cbd5e1' }}>
           학생 데이터가 없습니다. (학생이 대화하면 별이 생성됩니다)
         </div>
       ) : (
+        <div style={{ flex: '1 1 0', minHeight: 0, position: 'relative' }}>
         <svg
           viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
           preserveAspectRatio="xMidYMid meet"
-          style={{ width: '100%', height: '100%', display: 'block' }}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}
           onClick={() => setSelectedId(null)}
         >
           <defs>
@@ -395,6 +393,7 @@ const Sociogram = ({ studentsData = [], teacherProfile }) => {
             );
           })}
         </svg>
+        </div>
       )}
     </div>
   );
