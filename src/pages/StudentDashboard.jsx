@@ -68,6 +68,7 @@ const StudentDashboard = () => {
   const [missionsDone, setMissionsDone] = useState([]); // [{weekKey, missionId, doneAt}]
   const [classMission, setClassMission] = useState(null); // classes/{code}.mission (교사 지정) 없으면 기본 순환
   const [growthOpen, setGrowthOpen] = useState(false);
+  const [consentDenied, setConsentDenied] = useState(false); // 보호자 미동의: 대화는 하되 신호·기록 저장 안 함(위기 알림은 유지)
   // AI 활용 약속 (서울시교육청 가이드라인 학생 핵심 가이드 5·3·6) — 기기당 1회, 학교급 바뀌면 다시
   const [promiseDone, setPromiseDone] = useState(() => { try { return localStorage.getItem('sensel-ai-promise') === (sessionStorage.getItem('studentClassCode') || 'x'); } catch { return false; } });
   const acceptPromise = () => { setPromiseDone(true); try { localStorage.setItem('sensel-ai-promise', sessionStorage.getItem('studentClassCode') || 'x'); } catch { /* ignore */ } };
@@ -184,7 +185,7 @@ const StudentDashboard = () => {
     if (!studentDocId || missionDone) return;
     const entry = { weekKey: thisWeek, missionId: mission.id, doneAt: new Date().toISOString() };
     setMissionsDone(prev => [...prev, entry]);
-    try { await updateDoc(doc(db, 'students', studentDocId), { missions: arrayUnion(entry) }); } catch (e) { console.error('mission save error', e); }
+    if (!consentDenied) { try { await updateDoc(doc(db, 'students', studentDocId), { missions: arrayUnion(entry) }); } catch (e) { console.error('mission save error', e); } }
     setGrowthToast('🎉 미션 완료! 선생님도 볼 수 있어.');
     setTimeout(() => setGrowthToast(''), 3500);
   };
@@ -236,6 +237,7 @@ const StudentDashboard = () => {
           sessionsCount: days.size + 1,
         });
         setSkillLog(Array.isArray(userData.skillLog) ? userData.skillLog : []);
+        setConsentDenied(userData.consent?.status === 'denied');
         setMissionsDone(Array.isArray(userData.missions) ? userData.missions : []);
         if (userData.dailyTurns && userData.dailyTurns.date === new Date().toISOString().slice(0, 10)) setTurnsToday(Number(userData.dailyTurns.count) || 0);
         if ((userData.alerts || []).some(a => a && a.timestamp && String(a.timestamp).slice(0, 10) === new Date().toISOString().slice(0, 10))) setAlertedToday(true);
@@ -492,6 +494,9 @@ const StudentDashboard = () => {
             timestamp: new Date().toISOString(),
             excerpt: [...recentUser.map(t => `학생: ${t}`), `챗봇: ${cleanBotText}`].join('\n').slice(0, 1200)
           });
+        }
+        if (consentDenied) { // 미동의: 아동 보호 목적의 위기 알림만 남긴다
+          Object.keys(updates).forEach(k => { if (k !== 'alerts') delete updates[k]; });
         }
         if (Object.keys(updates).length > 0) await updateDoc(doc(db, 'students', studentDocId), updates);
       }

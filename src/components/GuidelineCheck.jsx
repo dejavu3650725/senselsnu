@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { X, ClipboardCheck, ShieldCheck, ChevronDown, ChevronUp, BookOpen } from 'lucide-react';
+import { X, ClipboardCheck, ShieldCheck, ChevronDown, ChevronUp, BookOpen, FileDown, Link2, Copy, Check, RefreshCw } from 'lucide-react';
+import { downloadConsentDocx, downloadCommitteeDocx, downloadReportDocx } from '../utils/officialDocs';
+import { collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { GUIDE, VALUE_META, valueName, guideLevelOf, guideLevelLabel, schoolLevelGen } from '../utils/aiGuideline';
@@ -11,9 +13,47 @@ const STATUS_COLOR = { '충족': '#2f855a', '부분 충족': '#b7791f', '충족(
  * 센셀 도입 절차(사전 진단 → 1~4단계)와 필수 기준 5가지, 생성형 AI 위험 요소 대응을 한 화면에서 점검한다.
  * 교사의 체크 상태는 teachers/{uid}.guidelineChecks 에 저장된다.
  */
-const GuidelineCheck = ({ onClose, teacherProfile, onSaved }) => {
+const GuidelineCheck = ({ onClose, teacherProfile, onSaved, classCode, studentsData = [] }) => {
   const [checks, setChecks] = useState({});
-  const [open, setOpen] = useState({ pre: true, steps: true, mandatory: true, risks: false, values: false });
+  const [open, setOpen] = useState({ forms: true, pre: false, steps: true, mandatory: true, risks: false, values: false });
+  const [school, setSchool] = useState(() => { try { return localStorage.getItem('sensel-school') || ''; } catch { return ''; } });
+  const [principal, setPrincipal] = useState('');
+  const [busy, setBusy] = useState('');
+  const [consents, setConsents] = useState(null);
+  const [applied, setApplied] = useState('');
+  const [copied, setCopied] = useState(false);
+  const signUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/consent/${classCode}/sign`;
+  const teacherName = teacherProfile?.teacherName ? `${teacherProfile.teacherName} 선생님` : '담임교사';
+  const className = teacherProfile?.className || '';
+  const smsText = `[${className || '우리 반'} 개인정보 수집·이용·제공 동의 안내]\n학급 사회정서교육 도우미 '센셀' 활용을 위해 보호자님의 동의를 받고자 합니다. 아래 링크에서 안내를 읽고 동의 여부를 제출해 주세요(만 14세 미만은 법정대리인 동의). 종이 동의서를 이미 제출하셨다면 다시 하지 않으셔도 됩니다.\n${signUrl}\n— ${teacherName}`;
+  const run = async (key, fn) => { setBusy(key); try { await fn(); } catch (e) { console.error(e); alert('문서 생성에 실패했습니다.'); } finally { setBusy(''); } };
+  const docOpts = { schoolName: school || '○○학교', principal: principal || '○○○', teacherName: teacherProfile?.teacherName || '○○○', className, storeTranscripts: teacherProfile?.chatConfig?.storeTranscripts === true && teacherProfile?.chatConfig?.consentConfirmed === true, committeeApproved: teacherProfile?.chatConfig?.committeeApproved === true };
+  const loadConsents = async () => {
+    if (!classCode) return;
+    try { const snap = await getDocs(query(collection(db, 'consents'), where('classCode', '==', classCode))); setConsents(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.at).localeCompare(String(a.at)))); }
+    catch (e) { console.error(e); setConsents([]); }
+  };
+  useEffect(() => { loadConsents(); }, [classCode]);
+  const norm = (s) => String(s || '').replace(/\s/g, '');
+  const latestByStudent = (consents || []).reduce((m, c) => { const k = norm(c.studentName); if (!m[k]) m[k] = c; return m; }, {});
+  const matched = studentsData.map(s => ({ s, c: latestByStudent[norm(s.realName)] || null }));
+  const unmatched = Object.values(latestByStudent).filter(c => !studentsData.some(s => norm(s.realName) === norm(c.studentName)));
+  const applyConsents = async () => {
+    setBusy('apply');
+    let n = 0;
+    try {
+      for (const { s, c } of matched) {
+        if (!c) continue;
+        const status = c.agree ? 'granted' : 'denied';
+        if (s.consent?.status === status && s.consent?.at === c.at) continue;
+        await updateDoc(doc(db, 'students', s.id), { consent: { status, at: c.at, guardianName: c.guardianName || '', source: 'e-sign' } });
+        n += 1;
+      }
+      setApplied(`${n}명 반영됨`);
+    } catch (e) { console.error(e); setApplied('반영 실패'); } finally { setBusy(''); }
+  };
+  const copySms = async () => { try { await navigator.clipboard.writeText(smsText); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ } };
+  useEffect(() => { try { if (school) localStorage.setItem('sensel-school', school); } catch { /* ignore */ } }, [school]);
   const [saving, setSaving] = useState(false);
   const level = guideLevelOf(teacherProfile?.selLevel);
   const gen = schoolLevelGen(teacherProfile?.selLevel);
@@ -79,6 +119,56 @@ const GuidelineCheck = ({ onClose, teacherProfile, onSaved }) => {
         <div style={{ background: '#faf5ff', border: '1px solid #e9d8fd', borderRadius: '12px', padding: '10px 14px', fontSize: '0.84rem', color: '#553c9a', lineHeight: 1.55 }}>
           <b>센셀의 분류:</b> {GUIDE.senselCompliance.classification.reason} · {GUIDE.senselCompliance.classification.aiType}
         </div>
+
+        <Section id="forms" icon={<FileDown size={18} color="#dd6b20" />} title="공문·동의서 내려받기 (서울시교육청 공식 서식)" sub="한글(HWP)·Word에서 열어 학교 양식에 맞게 수정">
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', fontSize: '0.84rem' }}>
+            <input value={school} onChange={e => setSchool(e.target.value)} placeholder="학교명 (예: 서울○○초등학교)" style={{ flex: '1 1 200px', padding: '8px 10px', borderRadius: '10px', border: '1px solid #cbd5e1', fontFamily: 'inherit' }} />
+            <input value={principal} onChange={e => setPrincipal(e.target.value)} placeholder="학교장 성명" style={{ flex: '0 1 140px', padding: '8px 10px', borderRadius: '10px', border: '1px solid #cbd5e1', fontFamily: 'inherit' }} />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '8px' }}>
+            {[
+              { k: 'consent', label: '개인정보 수집·이용·제공 동의 안내', desc: '유형 2(AI·에듀테크 전용 통합 안내) 형식, 센셀 항목·국외 이전 고지 기입', fn: () => downloadConsentDocx(docOpts) },
+              { k: 'committee', label: '학운위 서면 심의 서식 1~3', desc: '서면 심의 안건 · 결의서 · 결과 송부 (2026학년도 1학기까지 서면 허용)', fn: () => downloadCommitteeDocx(docOpts) },
+              { k: 'report', label: '우선 사용 서면 보고 서식 4~5', desc: '학운위 구성 전 우선 사용 시 교육지원청 보고 공문·보고 양식', fn: () => downloadReportDocx(docOpts) },
+            ].map(b => (
+              <button key={b.k} className="btn btn-secondary" disabled={!!busy} onClick={() => run(b.k, b.fn)} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '2px', padding: '10px 12px', textAlign: 'left', height: 'auto' }}>
+                <span style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}><FileDown size={14} /> {busy === b.k ? '만드는 중…' : b.label} <span style={{ fontSize: '0.7rem', color: '#718096', fontWeight: 500 }}>.docx</span></span>
+                <span style={{ fontSize: '0.76rem', color: '#718096', fontWeight: 400, lineHeight: 1.4 }}>{b.desc}</span>
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: '0.76rem', color: '#718096' }}>.docx는 한컴오피스에서 그대로 열리며 '다른 이름으로 저장 → HWP'로 바꿀 수 있습니다. 결재·발신 명의·서식 번호는 학교 양식에 맞춰 고쳐 쓰세요.</div>
+
+          <div style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '10px', marginTop: '4px' }}>
+            <div style={{ fontWeight: 800, color: '#2d3748', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px' }}><Link2 size={15} /> 보호자 전자 동의 (링크 전송)</div>
+            <div style={{ fontSize: '0.8rem', color: '#4a5568', lineHeight: 1.5, margin: '4px 0 8px' }}>종이 대신 링크로 받을 수 있습니다. e알리미·문자·알림장에 아래 문구를 붙여 보내면 보호자가 같은 양식 항목을 읽고 동의 여부를 제출하고, 담임만 결과를 봅니다.</div>
+            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <code style={{ fontSize: '0.78rem', background: '#f7fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '4px 8px' }}>{signUrl}</code>
+              <button className="btn btn-primary" style={{ padding: '6px 12px', fontSize: '0.82rem' }} onClick={copySms}>{copied ? <Check size={14} /> : <Copy size={14} />} 전송 문구 복사</button>
+              <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.82rem' }} onClick={() => window.open(signUrl, '_blank', 'noopener')}>미리보기</button>
+              <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.82rem' }} onClick={loadConsents}><RefreshCw size={14} /> 새로고침</button>
+            </div>
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap', marginTop: '10px', fontSize: '0.86rem' }}>
+              <span>제출 <b>{(consents || []).length}</b>건 · 동의 <b style={{ color: '#2f855a' }}>{matched.filter(m => m.c?.agree).length}</b> · 미동의 <b style={{ color: '#c53030' }}>{matched.filter(m => m.c && !m.c.agree).length}</b> · 미회신 <b style={{ color: '#b7791f' }}>{matched.filter(m => !m.c).length}</b> / 학생 {studentsData.length}명</span>
+              <button className="btn btn-secondary" style={{ padding: '6px 12px', fontSize: '0.82rem' }} disabled={busy === 'apply' || !matched.some(m => m.c)} onClick={applyConsents}>{busy === 'apply' ? '반영 중…' : '학생 문서에 반영'}</button>
+              {applied && <span style={{ fontSize: '0.8rem', color: '#2f855a' }}>{applied}</span>}
+            </div>
+            {unmatched.length > 0 && <div style={{ fontSize: '0.78rem', color: '#b7791f', marginTop: '4px' }}>명단과 이름이 일치하지 않는 제출 {unmatched.length}건: {unmatched.map(c => c.studentName).join(', ')} — [학생 관리]의 실명과 맞춰 주세요.</div>}
+            {matched.length > 0 && (
+              <details style={{ marginTop: '6px', fontSize: '0.8rem' }}>
+                <summary style={{ cursor: 'pointer', color: '#718096' }}>학생별 상태 보기</summary>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
+                  {matched.map(({ s, c }) => (
+                    <span key={s.id} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '2px 8px', background: c ? (c.agree ? '#f0fff4' : '#fff5f5') : (s.consent?.status ? '#f7fafc' : 'white') }}>
+                      {s.realName} {c ? (c.agree ? '동의' : '미동의') : s.consent?.status === 'granted' ? '동의(반영됨)' : s.consent?.status === 'denied' ? '미동의(반영됨)' : '미회신'}
+                    </span>
+                  ))}
+                </div>
+              </details>
+            )}
+            <div style={{ fontSize: '0.76rem', color: '#718096', marginTop: '6px' }}>'반영'하면 미동의 학생은 챗봇 대화는 하되 관계 신호·기록이 저장되지 않습니다(위기 알림은 아동 보호를 위해 유지). 종이로 받은 동의는 [챗봇 설정 › 학교 절차]에서 수합 완료만 체크하면 됩니다.</div>
+          </div>
+        </Section>
 
         <Section id="steps" icon={<ShieldCheck size={18} color="#3182ce" />} title="단계별 도입 절차" sub={`${doneCount(stepItems.map(s => s.key))}/4 완료`}>
           {stepItems.map(s => (

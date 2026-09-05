@@ -300,7 +300,7 @@ const TeacherDashboard = () => {
       
       {/* 챗봇 프롬프트 설정 모달 */}
       {isGuidelineOpen && (
-        <GuidelineCheck onClose={() => setIsGuidelineOpen(false)} teacherProfile={teacherProfile} onSaved={(d) => setTeacherProfile(prev => ({ ...prev, ...d }))} />
+        <GuidelineCheck onClose={() => setIsGuidelineOpen(false)} teacherProfile={{ ...teacherProfile, className: activeClass?.className || teacherProfile.className }} onSaved={(d) => setTeacherProfile(prev => ({ ...prev, ...d }))} classCode={currentClassCode} studentsData={studentsData} />
       )}
       {isChatbotModalOpen && (
         <ChatbotSettingsModal onClose={() => setIsChatbotModalOpen(false)} onSaved={(d) => setTeacherProfile(prev => ({ ...prev, ...d }))} />

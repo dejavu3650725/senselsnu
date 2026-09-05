@@ -99,6 +99,19 @@ service cloud.firestore {
       allow delete: if ownsClass(resource.data.get('classCode', ''));
     }
 
+    // ===== 보호자 전자 동의 (서울시교육청 동의 안내 양식 항목) — 보호자가 제출, 담임만 열람 =====
+    match /consents/{id} {
+      allow create: if signedIn()
+        && classExists(request.resource.data.get('classCode', ''))
+        && request.resource.data.keys().hasOnly(['classCode', 'studentName', 'grade', 'classNo', 'number', 'guardianName', 'relation', 'agree', 'under14', 'at', 'version'])
+        && request.resource.data.studentName is string && request.resource.data.studentName.size() > 0 && request.resource.data.studentName.size() < 40
+        && request.resource.data.guardianName is string && request.resource.data.guardianName.size() < 40
+        && request.resource.data.agree is bool;
+      allow read: if ownsClass(resource.data.get('classCode', ''));
+      allow delete: if ownsClass(resource.data.get('classCode', ''));
+      allow update: if false;
+    }
+
     // ===== 가정 실천 회신 ("집에서 해봤어요") — 익명, 학급 코드·주차·월만 =====
     match /familyFeedback/{id} {
       allow create: if signedIn()

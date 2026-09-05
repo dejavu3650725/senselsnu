@@ -145,7 +145,7 @@ const ParentConsent = () => {
             </div>
 
             <p style={{ marginTop: '18px', fontSize: '0.85rem', color: '#6b7280' }}>
-              문의: {teacherName} · 학급 코드 {classCode}
+              문의: {teacherName} · 학급 코드 {classCode} · 온라인 제출: {typeof window !== 'undefined' ? `${window.location.origin}/consent/${classCode}/sign` : ''}
             </p>
           </>
         )}

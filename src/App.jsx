@@ -7,6 +7,7 @@ import StudentDashboard from './pages/StudentDashboard';
 import ParentConsent from './pages/ParentConsent';
 import FamilyLetter from './pages/FamilyLetter';
 import ParentMonthly from './pages/ParentMonthly';
+import ParentConsentSign from './pages/ParentConsentSign';
 import Footer from './components/Footer';
 import PolicyModal from './components/PolicyModal';
 import './index.css';
@@ -25,6 +26,7 @@ function App() {
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/student" element={<StudentDashboard />} />
             <Route path="/consent/:classCode" element={<ParentConsent />} />
+            <Route path="/consent/:classCode/sign" element={<ParentConsentSign />} />
             <Route path="/family/:classCode/report" element={<ParentMonthly />} />
             <Route path="/family/:classCode/monthly" element={<ParentMonthly />} />
             <Route path="/family/:classCode/:kind" element={<FamilyLetter />} />
