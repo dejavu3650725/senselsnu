@@ -275,6 +275,10 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary-color) !
 .daily-flow-widget { grid-column: 1 / -1; grid-row: 2; }
 
 /* 시작 체크리스트 */
+.today-feed { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.today-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; box-shadow: var(--shadow-xs); min-width: 0; }
+.today-title { font-size: 0.8rem; font-weight: 800; color: var(--text-muted); display: flex; align-items: center; gap: 6px; text-transform: none; }
+.today-sub { font-weight: 500; color: var(--text-faint); margin-left: auto; font-size: 0.72rem; }
 .quickstart { background: linear-gradient(135deg, #eef3ff 0%, #f6f0ff 100%); border: 1px solid #d9e2fb; border-radius: var(--radius-lg); padding: 18px 20px; margin-bottom: 18px; }
 .quickstart-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin-top: 12px; }
 .quickstart-step { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; display: flex; gap: 10px; align-items: flex-start; }

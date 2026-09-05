@@ -19,6 +19,9 @@ import SeatingChart from '../components/SeatingChart';
 import RelationshipWatch from '../components/RelationshipWatch';
 import FamilyLink from '../components/FamilyLink';
 import GuidelineCheck from '../components/GuidelineCheck';
+import TodayFeed from '../components/TodayFeed';
+import AnnualPlan from '../components/AnnualPlan';
+import CounselLog from '../components/CounselLog';
 import { db, auth } from '../firebase';
 import { collection, onSnapshot, query, orderBy, where, doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
@@ -166,7 +169,7 @@ const TeacherDashboard = () => {
           setActiveMenu={(menu) => {
             if (menu === '챗봇 설정') setIsChatbotModalOpen(true);
             else if (menu === '기본 설정') setIsTeacherModalOpen(true);
-            else if (menu === '도입 점검') setIsGuidelineOpen(true);
+            else if (menu === '서류함' || menu === '도입 점검') setIsGuidelineOpen(true);
             else setActiveMenu(menu);
           }} 
           teacherProfile={teacherProfile}
@@ -243,9 +246,7 @@ const TeacherDashboard = () => {
             const steps = [
               { key: 'students', done: studentsData.length >= 3, title: '학생 명단 등록', desc: studentsData.length ? `${studentsData.length}명 등록됨` : '실명·닉네임·성별을 한 번에 붙여넣기', action: () => setActiveMenu('학생 관리'), icon: <Users size={15} /> },
               { key: 'chat', done: !!teacherProfile?.chatConfig, title: '챗봇 설정 저장', desc: '말투·관심 주제만 고르면 끝 (1분)', action: () => setIsChatbotModalOpen(true), icon: <Settings size={15} /> },
-              { key: 'guideline', done: !!(teacherProfile?.guidelineChecks?.step1 && teacherProfile?.guidelineChecks?.step2), title: '도입 점검', desc: '서울시교육청 AI·에듀테크 가이드라인 절차·필수 기준', action: () => setIsGuidelineOpen(true), icon: <Check size={15} /> },
-              { key: 'committee', done: teacherProfile?.chatConfig?.committeeApproved === true, title: '학운위 심의', desc: '심의 후 [챗봇 설정] 학교 절차에서 체크', action: () => setIsChatbotModalOpen(true), icon: <Check size={15} /> },
-              { key: 'consent', done: teacherProfile?.chatConfig?.consentCollected === true || teacherProfile?.chatConfig?.consentConfirmed === true, title: '보호자 안내문·동의서', desc: '인쇄·배부·수합 후 [챗봇 설정]에서 체크', action: openConsent, icon: <FileSignature size={15} /> },
+              { key: 'school', done: teacherProfile?.chatConfig?.committeeApproved === true && (teacherProfile?.chatConfig?.consentCollected === true || teacherProfile?.chatConfig?.consentConfirmed === true), title: '학교 절차 (서류함)', desc: '학운위 심의·보호자 동의 — 공문·동의서는 서류함에서 내려받기', action: () => setIsGuidelineOpen(true), icon: <FileSignature size={15} /> },
               { key: 'code', done: studentsData.some(s => (s.messages || []).length > 0 || (s.sessionDates || []).length > 0), title: '학생 첫 대화', desc: `학급 코드 ${currentClassCode}를 칠판에 적어 주세요`, action: copyCode, icon: <Copy size={15} /> },
             ];
             const doneCount = steps.filter(st => st.done).length;
@@ -273,6 +274,9 @@ const TeacherDashboard = () => {
           })()}
 
           {activeMenu === '대시보드' && (
+            <TodayFeed studentsData={studentsData} teacherProfile={teacherProfile} classCode={currentClassCode} classInfo={activeClass} onOpenStudent={(id) => { setFocusStudentId(id); setActiveMenu('맞춤 처방'); }} />
+          )}
+          {activeMenu === '대시보드' && (
             <div className="dashboard-grid">
               <Sociogram studentsData={studentsData} teacherProfile={teacherProfile} />
               <div className="dashboard-side">
@@ -292,6 +296,8 @@ const TeacherDashboard = () => {
           {activeMenu === '학생 관리' && <StudentManagement studentsData={studentsData} classCode={currentClassCode} />}
           {activeMenu === '자리 배치' && <SeatingChart studentsData={studentsData} classCode={currentClassCode} classLabel={activeClass?.className || teacherProfile.className} teacherProfile={teacherProfile} />}
           {activeMenu === '관계 신호' && <RelationshipWatch studentsData={studentsData} teacherProfile={teacherProfile} />}
+          {activeMenu === '연간 계획' && <AnnualPlan studentsData={studentsData} teacherProfile={teacherProfile} classCode={currentClassCode} classLabel={activeClass?.className || teacherProfile.className} />}
+          {activeMenu === '기록' && <CounselLog studentsData={studentsData} teacherProfile={teacherProfile} classLabel={activeClass?.className || teacherProfile.className} />}
           {activeMenu === '가정 연계' && <FamilyLink studentsData={studentsData} teacherProfile={teacherProfile} classCode={currentClassCode} classLabel={activeClass?.className || teacherProfile.className} classInfo={activeClass} />}
           {activeMenu === '리포트' && <Report studentsData={studentsData} teacherProfile={teacherProfile} />}
           {activeMenu === '에듀테크 리소스' && <EdutechResource />}

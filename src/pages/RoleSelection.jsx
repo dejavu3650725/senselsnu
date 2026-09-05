@@ -94,6 +94,10 @@ const RoleSelection = () => {
         </div>
       </div>
 
+      <div style={{ display: 'flex', justifyContent: 'center', margin: '4px 0 18px' }}>
+        <button className="btn btn-secondary" onClick={() => navigate('/seating')} style={{ borderRadius: '999px' }}>🪑 로그인 없이 1분 자리 배치 해보기</button>
+      </div>
+
       <div className="landing-steps">
         <div className="landing-step"><b>1. 학생이 대화합니다</b>긍정적인 질문만으로 오늘의 기분과 함께하고 싶은 친구를 자연스럽게 이야기합니다.</div>
         <div className="landing-step"><b>2. 선생님이 한눈에 봅니다</b>소시오그램, 갈등·외로움 신호, 긴급 알림이 실시간으로 정리됩니다.</div>

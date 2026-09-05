@@ -99,6 +99,13 @@ service cloud.firestore {
       allow delete: if ownsClass(resource.data.get('classCode', ''));
     }
 
+    // ===== 학급 보드 (TV 화면용 집계: 미션·연습 합계·아침 카드만, 개인 정보 없음) =====
+    match /classBoards/{code} {
+      allow read: if signedIn();
+      allow create, update: if ownsClass(code) && request.resource.data.get('classCode', '') == code;
+      allow delete: if ownsClass(code);
+    }
+
     // ===== 보호자 전자 동의 (서울시교육청 동의 안내 양식 항목) — 보호자가 제출, 담임만 열람 =====
     match /consents/{id} {
       allow create: if signedIn()

@@ -8,6 +8,8 @@ import ParentConsent from './pages/ParentConsent';
 import FamilyLetter from './pages/FamilyLetter';
 import ParentMonthly from './pages/ParentMonthly';
 import ParentConsentSign from './pages/ParentConsentSign';
+import ClassTree from './pages/ClassTree';
+import PublicSeating from './pages/PublicSeating';
 import Footer from './components/Footer';
 import PolicyModal from './components/PolicyModal';
 import './index.css';
@@ -25,6 +27,8 @@ function App() {
             <Route path="/teacher-setup" element={<TeacherSetup />} />
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/student" element={<StudentDashboard />} />
+            <Route path="/seating" element={<PublicSeating />} />
+            <Route path="/tree/:classCode" element={<ClassTree />} />
             <Route path="/consent/:classCode" element={<ParentConsent />} />
             <Route path="/consent/:classCode/sign" element={<ParentConsentSign />} />
             <Route path="/family/:classCode/report" element={<ParentMonthly />} />

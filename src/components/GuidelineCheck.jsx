@@ -110,7 +110,7 @@ const GuidelineCheck = ({ onClose, teacherProfile, onSaved, classCode, studentsD
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <ClipboardCheck size={24} color="var(--primary-color)" />
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text-main)' }}>도입 점검</h2>
+            <h2 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text-main)' }}>서류함 — 학교 제출용</h2>
             <div style={{ fontSize: '0.8rem', color: '#718096' }}>{GUIDE.meta.publisher} 「{GUIDE.meta.title}」({GUIDE.meta.published}) 기준 · {guideLevelLabel(level)}{saving && ' · 저장 중…'}</div>
           </div>
           <button onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer' }}><X size={22} color="#a0aec0" /></button>
