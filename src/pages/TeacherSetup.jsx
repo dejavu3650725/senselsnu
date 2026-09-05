@@ -193,7 +193,7 @@ const TeacherSetup = () => {
     }
   };
 
-  const DEMO_VERSION = 2; // 시연 데이터 구조가 바뀌면 올린다 → 입장 시 자동 재생성
+  const DEMO_VERSION = 3; // 시연 데이터 구조가 바뀌면 올린다 → 입장 시 자동 재생성
 
   // 한 학급에 딸린 문서 전부 삭제 (students, seatingCharts, classBoards, classReports, familyFeedback, consents)
   const purgeClassData = async (code) => {
