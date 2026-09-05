@@ -331,9 +331,9 @@ const TeacherSetup = () => {
           <section className="setup-card create-card">
             <div className="create-form-title"><Plus size={16} /> 새 학급 만들기 <span>학생 명단·자리 배치·가정 연계까지 5분이면 준비돼요</span></div>
             <div className="create-grid">
-              <label>선생님 이름<input type="text" placeholder="예: 김선생님" value={newTeacherName} onChange={e => setNewTeacherName(e.target.value)} /></label>
-              <label>학급 이름<input type="text" placeholder="예: 5학년 2반" value={newClassName} onChange={e => setNewClassName(e.target.value)} /></label>
-              <label>학급 코드 <span>학생 입장용 · 영문/숫자</span><input type="text" placeholder="예: SNU5B" value={newClassCode} onChange={e => setNewClassCode(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateClass()} /></label>
+              <label><span className="lbl">선생님 이름</span><input type="text" placeholder="예: 김선생님" value={newTeacherName} onChange={e => setNewTeacherName(e.target.value)} /></label>
+              <label><span className="lbl">학급 이름</span><input type="text" placeholder="예: 5학년 2반" value={newClassName} onChange={e => setNewClassName(e.target.value)} /></label>
+              <label><span className="lbl">학급 코드 <em>학생 입장용 · 영문/숫자</em></span><input type="text" placeholder="예: SNU5B" value={newClassCode} onChange={e => setNewClassCode(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleCreateClass()} /></label>
             </div>
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
               {myClasses.length > 0 && <button className="btn btn-secondary" onClick={() => setShowCreate(false)}>닫기</button>}
@@ -402,8 +402,8 @@ const TeacherSetup = () => {
               </div>
             </div>
             <div className="create-grid" style={{ gridTemplateColumns: '1fr' }}>
-              <label>학급 이름<input type="text" value={editName} onChange={e => setEditName(e.target.value)} disabled={editBusy} autoFocus /></label>
-              <label>학급 코드 <span>영문·숫자 3~12자</span><input type="text" value={editCode} onChange={e => setEditCode(e.target.value.toUpperCase().replace(/[^A-Za-z0-9]/g, ''))} disabled={editBusy} style={{ fontFamily: 'Inter, monospace', letterSpacing: '2px', fontWeight: 700 }} /></label>
+              <label><span className="lbl">학급 이름</span><input type="text" value={editName} onChange={e => setEditName(e.target.value)} disabled={editBusy} autoFocus /></label>
+              <label><span className="lbl">학급 코드 <em>영문·숫자 3~12자</em></span><input type="text" value={editCode} onChange={e => setEditCode(e.target.value.toUpperCase().replace(/[^A-Za-z0-9]/g, ''))} disabled={editBusy} style={{ fontFamily: 'Inter, monospace', letterSpacing: '2px', fontWeight: 700 }} /></label>
             </div>
             {editCode.trim() !== editTarget.classCode && <div style={{ marginTop: '10px', fontSize: '0.82rem', color: '#975a16', background: '#fffbea', border: '1px solid #f6e05e', borderRadius: '10px', padding: '8px 10px', lineHeight: 1.5 }}>코드를 바꾸면 학생들은 <b>새 코드로 다시 입장</b>해야 해요. 칠판·알림장의 코드도 함께 바꿔 주세요.</div>}
             {editProgress && <div style={{ marginTop: '10px', fontSize: '0.85rem', color: editProgress.includes('오류') || editProgress.includes('입력') || editProgress.includes('사용 중') ? '#e53e3e' : 'var(--text-muted)' }}>{editBusy ? '⏳ ' : ''}{editProgress}</div>}
