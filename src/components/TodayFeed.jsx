@@ -16,9 +16,9 @@ const TIER = { urgent: { label: '긴급', color: '#c53030' }, high: { label: '�
 const TodayFeed = ({ studentsData = [], teacherProfile, classCode, classInfo, onOpenStudent }) => {
   const gradeLabel = seoulGradeLabel(teacherProfile?.selLevel, teacherProfile?.gradeYear);
   const className = classInfo?.className || teacherProfile?.className || '';
-  const card = morningCard(gradeLabel);
+  const card = morningCard(gradeLabel, new Date(), studentsData);
   const who = studentOfTheDay(studentsData);
-  const notice = noticeOfTheDay(gradeLabel, classInfo?.mission, className);
+  const notice = noticeOfTheDay(gradeLabel, classInfo?.mission, className, new Date(), studentsData);
   const [copied, setCopied] = useState(false);
   const wk = weekKey();
   const mission = (classInfo?.mission?.weekKey === wk && missionById(classInfo.mission.missionId)) || defaultMission(wk);
@@ -57,7 +57,11 @@ const TodayFeed = ({ studentsData = [], teacherProfile, classCode, classInfo, on
               <span style={{ fontSize: '0.72rem', fontWeight: 700, color: t.color }}>{t.label}</span>
               {who.focus.slice(0, 2).map(f => <span key={f} className="chip" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>{f}</span>)}
             </div>
-            {who.reason && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>왜: {who.reason}</div>}
+            {(who.reasons || []).length > 0 && (
+              <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+                {who.reasons.map((r, i) => <li key={i}>{r}</li>)}
+              </ul>
+            )}
             <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: 1.5 }}>{who.action}</div>
             {onOpenStudent && <button className="btn btn-secondary" style={{ alignSelf: 'flex-start', padding: '5px 10px', fontSize: '0.8rem' }} onClick={() => onOpenStudent(who.id)}>맞춤 처방 <ArrowRight size={13} /></button>}
           </>
@@ -68,6 +72,7 @@ const TodayFeed = ({ studentsData = [], teacherProfile, classCode, classInfo, on
         <div className="today-title"><Sun size={16} /> 오늘 아침 활동 <span className="today-sub">{card.minutes}분</span></div>
         <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', lineHeight: 1.35 }}>“{card.topic}”</div>
         <div style={{ fontSize: '0.86rem', color: 'var(--text-main)', lineHeight: 1.5 }}>{card.questions[0]}</div>
+        {card.why && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>왜 이 주제? {card.why}</div>}
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
           <button className="btn btn-primary" style={{ padding: '5px 10px', fontSize: '0.8rem' }} onClick={() => window.open(treeUrl, '_blank', 'noopener')}><Tv size={13} /> TV에 띄우기</button>
           <button className="btn btn-secondary" style={{ padding: '5px 10px', fontSize: '0.8rem' }} title="학생들에게 우리 반 나무를 소개하는 화면(3분)" onClick={() => window.open(`${treeUrl}?intro=1`, '_blank', 'noopener')}>🌳 나무 소개</button>
