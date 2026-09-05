@@ -191,7 +191,7 @@ const TeacherSetup = () => {
     const sSnap = await getDocs(query(collection(db, 'students'), where('classCode', '==', DEMO_CLASS_CODE)));
     const students = generateDemoStudents();
     const upToDate = snap.exists() && Number(snap.data().demoVersion || 0) >= DEMO_VERSION && sSnap.size === students.length;
-    if (upToDate) return;
+    if (upToDate) { if (snap.data().className !== DEMO_CLASS_NAME) await setDoc(ref, { className: DEMO_CLASS_NAME }, { merge: true }).catch(() => {}); return; }
     setDemoWorking('체험 학급을 준비하고 있어요…');
     if (!snap.exists()) {
       await setDoc(ref, { classCode: DEMO_CLASS_CODE, className: DEMO_CLASS_NAME, teacherUid: user.uid, teacherName: teacherName.trim() || '선생님', isDemo: true, createdAt: serverTimestamp() }, { merge: true });
@@ -282,8 +282,7 @@ const TeacherSetup = () => {
                   <span style={{ fontSize: '1.5rem' }}>{cls.classCode === DEMO_CLASS_CODE ? '🎬' : '🏫'}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 'bold', color: '#2d3748' }}>
-                      {cls.className}
-                      {cls.classCode === DEMO_CLASS_CODE && <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: '#805ad5', fontWeight: 'bold' }}>체험</span>}
+                      {cls.classCode === DEMO_CLASS_CODE ? DEMO_CLASS_NAME : cls.className}
                     </div>
                     <div style={{ fontSize: '0.85rem', color: '#a0aec0' }}>
                       {cls.classCode === DEMO_CLASS_CODE

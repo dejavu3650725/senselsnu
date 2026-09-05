@@ -9,7 +9,7 @@
 import { weekKey, dayKey, defaultMission } from '../utils/growth.js';
 
 export const DEMO_CLASS_CODE = '2026ai';
-export const DEMO_CLASS_NAME = '5학년 데모반';
+export const DEMO_CLASS_NAME = '데모 학급 체험';
 
 const hoursAgo = (h) => new Date(Date.now() - h * 3600 * 1000).toISOString();
 const daysAgo = (d) => new Date(Date.now() - d * 86400000);
