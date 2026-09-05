@@ -30,8 +30,11 @@ const ClassTree = () => {
     const load = async () => {
       try {
         await ensureStudentSession(null);
-        const b = await getDoc(doc(db, 'classBoards', classCode));
-        if (alive) setBoard(b.exists() ? b.data() : null);
+        const [b, c] = await Promise.all([getDoc(doc(db, 'classBoards', classCode)), getDoc(doc(db, 'classes', classCode)).catch(() => null)]);
+        if (!alive) return;
+        const data = b.exists() ? b.data() : null;
+        const liveName = c && c.exists() ? c.data().className : null; // 학급 이름은 학급 문서를 우선 (교사가 바꾸면 즉시 반영)
+        setBoard(data ? { ...data, className: liveName || data.className } : (liveName ? { className: liveName, empty: true } : null));
       } catch (e) { console.error(e); } finally { if (alive) setLoaded(true); }
     };
     load();
@@ -53,7 +56,7 @@ const ClassTree = () => {
         <div style={{ color: '#718096', fontSize: '1rem' }}>{now.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' })}</div>
       </div>
 
-      {!loaded ? null : !board ? (
+      {!loaded ? null : (!board || board.empty) ? (
         <div style={{ marginTop: '80px', textAlign: 'center', color: '#718096', fontSize: '1.2rem', lineHeight: 1.7 }}>아직 나무가 심어지지 않았어요.<br />선생님이 대시보드를 한 번 열면 우리 반 나무가 자라기 시작해요.</div>
       ) : (
         <div style={{ width: '100%', maxWidth: '1100px', display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) minmax(320px, 1fr)', gap: '22px', marginTop: '22px' }}>
