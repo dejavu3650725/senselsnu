@@ -697,7 +697,10 @@ const StudentDashboard = () => {
                 </li>
               ))}
             </ol>
-            <button className="btn btn-primary btn-lg" style={{ width: '100%', marginTop: '18px' }} onClick={acceptPromise}>약속할게요</button>
+            <div style={{ marginTop: '14px', background: '#f0fff4', border: '1px solid #c6f6d5', borderRadius: '12px', padding: '10px 12px', fontSize: '0.82rem', color: '#276749', lineHeight: 1.55 }}>
+              🌳 <b>우리 반 나무</b>는 미션 "했어요"와 네가 해 본 좋은 연습으로만 자라. 속상한 이야기, 힘든 이야기는 나무에도, 친구들에게도 나가지 않아. 그러니 편하게 말해도 돼.
+            </div>
+            <button className="btn btn-primary btn-lg" style={{ width: '100%', marginTop: '14px' }} onClick={acceptPromise}>약속할게요</button>
           </div>
         </div>
       )}
