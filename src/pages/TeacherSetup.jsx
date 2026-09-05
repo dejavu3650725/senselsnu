@@ -33,7 +33,7 @@ const TeacherSetup = () => {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
       if (u) setUser(u);
-      else navigate('/');
+      else navigate('/teachers');
     });
     return () => unsub();
   }, [navigate]);

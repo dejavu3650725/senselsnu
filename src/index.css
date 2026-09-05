@@ -328,6 +328,19 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary-color) !
 .landing-steps { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; max-width: 900px; }
 .landing-step { flex: 1 1 200px; background: rgba(255,255,255,0.75); border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; }
 .landing-step b { display: block; color: var(--text-strong); margin-bottom: 4px; font-size: 0.92rem; }
+.student-landing { position: relative; gap: 22px; }
+.landing-teacher-link { position: absolute; top: 18px; right: 22px; background: rgba(255,255,255,0.7); border: 1px solid var(--border); color: var(--text-muted); border-radius: 999px; padding: 7px 14px; font-size: 0.82rem; cursor: pointer; }
+.landing-teacher-link:hover { color: var(--primary-color); border-color: var(--primary-color); }
+.landing-back { position: absolute; top: 18px; left: 22px; border-radius: 999px; padding: 7px 14px; font-size: 0.82rem; }
+.student-tree { font-size: 84px; line-height: 1; margin-bottom: 10px; filter: drop-shadow(0 10px 18px rgba(56,161,105,0.25)); animation: sway 4s ease-in-out infinite; transform-origin: bottom center; }
+@keyframes sway { 0%,100% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
+.student-join { width: 100%; max-width: 420px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.student-join input { width: 100%; padding: 16px; border-radius: 14px; border: 1.5px solid var(--border-strong); font-size: 1.5rem; font-weight: 800; text-align: center; letter-spacing: 4px; text-transform: uppercase; outline: none; font-family: Inter, monospace; }
+.student-join input::placeholder { letter-spacing: 0; font-weight: 500; color: var(--text-faint); }
+.student-join input:focus { border-color: var(--success); box-shadow: 0 0 0 4px rgba(56,161,105,0.15); }
+.student-join button { width: 100%; padding: 15px; background: var(--success); color: #fff; border: none; border-radius: 12px; font-size: 1.1rem; font-weight: 700; cursor: pointer; }
+.student-join button:disabled { opacity: 0.6; cursor: not-allowed; }
+.student-join-error { color: var(--danger); font-size: 0.86rem; text-align: center; }
 .landing-note { font-size: 0.8rem; color: var(--text-faint); text-align: center; max-width: 640px; line-height: 1.6; }
 
 /* Consent page */

@@ -61,7 +61,7 @@ const PublicSeating = () => {
   return (
     <div className="consent-page" style={{ maxWidth: '1100px' }}>
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px', flexWrap: 'wrap' }}>
-        <button className="btn btn-secondary" onClick={() => navigate('/')}><ArrowLeft size={16} /> 센셀 홈</button>
+        <button className="btn btn-secondary" onClick={() => navigate('/teachers')}><ArrowLeft size={16} /> 센셀 홈</button>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
           {result && <button className="btn btn-secondary" onClick={() => window.print()}><Printer size={16} /> 인쇄</button>}
         </div>
@@ -144,7 +144,7 @@ const PublicSeating = () => {
             <div style={{ flex: 1, minWidth: '240px', fontSize: '0.9rem', lineHeight: 1.55 }}>
               <b>관계 데이터를 넣으면 더 정확해집니다.</b> 학급을 만들면 아이들이 직접 말한 "함께하고 싶은 친구"와 외로움 신호로 고립 학생 옆에 지지자를 두고, 직전 짝꿍 반복도 피합니다. 관계망은 담임만 봅니다.
             </div>
-            <button className="btn btn-primary" onClick={() => navigate('/')}>학급 만들기 (무료)</button>
+            <button className="btn btn-primary" onClick={() => navigate('/teachers')}>학급 만들기 (무료)</button>
           </div>
         </div>
       )}
