@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Plus, LogIn, Trash2 } from 'lucide-react';
+import { Shield, Plus, LogIn, Trash2, MessageCircle, HeartHandshake, Sparkles } from 'lucide-react';
 import { db, auth } from '../firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
@@ -307,10 +307,24 @@ const TeacherSetup = () => {
           </div>
         )}
 
-        <div className="setup-steps">
-          <div><b>1. 학생이 대화합니다</b>긍정적인 질문만으로 오늘의 기분과 함께하고 싶은 친구를 자연스럽게 이야기합니다.</div>
-          <div><b>2. 선생님이 한눈에 봅니다</b>소시오그램, 갈등·외로움 신호, 긴급 알림이 실시간으로 정리됩니다. 이 화면은 선생님만 봅니다.</div>
-          <div><b>3. 교실이 달라집니다</b>근거 성취기준이 붙은 자리 배치·맞춤 처방·상담 기록과 가정통신문·학급 리포트로 이어집니다.</div>
+        <div className="how-strip">
+          <div className="how-item">
+            <div className="how-num">1</div>
+            <div className="how-ic"><MessageCircle size={20} /></div>
+            <div><b>학생이 대화합니다</b><span>긍정적인 질문만으로 오늘의 기분과 함께하고 싶은 친구를 자연스럽게 이야기해요.</span></div>
+          </div>
+          <div className="how-arrow">→</div>
+          <div className="how-item">
+            <div className="how-num">2</div>
+            <div className="how-ic"><HeartHandshake size={20} /></div>
+            <div><b>선생님이 한눈에 봅니다</b><span>소시오그램·갈등·외로움 신호·긴급 알림이 실시간으로 정리돼요. 선생님만 봅니다.</span></div>
+          </div>
+          <div className="how-arrow">→</div>
+          <div className="how-item">
+            <div className="how-num">3</div>
+            <div className="how-ic"><Sparkles size={20} /></div>
+            <div><b>교실이 달라집니다</b><span>근거가 붙은 자리 배치·맞춤 처방·상담 기록, 가정통신문·학급 리포트로 이어져요.</span></div>
+          </div>
         </div>
       </div>
 
