@@ -6,7 +6,7 @@ import { signInWithPopup } from 'firebase/auth';
 
 /**
  * 선생님 로그인 (/teachers)
- * 학생도 이 주소에 올 수 있으므로 여기에는 기능 설명을 두지 않는다. 로그인 버튼과 자리 배치 체험뿐.
+ * 학생도 이 주소에 올 수 있으므로 여기에는 기능 설명을 두지 않는다. 로그인 버튼뿐.
  * 관계망·신호·처방에 대한 안내는 로그인 후(학급 만들기·대시보드 튜토리얼)와 교사용 안내서(docs/)에만 있다.
  */
 const TeacherLanding = () => {
@@ -33,7 +33,6 @@ const TeacherLanding = () => {
 
       <div className="glass-card student-join" style={{ maxWidth: '380px' }}>
         <button onClick={handleTeacherLogin} style={{ background: 'var(--primary-color)' }}>구글 계정으로 로그인</button>
-        <button className="btn btn-secondary" onClick={() => navigate('/seating')} style={{ background: '#fff', color: 'var(--text-main)', border: '1px solid var(--border-strong)', fontWeight: 600 }}>🪑 로그인 없이 1분 자리 배치 해보기</button>
       </div>
 
       <p className="landing-note">서울특별시교육청 교사 개발자 해커톤에서 시작된 현직 교사의 프로젝트입니다. 자세한 안내는 로그인 후 확인할 수 있습니다.</p>

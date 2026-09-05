@@ -9,7 +9,6 @@ import FamilyLetter from './pages/FamilyLetter';
 import ParentMonthly from './pages/ParentMonthly';
 import ParentConsentSign from './pages/ParentConsentSign';
 import ClassTree from './pages/ClassTree';
-import PublicSeating from './pages/PublicSeating';
 import TeacherLanding from './pages/TeacherLanding';
 import Footer from './components/Footer';
 import PolicyModal from './components/PolicyModal';
@@ -29,7 +28,6 @@ function App() {
             <Route path="/teacher-setup" element={<TeacherSetup />} />
             <Route path="/teacher" element={<TeacherDashboard />} />
             <Route path="/student" element={<StudentDashboard />} />
-            <Route path="/seating" element={<PublicSeating />} />
             <Route path="/tree/:classCode" element={<ClassTree />} />
             <Route path="/consent/:classCode" element={<ParentConsent />} />
             <Route path="/consent/:classCode/sign" element={<ParentConsentSign />} />
