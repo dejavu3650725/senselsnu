@@ -54,6 +54,7 @@ const StudentDashboard = () => {
   // 교사가 설정한 P-TISER 및 SEL 학교급
   const [ptiser, setPtiser] = useState(null);
   const [selLevel, setSelLevel] = useState('');
+  const [isTyping, setIsTyping] = useState(false); // 챗봇 응답 대기 표시
   const [chatConfig, setChatConfig] = useState(null); // 교사 챗봇 설정(프리셋)
   // 대화 원문 보관 여부: 교사가 [챗봇 설정]에서 보호자 동의 확인 후 켠 경우에만 저장 (기본: 신호만 저장)
   const storeTranscripts = chatConfig?.storeTranscripts === true && chatConfig?.consentConfirmed === true;
@@ -73,7 +74,7 @@ const StudentDashboard = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isTyping]);
 
   useEffect(() => {
     // 해당 학급 선생님의 커스텀 프롬프트 불러오기
@@ -212,7 +213,7 @@ const StudentDashboard = () => {
         const welcomeMsg = { 
           id: Date.now(), 
           sender: 'bot', 
-          text: `다시 만나서 반가워, ${nickname}! 오늘 기분이 '${mood}' 상태구나. 무슨 일 있었어?` 
+          text: `다시 만나서 반가워, ${nickname}! 오늘 기분은 '${mood}'이구나. 지난번 이후로 어떻게 지냈어?` 
         };
         
         setMessages([...pastMessages, welcomeMsg]);
@@ -239,7 +240,7 @@ const StudentDashboard = () => {
         setMessages([{ 
           id: Date.now(), 
           sender: 'bot', 
-          text: `처음 뵙겠습니다, ${nickname}! 오늘 기분이 '${mood}' 상태구나. 어떤 이야기든 편하게 해줘!` 
+          text: `안녕, ${nickname}! 나는 네 이야기를 들어주는 나무야. 오늘 기분이 '${mood}'이구나. 어떤 이야기든 편하게 해줘!` 
         }]);
       }
 
@@ -254,8 +255,9 @@ const StudentDashboard = () => {
     }
   };
 
-  const handleSend = async () => {
-    if (input.trim() === '') return;
+  const handleSend = async (presetText) => {
+    const raw = typeof presetText === 'string' ? presetText : input;
+    if (raw.trim() === '' || isTyping) return;
     
     // 비속어 및 선정적 단어 광범위 필터링
     const badWords = [
@@ -265,7 +267,7 @@ const StudentDashboard = () => {
       '또라이', '씨팔', '개소리', '개빡', '좃', '좇', 'ㅈㄹ', 'ㅅㅂ', 'ㅄ', 'ㄱㅅㄲ', 'ㅈㄴ', 'ㅁㅊ', 'ㄲㅈ', 'ㅗ',
       '섹스', '야동', '자위', '보지', '자지', '성관계', '야설', '야짤'
     ];
-    const hasBadWord = badWords.some(word => input.includes(word));
+    const hasBadWord = badWords.some(word => raw.includes(word));
     
     if (hasBadWord) {
       setIsBanned(true);
@@ -273,10 +275,11 @@ const StudentDashboard = () => {
       return;
     }
 
-    const userMsg = input;
+    const userMsg = raw.trim();
     const newMessages = [...messages, { id: Date.now(), sender: 'user', text: userMsg }];
     setMessages(newMessages);
     setInput('');
+    setIsTyping(true);
 
     // Firebase 유저 메시지 저장 — 원문 보관이 켜진 학급만 저장 (기본은 신호만 저장)
     if (studentDocId) {
@@ -442,6 +445,8 @@ const StudentDashboard = () => {
     } catch (error) {
       console.error(error);
       setMessages(prev => [...prev, { id: Date.now(), sender: 'bot', text: '앗, 내가 잠깐 생각 정리 중이야. 🍃' }]);
+    } finally {
+      setIsTyping(false);
     }
   };
 
@@ -575,123 +580,121 @@ const StudentDashboard = () => {
     );
   }
 
-  // 3. 메인 대시보드 화면
+  // 3. 메인 대화 화면
+  const botName = chatConfig?.botName || '나무';
+  const userTurns = messages.filter(m => m.sender === 'user').length;
+  const lastIsBot = messages.length === 0 || messages[messages.length - 1].sender === 'bot';
+  const quickReplies = !isTyping && lastIsBot && input.trim() === ''
+    ? (userTurns === 0
+      ? ['오늘 재밌는 일이 있었어!', '그냥 그랬어', '좀 힘든 일이 있었어']
+      : userTurns < 6
+        ? ['친구 얘기 하고 싶어', '비밀 얘기가 있어', '오늘은 여기까지 할래']
+        : ['오늘은 여기까지 할래'])
+    : [];
+
   return (
-    <div className="app-container" style={{ background: 'var(--avatar-blue)' }}>
-      <div className="topbar" style={{ background: 'rgba(255, 255, 255, 0.9)', color: 'var(--text-main)', borderBottom: '1px solid #e2e8f0' }}>
-        <div className="topbar-title" style={{ gap: '16px' }}>
-          <ArrowLeft size={20} style={{ cursor: 'pointer', color: 'var(--primary-color)' }} onClick={() => navigate('/')} />
-          <Smile size={28} color="var(--primary-color)" />
-          <span translate="no" className="notranslate" style={{ color: 'var(--primary-color)' }}>SEN-SEL-SNU</span>
+    <div className="app-container" style={{ background: 'linear-gradient(180deg, #eef4ff 0%, #f5f7fb 100%)' }}>
+      <div className="topbar" style={{ background: 'rgba(255,255,255,0.92)', color: 'var(--text-main)', borderBottom: '1px solid var(--border)', backdropFilter: 'blur(8px)' }}>
+        <div className="topbar-title" style={{ gap: '12px' }}>
+          <button onClick={() => navigate('/')} title="처음으로" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: '4px' }}><ArrowLeft size={20} /></button>
+          <div className="topbar-brand-mark" style={{ background: 'var(--primary-light)', color: 'var(--primary-color)' }}><Smile size={18} /></div>
+          <span translate="no" className="notranslate" style={{ color: 'var(--text-strong)' }}>센셀</span>
         </div>
         <div className="topbar-actions">
-          <button 
+          <button
             onClick={() => setIsEditingProfile(true)}
-            style={{ background: 'white', border: '1px solid #e2e8f0', padding: '8px 16px', borderRadius: '20px', cursor: 'pointer', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', transition: 'all 0.2s' }}
+            title="내 캐릭터 바꾸기"
+            style={{ background: 'white', border: '1px solid var(--border)', padding: '6px 12px 6px 8px', borderRadius: '999px', cursor: 'pointer', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', boxShadow: 'var(--shadow-xs)' }}
           >
-            <span style={{ fontSize: '1.2rem' }}>{avatar}</span> 
-            <span>{nickname}</span>
-            <span style={{ fontSize: '0.8rem', color: '#a0aec0', marginLeft: '4px' }}>✏️ 변경</span>
+            <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>{avatar}</span>
+            <span style={{ maxWidth: '140px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{nickname}</span>
           </button>
         </div>
       </div>
 
       {/* 캐릭터 변경 모달 */}
       {isEditingProfile && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100 }}>
-          <div style={{ background: 'white', padding: '32px', borderRadius: '24px', width: '90%', maxWidth: '400px', textAlign: 'center', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
-            <h3 style={{ marginTop: 0, color: 'var(--text-main)' }}>내 캐릭터 변경하기</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', maxHeight: '300px', overflowY: 'auto', padding: '4px', marginBottom: '24px' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100 }} onClick={() => setIsEditingProfile(false)}>
+          <div onClick={e => e.stopPropagation()} style={{ background: 'white', padding: '28px', borderRadius: '24px', width: '92%', maxWidth: '400px', textAlign: 'center', boxShadow: 'var(--shadow-lg)' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '14px' }}>내 캐릭터 바꾸기</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '8px', maxHeight: '300px', overflowY: 'auto', padding: '4px', marginBottom: '20px' }}>
               {AVATAR_LIST.map(emoji => (
-                <button 
+                <button
                   key={emoji}
                   onClick={() => handleChangeAvatar(emoji)}
-                  style={{ 
-                    padding: '8px 0', fontSize: '1.5rem', background: avatar === emoji ? '#edf2f7' : 'white', 
-                    border: avatar === emoji ? '2px solid var(--primary-color)' : '1px solid #e2e8f0',
-                    borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center'
-                  }}
+                  style={{ padding: '8px 0', fontSize: '1.5rem', background: avatar === emoji ? 'var(--primary-light)' : 'white', border: avatar === emoji ? '2px solid var(--primary-color)' : '1px solid var(--border)', borderRadius: '10px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
                 >
                   {emoji}
                 </button>
               ))}
             </div>
-            <button 
-              onClick={() => setIsEditingProfile(false)}
-              style={{ width: '100%', padding: '12px', background: '#e2e8f0', color: '#4a5568', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-            >
-              닫기
-            </button>
+            <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => setIsEditingProfile(false)}>닫기</button>
           </div>
         </div>
       )}
 
       {/* 비속어 경고 모달 */}
       {isBanned && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
-          <div className="glass-card" style={{ background: 'white', padding: '40px', borderRadius: '24px', width: '90%', maxWidth: '400px', textAlign: 'center', animation: 'slideUp 0.3s ease-out' }}>
-            <div style={{ fontSize: '3rem', marginBottom: '16px' }}>🚨</div>
-            <h2 style={{ marginTop: 0, color: '#e53e3e', fontSize: '1.8rem' }}>경고</h2>
-            <p style={{ color: '#4a5568', fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '32px' }}>
-              적절하지 않은 언어 사용은 금지됩니다.<br/>
-              <b>바른 언어를 사용하시겠습니까?</b>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.75)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
+          <div className="glass-card" style={{ background: 'white', padding: '36px', borderRadius: '24px', width: '92%', maxWidth: '400px', textAlign: 'center' }}>
+            <div style={{ fontSize: '3rem', marginBottom: '12px' }}>🌳</div>
+            <h2 style={{ marginTop: 0, fontSize: '1.4rem' }}>잠깐, 그 말은 나무가 들으면 슬퍼</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '1rem', lineHeight: 1.6, margin: '10px 0 24px' }}>
+              화가 나거나 답답할 땐 그 마음을 다른 말로 얘기해 줄래?<br />예: "너무 짜증나", "억울해"
             </p>
-            <button 
-              onClick={() => setIsBanned(false)}
-              style={{ width: '100%', padding: '16px', background: '#e53e3e', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.2s' }}
-            >
-              네, 바른 말을 쓰겠습니다
-            </button>
+            <button className="btn btn-primary btn-lg" style={{ width: '100%' }} onClick={() => setIsBanned(false)}>다른 말로 얘기할게</button>
           </div>
         </div>
       )}
 
-      <div className="main-layout" style={{ background: 'transparent', padding: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        <div className="glass-card" style={{ width: '100%', maxWidth: '800px', height: '80vh', display: 'flex', flexDirection: 'column', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.1)' }}>
-          <div style={{ padding: '24px', background: 'white', display: 'flex', alignItems: 'center', gap: '16px', borderBottom: '1px solid #edf2f7' }}>
-            <div style={{ width: 60, height: 60, background: '#e9d8fd', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '2rem', boxShadow: '0 4px 12px rgba(233, 216, 253, 1)' }}>🌳</div>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '1.4rem', color: '#4a5568' }}>든든한 나무 챗봇</h2>
-              <p style={{ margin: 0, color: '#a0aec0', fontSize: '0.9rem' }}>너의 이야기를 항상 들어줄게!</p>
+      <div className="main-layout" style={{ background: 'transparent', padding: '16px', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'auto' }}>
+        <div className="chat-shell">
+          <div className="chat-head">
+            <div className="chat-bot-avatar">🌳</div>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ margin: 0, fontSize: '1.15rem' }}>{botName}</h2>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>네 이야기를 끝까지 들어줄게. 여기서 한 말은 선생님이 너를 돕는 데만 써.</p>
+            </div>
+            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#38a169', display: 'inline-block' }} /> 오늘 기분: {mood}
             </div>
           </div>
 
-          <div ref={chatContainerRef} style={{ flex: 1, padding: '32px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '20px', background: '#f8fafc' }}>
+          <div ref={chatContainerRef} className="chat-log">
             {messages.map((msg, idx) => (
-              <div key={msg.id || idx} style={{ display: 'flex', gap: '12px', alignSelf: msg.sender === 'user' ? 'flex-end' : 'flex-start', maxWidth: '70%' }}>
-                {msg.sender === 'bot' && <div style={{ fontSize: '2rem' }}>🌳</div>}
-                <div style={{ 
-                  background: msg.sender === 'user' ? 'var(--primary-color)' : 'white', 
-                  color: msg.sender === 'user' ? 'white' : '#2d3748',
-                  padding: '16px 20px', 
-                  borderRadius: '24px', 
-                  borderTopRightRadius: msg.sender === 'user' ? '4px' : '24px',
-                  borderTopLeftRadius: msg.sender === 'bot' ? '4px' : '24px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                  fontSize: '1.1rem',
-                  lineHeight: '1.5',
-                  wordBreak: 'break-word'
-                }}>
-                  {msg.text}
-                </div>
+              <div key={msg.id || idx} className={`chat-row ${msg.sender === 'user' ? 'user' : 'bot'}`}>
+                {msg.sender === 'bot' ? <div className="chat-mini-avatar">🌳</div> : <div className="chat-mini-avatar" style={{ background: 'var(--primary-light)' }}>{avatar}</div>}
+                <div className="chat-bubble">{msg.text}</div>
               </div>
             ))}
+            {isTyping && (
+              <div className="chat-row bot">
+                <div className="chat-mini-avatar">🌳</div>
+                <div className="chat-bubble chat-typing" aria-label="나무가 생각하는 중"><span /><span /><span /></div>
+              </div>
+            )}
           </div>
 
-          <div style={{ padding: '24px', background: 'white', borderTop: '1px solid #edf2f7', display: 'flex', gap: '16px' }}>
-            <input 
-              type="text" 
+          {quickReplies.length > 0 && (
+            <div className="chat-quick">
+              {quickReplies.map(q => <button key={q} onClick={() => handleSend(q)}>{q}</button>)}
+            </div>
+          )}
+
+          <div className="chat-input-area">
+            <input
+              type="text"
+              className="chat-input"
               value={input}
+              autoFocus
               onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="여기에 편하게 속마음을 적어봐..." 
-              style={{ flex: 1, padding: '16px 24px', fontSize: '1.1rem', borderRadius: '30px', border: '1px solid #cbd5e1', outline: 'none', background: '#f1f5f9' }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleSend(); }}
+              placeholder={`${botName}에게 편하게 얘기해 봐…`}
+              maxLength={500}
+              aria-label="메시지 입력"
             />
-            <button 
-              onClick={handleSend}
-              style={{ width: 60, height: 60, borderRadius: '50%', background: 'var(--primary-color)', color: 'white', border: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', cursor: 'pointer', boxShadow: '0 4px 12px rgba(74, 144, 226, 0.4)' }}
-            >
-              <Send size={24} />
+            <button className="chat-send" onClick={() => handleSend()} disabled={isTyping || input.trim() === ''} aria-label="보내기">
+              <Send size={22} />
             </button>
           </div>
         </div>
