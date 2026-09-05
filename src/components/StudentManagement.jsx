@@ -191,7 +191,7 @@ const StudentManagement = ({ studentsData, classCode }) => {
         <div className="sm-title"><Users size={20} /> 학생 관리 <span className="sm-count">{studentsData.length}명</span></div>
         <div className="sm-actions">
           <button className="btn btn-secondary" onClick={() => setIsBulkOpen(true)}><ClipboardList size={16} /> 명단 일괄 등록</button>
-          <button className="sm-purge" onClick={handlePurgeTranscripts} disabled={isPurging || transcriptCount === 0} title="학기 말 등 보관 기간이 끝났을 때 대화 원문만 삭제합니다. 신호·처방은 유지됩니다.">🔒 {isPurging ? '삭제 중…' : `대화 원문 삭제 (${transcriptCount})`}</button>
+          <button className="sm-purge" onClick={handlePurgeTranscripts} disabled={isPurging || transcriptCount === 0} title="2026.9 이전에 저장됐던 대화 원문만 삭제합니다(지금은 원문을 저장하지 않습니다). 신호·처방은 유지됩니다.">🔒 {isPurging ? '삭제 중…' : `옛 대화 원문 삭제 (${transcriptCount})`}</button>
         </div>
       </div>
       <div className="sm-help">미리 등록한 실명으로 학생이 입장하면 기록이 자동으로 이어집니다. 성별·대화 모드는 명단에서 바로 바꿀 수 있어요.</div>

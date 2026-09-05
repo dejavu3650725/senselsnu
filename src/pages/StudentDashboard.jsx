@@ -62,7 +62,7 @@ const StudentDashboard = () => {
   const [isTyping, setIsTyping] = useState(false); // 챗봇 응답 대기 표시
   const [chatConfig, setChatConfig] = useState(null); // 교사 챗봇 설정(프리셋)
   // 대화 원문 보관 여부: 교사가 [챗봇 설정]에서 보호자 동의 확인 후 켠 경우에만 저장 (기본: 신호만 저장)
-  const storeTranscripts = chatConfig?.storeTranscripts === true && chatConfig?.consentConfirmed === true;
+  const storeTranscripts = false; // 원문 저장 기능 제거(2026.9): 신호만 저장, 위기 알림 전후 발화만 예외
   const [studentMeta, setStudentMeta] = useState({ nominations: [], conflictsCount: 0, lonelyCount: 0, sessionsCount: 1 }); // 학생 맞춤 대화용 이력
   const [skillLog, setSkillLog] = useState([]);       // 성장 기록: [{skill, area, date}]
   const [missionsDone, setMissionsDone] = useState([]); // [{weekKey, missionId, doneAt}]

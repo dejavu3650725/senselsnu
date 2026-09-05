@@ -27,7 +27,7 @@ const GuidelineCheck = ({ teacherProfile, onSaved, classCode, studentsData = [] 
   const className = teacherProfile?.className || '';
   const smsText = `[${className || '우리 반'} 개인정보 수집·이용·제공 동의 안내]\n학급 사회정서교육 도우미 '센셀' 활용을 위해 보호자님의 동의를 받고자 합니다. 아래 링크에서 안내를 읽고 동의 여부를 제출해 주세요(만 14세 미만은 법정대리인 동의). 종이 동의서를 이미 제출하셨다면 다시 하지 않으셔도 됩니다.\n${signUrl}\n— ${teacherName}`;
   const run = async (key, fn) => { setBusy(key); try { await fn(); } catch (e) { console.error(e); alert('문서 생성에 실패했습니다.'); } finally { setBusy(''); } };
-  const docOpts = { schoolName: school || '○○학교', principal: principal || '○○○', teacherName: teacherProfile?.teacherName || '○○○', className, storeTranscripts: teacherProfile?.chatConfig?.storeTranscripts === true && teacherProfile?.chatConfig?.consentConfirmed === true, committeeApproved: teacherProfile?.chatConfig?.committeeApproved === true };
+  const docOpts = { schoolName: school || '○○학교', principal: principal || '○○○', teacherName: teacherProfile?.teacherName || '○○○', className, storeTranscripts: false, committeeApproved: teacherProfile?.chatConfig?.committeeApproved === true };
   const loadConsents = async () => {
     if (!classCode) return;
     try { const snap = await getDocs(query(collection(db, 'consents'), where('classCode', '==', classCode))); setConsents(snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(b.at).localeCompare(String(a.at)))); }

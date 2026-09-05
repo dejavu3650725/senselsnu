@@ -117,11 +117,8 @@ export const buildClassGraph = (studentsData = []) => {
   return graph;
 };
 
-const recentUserMessages = (student, limit = 8) =>
-  (student.messages || [])
-    .filter(m => m && m.sender === 'user' && m.text)
-    .slice(-limit)
-    .map(m => ({ text: String(m.text).slice(0, 160), timestamp: m.timestamp }));
+// 원문 저장 기능 제거(2026.9): 처방은 신호만으로 만든다. 남아 있는 옛 원문도 AI에 보내지 않는다.
+const recentUserMessages = () => [];
 
 /**
  * 학생 1명 위험 신호 평가

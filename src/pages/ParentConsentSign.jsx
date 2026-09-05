@@ -35,7 +35,7 @@ const ParentConsentSign = () => {
   }, [classCode]);
 
   const e = FORMS.senselEntry; const g = FORMS.consentGuide;
-  const storeTranscripts = cfg?.storeTranscripts === true && cfg?.consentConfirmed === true;
+  const storeTranscripts = false; // 원문 저장 기능 없음
   const className = cls?.className || '우리 학급';
   const teacherName = cls?.teacherName ? `${cls.teacherName} 선생님` : '담임교사';
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));

@@ -4,7 +4,6 @@ import Sidebar from '../components/Sidebar';
 import Sociogram from '../components/Sociogram';
 import EmotionalSignal from '../components/EmotionalSignal';
 import InterventionTable from '../components/InterventionTable';
-import DailyFlow from '../components/DailyFlow';
 import Topbar from '../components/Topbar';
 import TeacherTutorial from '../components/TeacherTutorial';
 import QuickTour from '../components/QuickTour';
@@ -286,7 +285,6 @@ const TeacherDashboard = () => {
                   onOpenPrescription={(studentId) => { setFocusStudentId(studentId); setActiveMenu('맞춤 처방'); }}
                 />
               </div>
-              <DailyFlow studentsData={studentsData} transcriptsOn={teacherProfile?.chatConfig?.storeTranscripts === true && teacherProfile?.chatConfig?.consentConfirmed === true} />
             </div>
           )}
 
