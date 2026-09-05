@@ -127,8 +127,8 @@ const GuidelineCheck = ({ onClose, teacherProfile, onSaved, classCode, studentsD
           <button onClick={onClose} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer' }}><X size={22} color="#a0aec0" /></button>
         </div>
 
-        <div style={{ background: '#faf5ff', border: '1px solid #e9d8fd', borderRadius: '12px', padding: '10px 14px', fontSize: '0.84rem', color: '#553c9a', lineHeight: 1.55 }}>
-          <b>센셀의 분류:</b> {GUIDE.senselCompliance.classification.reason} · {GUIDE.senselCompliance.classification.aiType}
+        <div style={{ fontSize: '0.8rem', color: '#553c9a', lineHeight: 1.5, flexShrink: 0 }} title={`${GUIDE.senselCompliance.classification.reason} · ${GUIDE.senselCompliance.classification.aiType}`}>
+          <b>센셀의 분류:</b> 학생 개인정보를 처리하는 학습지원 소프트웨어 → <b>학운위 심의 대상</b> + <b>보호자 사전 동의</b> 필요 · 교육용 AI(실명 미전송)
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', background: schoolDone ? '#f0fff4' : '#fffbea', border: `1.5px solid ${schoolDone ? '#9ae6b4' : '#f6e05e'}`, borderRadius: '14px', padding: '12px 14px', flexShrink: 0 }}>
@@ -150,8 +150,8 @@ const GuidelineCheck = ({ onClose, teacherProfile, onSaved, classCode, studentsD
               { k: 'committee', label: '학운위 서면 심의 서식 1~3', desc: '서면 심의 안건 · 결의서 · 결과 송부 (2026학년도 1학기까지 서면 허용)', fn: () => downloadCommitteeDocx(docOpts) },
               { k: 'report', label: '우선 사용 서면 보고 서식 4~5', desc: '학운위 구성 전 우선 사용 시 교육지원청 보고 공문·보고 양식', fn: () => downloadReportDocx(docOpts) },
             ].map(b => (
-              <button key={b.k} className="btn btn-secondary" disabled={!!busy} onClick={() => run(b.k, b.fn)} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '2px', padding: '10px 12px', textAlign: 'left', height: 'auto' }}>
-                <span style={{ fontWeight: 800, display: 'flex', alignItems: 'center', gap: '6px' }}><FileDown size={14} /> {busy === b.k ? '만드는 중…' : b.label} <span style={{ fontSize: '0.7rem', color: '#718096', fontWeight: 500 }}>.docx</span></span>
+              <button key={b.k} className="btn btn-secondary" disabled={!!busy} onClick={() => run(b.k, b.fn)} style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '2px', padding: '10px 12px', textAlign: 'left', height: 'auto', whiteSpace: 'normal', minWidth: 0, width: '100%', wordBreak: 'keep-all' }}>
+                <span style={{ fontWeight: 800, display: 'flex', alignItems: 'flex-start', gap: '6px', lineHeight: 1.35 }}><FileDown size={14} style={{ flexShrink: 0, marginTop: '2px' }} /> <span>{busy === b.k ? '만드는 중…' : b.label} <span style={{ fontSize: '0.7rem', color: '#718096', fontWeight: 500 }}>.docx</span></span></span>
                 <span style={{ fontSize: '0.76rem', color: '#718096', fontWeight: 400, lineHeight: 1.4 }}>{b.desc}</span>
               </button>
             ))}

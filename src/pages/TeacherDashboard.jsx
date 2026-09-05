@@ -11,10 +11,8 @@ import QuickTour from '../components/QuickTour';
 import ChatbotSettingsModal from '../components/ChatbotSettingsModal';
 import TeacherSettingsModal from '../components/TeacherSettingsModal';
 import ClassAnalysis from '../components/ClassAnalysis';
-import EmotionTracker from '../components/EmotionTracker';
 import CustomPrescription from '../components/CustomPrescription';
 import Report from '../components/Report';
-import EdutechResource from '../components/EdutechResource';
 import StudentManagement from '../components/StudentManagement';
 import SeatingChart from '../components/SeatingChart';
 import RelationshipWatch from '../components/RelationshipWatch';
@@ -296,7 +294,6 @@ const TeacherDashboard = () => {
           )}
 
           {activeMenu === '학급 분석' && <ClassAnalysis studentsData={studentsData} />}
-          {activeMenu === '감정 트래커' && <EmotionTracker studentsData={studentsData} />}
           {activeMenu === '맞춤 처방' && <CustomPrescription studentsData={studentsData} teacherProfile={teacherProfile} focusStudentId={focusStudentId} />}
           {activeMenu === '학생 관리' && <StudentManagement studentsData={studentsData} classCode={currentClassCode} />}
           {activeMenu === '자리 배치' && <SeatingChart studentsData={studentsData} classCode={currentClassCode} classLabel={activeClass?.className || teacherProfile.className} teacherProfile={teacherProfile} />}
@@ -305,7 +302,6 @@ const TeacherDashboard = () => {
           {activeMenu === '기록' && <CounselLog studentsData={studentsData} teacherProfile={teacherProfile} classLabel={activeClass?.className || teacherProfile.className} />}
           {activeMenu === '가정 연계' && <FamilyLink studentsData={studentsData} teacherProfile={teacherProfile} classCode={currentClassCode} classLabel={activeClass?.className || teacherProfile.className} classInfo={activeClass} />}
           {activeMenu === '리포트' && <Report studentsData={studentsData} teacherProfile={teacherProfile} />}
-          {activeMenu === '에듀테크 리소스' && <EdutechResource />}
         </div>
       </div>
       

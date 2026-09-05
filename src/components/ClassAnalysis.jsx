@@ -1,3 +1,4 @@
+import EmotionTracker from './EmotionTracker';
 import React, { useMemo, useState } from 'react';
 import { Users, Trophy, Target, ShieldAlert, Heart, Zap, CircleDashed, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { assessClass } from '../utils/studentSignals';
@@ -97,6 +98,7 @@ const ClassAnalysis = ({ studentsData = [] }) => {
   const recipNote = a.links === 0 ? '' : a.reciprocity >= 0.5 ? '서로 좋아하는 관계가 많음' : a.reciprocity >= 0.3 ? '보통' : '한쪽만 좋아하는 관계가 많음 → 짝·모둠으로 연결 기회 필요';
 
   return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, minWidth: 0 }}>
     <div className="glass-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column', flex: 1, gap: '20px' }}>
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '6px' }}>
@@ -231,6 +233,8 @@ const ClassAnalysis = ({ studentsData = [] }) => {
         <Info size={14} style={{ flexShrink: 0, marginTop: '2px' }} />
         <span>지목 밀도 = 실제 지목 수 ÷ 가능한 지목 수(n×(n−1)). 상호성 = 서로 지목한 관계 ÷ 전체 지목. 등급은 위기 알림(긴급) &gt; 기분 힘듦·상호 갈등·외로움·고립 신호 합산 점수(높음 ≥40, 관심 ≥15)로 계산되며, 상세 처방은 [맞춤 처방]에서 확인하세요.</span>
       </div>
+    </div>
+    <EmotionTracker studentsData={studentsData} />
     </div>
   );
 };
