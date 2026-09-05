@@ -53,16 +53,16 @@ const TodayFeed = ({ studentsData = [], teacherProfile, classCode, classInfo, on
         {who ? (
           <>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-strong)' }}>{who.name}</span>
+              <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-strong)' }}>{who.name}</span>
               <span style={{ fontSize: '0.72rem', fontWeight: 700, color: t.color }}>{t.label}</span>
               {who.focus.slice(0, 2).map(f => <span key={f} className="chip" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>{f}</span>)}
             </div>
             {(who.reasons || []).length > 0 && (
-              <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-                {who.reasons.map((r, i) => <li key={i}>{r}</li>)}
+              <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                {who.reasons.slice(0, 3).map((r, i) => <li key={i} className="clamp2" style={{ WebkitLineClamp: 1 }}>{r}</li>)}
               </ul>
             )}
-            <div style={{ fontSize: '0.9rem', color: 'var(--text-main)', lineHeight: 1.5 }}>{who.action}</div>
+            <div className="clamp2" style={{ fontSize: '0.88rem', color: 'var(--text-main)', lineHeight: 1.45 }}>{who.action}</div>
             {onOpenStudent && <button className="btn btn-secondary" style={{ alignSelf: 'flex-start', padding: '5px 10px', fontSize: '0.8rem' }} onClick={() => onOpenStudent(who.id)}>맞춤 처방 <ArrowRight size={13} /></button>}
           </>
         ) : <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>학생이 등록되면 매일 한 명을 골라 드려요.</div>}
@@ -70,9 +70,9 @@ const TodayFeed = ({ studentsData = [], teacherProfile, classCode, classInfo, on
 
       <div className="today-card" style={{ borderTop: '4px solid #d69e2e' }}>
         <div className="today-title"><Sun size={16} /> 오늘 아침 활동 <span className="today-sub">{card.minutes}분</span></div>
-        <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-strong)', lineHeight: 1.35 }}>“{card.topic}”</div>
-        <div style={{ fontSize: '0.86rem', color: 'var(--text-main)', lineHeight: 1.5 }}>{card.questions[0]}</div>
-        {card.why && <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>왜 이 주제? {card.why}</div>}
+        <div className="clamp2" style={{ fontSize: '1.12rem', fontWeight: 800, color: 'var(--text-strong)', lineHeight: 1.3 }}>“{card.topic}”</div>
+        <div className="clamp2" style={{ fontSize: '0.84rem', color: 'var(--text-main)', lineHeight: 1.45 }}>{card.questions[0]}</div>
+        {card.why && <div className="clamp2" title={card.why} style={{ fontSize: '0.76rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>왜 이 주제? {card.why}</div>}
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
           <button className="btn btn-primary" style={{ padding: '5px 10px', fontSize: '0.8rem' }} onClick={() => window.open(treeUrl, '_blank', 'noopener')}><Tv size={13} /> TV에 띄우기</button>
           <button className="btn btn-secondary" style={{ padding: '5px 10px', fontSize: '0.8rem' }} title="학생들에게 우리 반 나무를 소개하는 화면(3분)" onClick={() => window.open(`${treeUrl}?intro=1`, '_blank', 'noopener')}>🌳 나무 소개</button>
@@ -81,7 +81,7 @@ const TodayFeed = ({ studentsData = [], teacherProfile, classCode, classInfo, on
 
       <div className="today-card" style={{ borderTop: '4px solid #38a169' }}>
         <div className="today-title"><Sprout size={16} /> 오늘 알림장 한 줄 <span className="today-sub">미션 {missionDone}/{studentsData.length}</span></div>
-        <pre style={{ margin: 0, fontFamily: 'inherit', fontSize: '0.84rem', color: 'var(--text-main)', lineHeight: 1.55, background: 'var(--surface-3)', borderRadius: '10px', padding: '8px 10px', whiteSpace: 'pre-wrap', maxHeight: '112px', overflowY: 'auto' }}>{notice}</pre>
+        <pre style={{ margin: 0, fontFamily: 'inherit', fontSize: '0.84rem', color: 'var(--text-main)', lineHeight: 1.55, background: 'var(--surface-3)', borderRadius: '10px', padding: '8px 10px', whiteSpace: 'pre-wrap', maxHeight: '96px', overflowY: 'auto' }}>{notice}</pre>
         <button className="btn btn-secondary" style={{ alignSelf: 'flex-start', padding: '5px 10px', fontSize: '0.8rem' }} onClick={copy}>{copied ? <Check size={13} /> : <Copy size={13} />} {copied ? '복사됨' : '복사'}</button>
       </div>
     </div>

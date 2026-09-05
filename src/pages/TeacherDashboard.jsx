@@ -235,7 +235,7 @@ const TeacherDashboard = () => {
             </div>
           )}
 
-          <div className="header-row" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+          <div className="header-row" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
             <h1 className="dashboard-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               {(activeClass?.className || teacherProfile.className || '우리 반')}
               <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '1rem' }}>관계망 · 정서 건강</span>
