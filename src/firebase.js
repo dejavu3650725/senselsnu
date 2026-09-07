@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore } from "firebase/firestore";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 // Your web app's Firebase configuration
@@ -17,7 +17,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore
-export const db = getFirestore(app);
+// 학교 네트워크(크롬북·프록시·필터)에서 WebChannel 스트리밍이 막히는 경우가 잦아 롱폴링을 강제한다.
+export const db = initializeFirestore(app, { experimentalForceLongPolling: true });
 
 // Initialize Auth
 export const auth = getAuth(app);

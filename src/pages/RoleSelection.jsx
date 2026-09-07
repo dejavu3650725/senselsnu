@@ -74,7 +74,13 @@ const RoleSelection = () => {
       }
     } catch (e) {
       console.error('Class code verification error', e);
-      setError('확인하는 중에 문제가 생겼어. 잠시 후 다시 해 볼래?');
+      const code = e?.code || e?.message || '';
+      const hint = /network|unavailable|offline|timeout/i.test(code)
+        ? '인터넷이나 학교 네트워크가 막고 있는 것 같아. 선생님께 이 화면을 보여 줘.'
+        : /storage|indexeddb|cookie/i.test(code)
+          ? '이 브라우저 설정이 막고 있는 것 같아. 선생님께 이 화면을 보여 줘.'
+          : '잠시 후 다시 해 볼래? 계속 안 되면 선생님께 이 화면을 보여 줘.';
+      setError(`확인하는 중에 문제가 생겼어. ${hint}${code ? ` (오류: ${String(code).slice(0, 80)})` : ''}`);
     } finally {
       setIsVerifying(false);
     }
