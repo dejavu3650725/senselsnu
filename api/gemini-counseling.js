@@ -163,6 +163,18 @@ const FEW_SHOT = `
 [LONELY]
 `;
 
+/** 긍정 관계 질문(추인)의 여러 각도 — 세션·턴에 따라 돌아가며 사용 */
+const ANGLES = [
+  '우리 반에서 여행 가면 같은 방 쓰고 싶은 친구는 누구야?',
+  '새 자리 생기면 짝꿍 하고 싶은 친구는 누구야?',
+  '오늘 고마웠던 친구 한 명만 말해 줄래?',
+  '쉬는 시간에 제일 자주 같이 노는 친구는 누구야?',
+  '모둠 활동 하면 같이 하고 싶은 친구는 누구야?',
+  '내가 힘들 때 도와줄 것 같은 친구는 누구야?',
+  '요즘 더 친해지고 싶은 친구가 있어?',
+  '생일 파티에 꼭 부르고 싶은 친구는 누구야?',
+];
+
 /** 학생 맥락에 따라 '이번 턴의 목표'를 결정 */
 const decideTurnGoal = (ctx) => {
   const turn = Number(ctx.turnCount) || 0;          // 이번 세션에서 학생이 보낸 메시지 수(현재 포함)
@@ -191,23 +203,26 @@ const decideTurnGoal = (ctx) => {
     return '충분히 들어줬으면, 오늘 이야기해 줘서 고맙다고 하고 선생님께도 살짝 말해보는 걸 권해. 짧게 마무리해.';
   }
 
+  // 입장 인사에서 이미 '긍정 관계 질문'을 하나 던졌다 (ctx.openingQuestion). 1턴은 그 답에 대한 반응이다.
+  const opening = ctx.openingQuestion ? `입장하자마자 나무가 "${ctx.openingQuestion}"라고 물었고, 학생의 이 메시지가 그 답이야.` : '';
+  const angles = ANGLES.filter(a => !nominations.some(n => a.includes(n)));
+  const angle = (i) => angles[i % angles.length];
+
   if (turn <= 1) {
-    if (returning) return `다시 온 학생이야(${sessions}번째 대화). 반갑게 맞이하고 지난번 이후 어떻게 지냈는지 한 가지만 물어봐.`;
-    return '첫 대화야. 가볍게 인사하고 오늘 학교에서 제일 기억에 남는 순간 하나를 물어봐.';
+    if (opening) return `${opening} 친구 이름·닉네임이 나왔으면 반드시 NOMINATION 태그를 달고, 그 친구의 어떤 점이 좋은지(같이 있으면 어떤 기분인지) 하나만 물어봐. 이름이 안 나왔거나 "없어/몰라"면 부담 주지 말고 다른 각도로 딱 한 번만 다시 물어봐: "${angle(sessions)}". 그래도 없으면 오늘 있었던 일로 넘어가.`;
+    if (returning) return `다시 온 학생이야(${sessions}번째 대화). 반갑게 맞이하고 긍정 관계 질문 하나: "${angle(sessions)}". 답하면 NOMINATION 태그.`;
+    return `첫 대화야. 가볍게 인사하고 긍정 관계 질문 하나: "${angle(0)}". 답하면 NOMINATION 태그.`;
   }
-  if (turn === 2) return '학생이 말한 오늘의 일에 공감하고, 그 장면에 같이 있던 친구나 그때 기분을 한 가지 물어봐.';
-  if (turn === 3 || (turn === 4 && nominated === 0)) {
-    return nominated === 0
-      ? '긍정 관계 질문(추인) 차례야. 상황을 가정해서 하나만 물어봐: "우리 반에서 여행 가면 같은 방 쓰고 싶은 친구", "새 자리 생기면 짝꿍하고 싶은 친구", "오늘 고마웠던 친구" 중 대화 흐름에 맞는 것. 답하면 NOMINATION 태그.'
-      : `이미 지목한 친구(${nominations.slice(0, 5).join(', ')})는 다시 묻지 말고, "같은 모둠이 되고 싶은 친구"나 "고마웠던 친구"처럼 다른 각도로 한 명 더 물어봐.`;
-  }
+  if (turn === 2) return `학생 말에 공감하고, 다른 각도의 긍정 관계 질문을 하나 더: "${angle(sessions + 1)}". 이미 지목한 친구(${nominations.slice(0, 5).join(', ') || '없음'})는 다시 묻지 마. 답하면 NOMINATION 태그.`;
+  if (turn === 3) return '오늘 학교에서 제일 기억에 남는 순간 하나를 물어봐. 그 장면에 같이 있던 친구가 나오면 자연스럽게 이어가.';
   if (turn === 4 || turn === 5) {
     if (hasConflict) return '이 학생은 전에 친구와의 갈등을 말한 적이 있어. 그 일이 요즘은 어떤지 부드럽게 후속 확인해. 상대 친구를 나쁘게 말하지 말고, 학생이 원하면 화해의 한마디를 같이 만들어 봐.';
     if (lonely) return '이 학생은 전에 외로움을 표현한 적이 있어. 요즘 쉬는 시간이나 점심시간은 누구와 보내는지 자연스럽게 물어봐. 혼자라면 따뜻하게 받아주고 함께하고 싶은 친구가 있는지 물어봐.';
     return '마음 열기 질문 차례야. "요즘 학교에서 마음이 살짝 불편했던 순간 있었어?" 또는 "요즘 고민 있으면 나무한테 살짝만 말해도 돼" 같은 개방형 질문 하나. 갈등을 말하면 CONFLICT, 외로움을 말하면 LONELY 태그.';
   }
-  if (turn >= 8) return '대화가 길어졌어. 오늘 나눈 이야기 중 학생의 좋은 점 하나를 구체적으로 칭찬하고, 내일 또 이야기하자고 짧게 마무리해. 새 질문은 하지 마.';
-  return '학생이 꺼낸 주제를 따라가며 한 가지만 더 깊이 들어봐. 필요하면 상대 친구의 마음을 한 번 상상해 보게 해.';
+  // 6턴 이후: 절대 먼저 끝내지 말 것. 3턴마다 새로운 각도의 관계 질문, 나머지는 학생 주제 따라가기.
+  if (turn % 3 === 0) return `학생 말에 먼저 반응한 뒤, 아직 안 물어본 각도의 긍정 관계 질문 하나: "${angle(sessions + Math.floor(turn / 3))}". 이미 지목한 친구(${nominations.slice(0, 6).join(', ') || '없음'})는 다시 묻지 마. 답하면 NOMINATION 태그. 대화를 마무리하거나 "내일 또 이야기하자"고 하지 마.`;
+  return '학생이 꺼낸 주제를 따라가며 한 가지만 더 깊이 들어봐. 필요하면 상대 친구의 마음을 한 번 상상해 보게 해. 학생이 먼저 끝내자고 하기 전에는 대화를 마무리하지 마.';
 };
 
 const buildSystemPrompt = ({ chatConfig, ptiser, customPrompt, selLevel, gradeYear, roster, studentContext }) => {
@@ -274,7 +289,7 @@ const buildSystemPrompt = ({ chatConfig, ptiser, customPrompt, selLevel, gradeYe
   if (Number(ctx.conflictsCount) > 0) s += `- 이전에 친구와의 갈등을 ${ctx.conflictsCount}건 이야기한 적 있음\n`;
   if (Number(ctx.lonelyCount) > 0) s += `- 이전에 외로움을 ${ctx.lonelyCount}회 표현한 적 있음\n`;
   if (ctx.freeTalk) s += `- 자유 대화 모드(담임 설정): 관계 조사 없음, 하루 상한 없음, 태그는 ALERT만\n`;
-  if (Number(ctx.turnLimit) > 0) s += `- 오늘 대화 상한: ${ctx.turnLimit}턴 (현재 ${Number(ctx.turnCount) || 0}턴)\n`;
+  if (Number(ctx.turnLimit) > 0) s += `- 오늘 대화 상한: ${ctx.turnLimit}턴 (현재 ${Number(ctx.turnCount) || 0}턴) — 상한 전에는 절대 먼저 대화를 끝내지 마\n`;
   if (Array.isArray(ctx.repeatedPeers) && ctx.repeatedPeers.length) s += `- 이번 세션에서 반복 언급(불만)한 친구: ${ctx.repeatedPeers.join(', ')} → 동조 금지, 초점 전환\n`;
   s += `\n[이번 턴 목표 — 가장 중요] ${decideTurnGoal(ctx)}\n`;
   s += `위 목표에 맞는 답변을 2~4문장, 질문 하나로 작성해. 태그가 필요하면 마지막 줄에만 붙여.`;
@@ -318,7 +333,8 @@ export default async function handler(req, res) {
     const requestBody = {
       systemInstruction: { parts: [{ text: systemText }] },
       contents: history,
-      generationConfig: { temperature: 0.7, maxOutputTokens: 400, topP: 0.9 },
+      // gemini-2.5-flash는 '생각(thinking)' 토큰이 maxOutputTokens를 잠식해 답이 중간에 끊긴다 → 생각 예산 0, 출력 여유 확보
+      generationConfig: { temperature: 0.7, maxOutputTokens: 800, topP: 0.9, thinkingConfig: { thinkingBudget: 0 } },
       safetySettings: [
         { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
         { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
@@ -340,7 +356,13 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    return res.status(200).json(data);
+    // 여러 parts(생각 파트 제외)를 하나의 텍스트로 합쳐 돌려준다
+    try {
+      const cand = data?.candidates?.[0];
+      const parts = (cand?.content?.parts || []).filter(p => typeof p.text === 'string' && !p.thought);
+      const text = parts.map(p => p.text).join('').trim();
+      return res.status(200).json({ text, finishReason: cand?.finishReason || null, candidates: data.candidates });
+    } catch { return res.status(200).json(data); }
   } catch (error) {
     console.error('Gemini Fetch Error:', error);
     return res.status(500).json({ error: 'Failed to communicate with Gemini API' });

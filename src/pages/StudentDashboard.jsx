@@ -22,6 +22,22 @@ const AVATAR_LIST = [
   '🌳', '🌲', '🌵', '🌴', '🍀', '🍁', '🍄', '🌷', '🌹', '🌻'
 ];
 
+// 입장 인사에서 바로 던지는 긍정 관계 질문 — 관계 파악이 핵심이므로 첫 메시지부터 묻는다 (세션마다 각도 순환)
+const OPENING_QUESTIONS = [
+  '우리 반에서 여행 가면 같은 방 쓰고 싶은 친구는 누구야?',
+  '새 자리 생기면 짝꿍 하고 싶은 친구는 누구야?',
+  '오늘 고마웠던 친구 한 명만 말해 줄래?',
+  '쉬는 시간에 제일 자주 같이 노는 친구는 누구야?',
+  '모둠 활동 하면 같이 하고 싶은 친구는 누구야?',
+  '내가 힘들 때 도와줄 것 같은 친구는 누구야?',
+  '요즘 더 친해지고 싶은 친구가 있어?',
+  '생일 파티에 꼭 부르고 싶은 친구는 누구야?',
+];
+const pickOpening = (sessionsCount, mood, freeTalkMode) => {
+  if (freeTalkMode || mood === '힘듦') return '';
+  return OPENING_QUESTIONS[(Math.max(1, Number(sessionsCount) || 1) - 1) % OPENING_QUESTIONS.length];
+};
+
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const chatContainerRef = useRef(null);
@@ -68,6 +84,7 @@ const StudentDashboard = () => {
   const [missionsDone, setMissionsDone] = useState([]); // [{weekKey, missionId, doneAt}]
   const [classMission, setClassMission] = useState(null); // classes/{code}.mission (교사 지정) 없으면 기본 순환
   const [growthOpen, setGrowthOpen] = useState(false);
+  const [openingQuestion, setOpeningQuestion] = useState('');   // 입장 인사에 담긴 관계 질문 (서버가 1턴 목표 판단에 사용)
   const [freeTalk, setFreeTalk] = useState(false);           // 담임이 학생 단위로 켠 '자유 대화 모드': 관계 태그·상한 없음, 위기 알림만
   const [consentDenied, setConsentDenied] = useState(false); // 보호자 미동의: 대화는 하되 신호·기록 저장 안 함(위기 알림은 유지)
   // AI 활용 약속 (서울시교육청 가이드라인 학생 핵심 가이드 5·3·6) — 기기당 1회, 학교급 바뀌면 다시
@@ -255,10 +272,16 @@ const StudentDashboard = () => {
         });
 
         // 환영 메시지 추가
+        const oq = pickOpening(days.size + 1, mood, userData.freeTalk === true);
+        setOpeningQuestion(oq);
         const welcomeMsg = { 
           id: Date.now(), 
           sender: 'bot', 
-          text: `다시 만나서 반가워, ${nickname}! 오늘 기분은 '${mood}'이구나. 지난번 이후로 어떻게 지냈어?` 
+          text: mood === '힘듦'
+            ? `다시 만나서 반가워, ${nickname}. 오늘은 마음이 힘든 날이구나. 무슨 일이 있었는지 편하게 말해 줄래?`
+            : oq
+              ? `다시 만나서 반가워, ${nickname}! 오늘 기분은 '${mood}'이구나. 먼저 하나만 물어볼게 — ${oq}`
+              : `다시 만나서 반가워, ${nickname}! 오늘 기분은 '${mood}'이구나. 지난번 이후로 어떻게 지냈어?`
         };
         
         setMessages([...pastMessages, welcomeMsg]);
@@ -282,10 +305,14 @@ const StudentDashboard = () => {
         });
         
         setStudentDocId(newDocRef.id);
+        const oq0 = pickOpening(1, mood, false);
+        setOpeningQuestion(oq0);
         setMessages([{ 
           id: Date.now(), 
           sender: 'bot', 
-          text: `안녕, ${nickname}! 나는 네 이야기를 들어주는 나무야. 오늘 기분이 '${mood}'이구나. 어떤 이야기든 편하게 해줘!` 
+          text: mood === '힘듦'
+            ? `안녕, ${nickname}. 나는 네 이야기를 들어주는 나무야. 오늘은 마음이 힘든 날이구나. 무슨 일이 있었는지 편하게 말해 줄래?`
+            : `안녕, ${nickname}! 나는 네 이야기를 들어주는 나무야. 오늘 기분이 '${mood}'이구나. 먼저 하나만 물어볼게 — ${oq0}` 
         }]);
       }
 
@@ -375,6 +402,7 @@ const StudentDashboard = () => {
         lonelyCount: studentMeta.lonelyCount,
         turnLimit: dailyLimit,
         turnCount: dailyLimit > 0 ? turnsToday + 1 : turnCount, // 상한이 있으면 '오늘 누적' 기준
+        openingQuestion,
         repeatedPeers: Object.entries(complaintCounts).filter(([, n]) => n >= 2).map(([nick]) => nick),
         freeTalk,
       };
@@ -383,7 +411,7 @@ const StudentDashboard = () => {
       if (!response.ok) throw new Error('API Error');
 
       const data = await response.json();
-      const rawBotText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '앗, 뭐라고 말해야 할지 모르겠어.';
+      const rawBotText = (typeof data?.text === 'string' && data.text.trim()) || (data?.candidates?.[0]?.content?.parts || []).filter(p => typeof p?.text === 'string' && !p.thought).map(p => p.text).join('').trim() || '앗, 뭐라고 말해야 할지 모르겠어.';
       
       // [NOMINATION] / [CONFLICT] / [LONELY] / [ALERT] 태그 파싱
       // - NOMINATION: 긍정적 지목 (추인법)
@@ -656,10 +684,10 @@ const StudentDashboard = () => {
   const lastIsBot = messages.length === 0 || messages[messages.length - 1].sender === 'bot';
   const quickReplies = !isTyping && lastIsBot && input.trim() === ''
     ? (userTurns === 0
-      ? ['오늘 재밌는 일이 있었어!', '그냥 그랬어', '좀 힘든 일이 있었어']
+      ? (openingQuestion ? ['음… 생각해 볼게', '없는 것 같아', '좀 힘든 일이 있었어'] : ['오늘 재밌는 일이 있었어!', '그냥 그랬어', '좀 힘든 일이 있었어'])
       : userTurns < 6
         ? ['친구 얘기 하고 싶어', '비밀 얘기가 있어', '오늘은 여기까지 할래']
-        : ['오늘은 여기까지 할래'])
+        : ['친구 얘기 더 할래', '다른 얘기 할래', '오늘은 여기까지 할래'])
     : [];
 
   return (
