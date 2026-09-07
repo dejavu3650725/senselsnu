@@ -20,7 +20,7 @@ const Topbar = ({ teacherProfile, classCode, className, onSwitchClass, onLogout,
 
   return (
     <header className="topbar">
-      <div className="topbar-title">
+      <div className="topbar-title" role={onSwitchClass ? 'button' : undefined} tabIndex={onSwitchClass ? 0 : undefined} title={onSwitchClass ? '첫 화면(학급 관리)으로' : undefined} style={onSwitchClass ? { cursor: 'pointer' } : undefined} onClick={onSwitchClass} onKeyDown={e => { if (onSwitchClass && (e.key === 'Enter' || e.key === ' ')) onSwitchClass(); }}>
         <div className="topbar-brand-mark"><Shield size={19} /></div>
         <div style={{ minWidth: 0 }}>
           <div translate="no" className="notranslate" style={{ lineHeight: 1.15 }}>SEN-SEL <span style={{ fontWeight: 500, color: 'rgba(255,255,255,0.75)' }}>센셀</span></div>

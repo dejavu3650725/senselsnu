@@ -160,7 +160,7 @@ const TeacherDashboard = () => {
   return (
     <div className="app-container">
       <TeacherTutorial onStartTour={() => setTourOpen(true)} isDemo={activeClass?.isDemo === true} />
-      <QuickTour open={tourOpen} onClose={() => setTourOpen(false)} setActiveMenu={setActiveMenu} />
+      <QuickTour open={tourOpen} onClose={() => setTourOpen(false)} setActiveMenu={setActiveMenu} onFinish={() => navigate('/teacher-setup')} />
       <Topbar
         teacherProfile={teacherProfile}
         classCode={currentClassCode}

@@ -19,7 +19,7 @@ export const TOUR_STEPS = [
   { menu: '대시보드', target: 'none', title: '⑩ 상담·특수 선생님과 함께 볼 때', body: '전문가는 "무엇을 못 하는가"부터 봅니다. 먼저 말씀하세요 — ① 위기 알림은 5개 중대 범주만 ② 등급·처방은 진단이 아니라 정렬과 초안 ③ 갈등 신호는 학생 보고 기준. 그다음 지키는 것 — ④ 대화 원문은 어른이 볼 수 없음(스위치 없음) ⑤ 학생별 자유 대화 모드 ⑥ 상담·조치 기록 초안. 시연은 데모 학급으로만. 체험 끝!' },
 ];
 
-const QuickTour = ({ open, onClose, setActiveMenu }) => {
+const QuickTour = ({ open, onClose, setActiveMenu, onFinish }) => {
   const [idx, setIdx] = useState(0);
   const [rect, setRect] = useState(null);
   const step = TOUR_STEPS[idx];
@@ -32,7 +32,8 @@ const QuickTour = ({ open, onClose, setActiveMenu }) => {
     setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
   }, [open, step]);
 
-  const finish = useCallback(() => { setActiveMenu('대시보드'); try { window.scrollTo({ top: 0, behavior: 'smooth' }); document.querySelector('.dashboard-content')?.scrollTo({ top: 0, behavior: 'smooth' }); } catch { /* ignore */ } onClose(); }, [setActiveMenu, onClose]);
+  // 끝내기/건너뛰기 → 대시보드로 돌려놓고 닫은 뒤, 첫 화면(학급 관리)으로 자동 복귀
+  const finish = useCallback(() => { setActiveMenu('대시보드'); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } onClose(); if (onFinish) onFinish(); }, [setActiveMenu, onClose, onFinish]);
 
   useEffect(() => { if (open) setIdx(0); }, [open]);
 
