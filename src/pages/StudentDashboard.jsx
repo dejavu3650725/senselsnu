@@ -497,6 +497,7 @@ const StudentDashboard = () => {
         }
         if (nominatedNickname) {
           updates.nominations = arrayUnion(nominatedNickname);
+          updates.nominationLog = arrayUnion({ target: nominatedNickname, timestamp: new Date().toISOString() }); // 날짜별 '오늘 새 지목' 표시용
         }
         if (conflictNicknames.length > 0 && chatConfig?.collectConflicts !== false) {
           // 갈등 언급은 '학생의 주관적 보고'로 기록. 같은 친구 반복 언급은 conflicts(상대 목록)에는 한 번만,

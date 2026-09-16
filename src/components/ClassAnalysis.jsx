@@ -81,7 +81,7 @@ const ClassAnalysis = ({ studentsData = [] }) => {
       }));
 
     const isolated = nodes.filter(x => x.received === 0).map(x => ({ student: x.student, given: [...x.given].map(id => graph.get(id).student), lonely: x.lonelyCount }));
-    const active = nodes.filter(x => (x.student.messages || []).some(m => m.sender === 'user')).length;
+    const active = nodes.filter(x => (x.student.sessionDates || []).length > 0 || x.student.dailyTurns?.count > 0 || (x.student.messages || []).some(m => m.sender === 'user')).length; // 원문 미보관 → 대화 일수 기준
     const moods = { 건강: 0, 보통: 0, 힘듦: 0 };
     nodes.forEach(x => { if (moods[x.student.mood] !== undefined) moods[x.student.mood] += 1; });
 
