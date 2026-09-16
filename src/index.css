@@ -747,3 +747,8 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary-color) !
 .cp-sec-t { font-size: 0.76rem; font-weight: 800; color: var(--text-muted); margin-bottom: 4px; } .cp-sub { font-weight: 500; color: var(--text-faint); margin-left: 6px; }
 .cp-line { font-size: 0.86rem; color: var(--text-main); line-height: 1.55; }
 .cp-no { font-size: 0.74rem; color: var(--text-faint); line-height: 1.5; border-top: 1px dashed var(--border); padding-top: 8px; }
+
+.nav-section-btn { display: flex; align-items: center; gap: 4px; width: 100%; background: transparent; border: none; cursor: pointer; font-family: inherit; text-align: left; }
+.nav-section-btn:hover { color: var(--text-muted); }
+.nav-section-count { margin-left: auto; font-size: 0.66rem; font-weight: 700; color: var(--text-faint); background: #eef1f6; border-radius: 999px; padding: 0 6px; }
+.wb-summary { font-size: 0.76rem; color: var(--text-muted); }

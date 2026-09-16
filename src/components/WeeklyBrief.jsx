@@ -9,7 +9,7 @@ import { buildWeeklyBrief } from '../utils/weekly';
 const WeeklyBrief = ({ studentsData = [], classInfo, teacherProfile, setActiveMenu }) => {
   const className = classInfo?.className || teacherProfile?.className || '';
   const b = useMemo(() => buildWeeklyBrief(studentsData, { className }), [studentsData, className]);
-  const [open, setOpen] = useState(() => { try { return localStorage.getItem('sensel-weekly-open') !== '0'; } catch { return true; } });
+  const [open, setOpen] = useState(() => { try { return localStorage.getItem('sensel-weekly-open') === '1'; } catch { return false; } });
   const [copied, setCopied] = useState(false);
   const toggle = () => { setOpen(o => { try { localStorage.setItem('sensel-weekly-open', o ? '0' : '1'); } catch { /* ignore */ } return !o; }); };
   const copy = async () => { try { await navigator.clipboard.writeText(b.text); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ } };
@@ -19,6 +19,7 @@ const WeeklyBrief = ({ studentsData = [], classInfo, teacherProfile, setActiveMe
     <div className="wb-card" data-tour="weekly">
       <div className="wb-head">
         <span className="wb-title"><CalendarCheck size={15} /> 이번 주 브리핑 <span className="wb-range">{fmt(b.from)} ~ {fmt(b.to)}</span></span>
+        {!open && <span className="wb-summary">참여 {b.participation.active}/{b.participation.total} · 새 지목 {b.relations.newNoms} · 신호 {b.signals.conflictsThisWeek + b.signals.lonely.length + b.signals.alerts.length} · 할 일 {b.todos.length}</span>}
         <div className="wb-actions">
           <button className="wb-btn" onClick={copy}>{copied ? <Check size={13} /> : <Copy size={13} />} {copied ? '복사됨' : '개조식 복사'}</button>
           <button className="wb-btn ghost" onClick={toggle}>{open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</button>

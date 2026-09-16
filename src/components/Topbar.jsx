@@ -47,11 +47,6 @@ const Topbar = ({ teacherProfile, classCode, className, onSwitchClass, onLogout,
         <button className="topbar-chip" onClick={invite} title="동학년·동료 선생님께 보낼 소개 문구를 복사합니다 (접속 주소 + 교사용 코드 + 1분 체험 안내)">
           {invited ? <Check size={14} /> : <UserPlus size={14} />} <span className="hide-sm">{invited ? '복사됨' : '동료 초대'}</span>
         </button>
-        {onOpenConsent && (
-          <button className="topbar-chip" onClick={onOpenConsent} title="학부모에게 보낼 안내문·동의서를 새 창으로 엽니다">
-            <FileSignature size={14} /> <span className="hide-sm">보호자 안내문</span>
-          </button>
-        )}
         <span className="hide-sm" style={{ color: 'rgba(255,255,255,0.85)', fontWeight: 600, marginLeft: '4px' }}>{name}</span>
         {onSwitchClass && <button className="topbar-iconbtn" onClick={onSwitchClass} title="학급 전환 / 새 학급"><RefreshCw size={16} /></button>}
         {onLogout && <button className="topbar-iconbtn" onClick={onLogout} title="로그아웃"><LogOut size={16} /></button>}
