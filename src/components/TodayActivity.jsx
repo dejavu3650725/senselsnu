@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Activity, MessageCircle, Star, HeartHandshake, CloudRain, Siren } from 'lucide-react';
 
 const todayKey = () => new Date().toISOString().slice(0, 10);
@@ -13,9 +13,10 @@ const tsToday = (ts) => {
  * 대화 원문은 저장하지 않으므로, 오늘 날짜의 신호(대화 턴 수·새 지목·갈등 언급·외로움·위기)만 센다. 실시간(onSnapshot) 갱신.
  */
 const TodayActivity = ({ studentsData = [], onOpenStudent }) => {
+  const [showNotYet, setShowNotYet] = useState(false);
   const a = useMemo(() => {
     const tk = todayKey();
-    const rows = studentsData.map(s => {
+    const all = studentsData.map(s => {
       const turns = s.dailyTurns?.date === tk ? Number(s.dailyTurns.count) || 0 : 0;
       const talked = turns > 0 || (s.sessionDates || []).includes(tk) || tsToday(s.lastActive);
       const noms = (s.nominationLog || []).filter(n => isToday(n?.timestamp)).map(n => n.target);
@@ -23,10 +24,13 @@ const TodayActivity = ({ studentsData = [], onOpenStudent }) => {
       const lonely = (s.lonelySignals || []).filter(isToday).length;
       const alerts = (s.alerts || []).filter(x => isToday(x?.timestamp)).length;
       return { s, turns, talked, noms, conflicts, lonely, alerts };
-    }).filter(r => r.talked || r.noms.length || r.conflicts || r.lonely || r.alerts);
+    });
+    const seen = (r) => r.talked || r.noms.length || r.conflicts || r.lonely || r.alerts;
+    const notYet = all.filter(r => !seen(r)).map(r => r.s);
+    const rows = all.filter(seen);
     rows.sort((x, y) => (y.alerts - x.alerts) || (y.conflicts - x.conflicts) || (y.turns - x.turns));
     const sum = (k) => rows.reduce((n, r) => n + (Array.isArray(r[k]) ? r[k].length : Number(r[k]) || 0), 0);
-    return { rows, talked: rows.filter(r => r.talked).length, turns: sum('turns'), noms: sum('noms'), conflicts: sum('conflicts'), lonely: sum('lonely'), alerts: sum('alerts') };
+    return { rows, notYet, talked: rows.filter(r => r.talked).length, turns: sum('turns'), noms: sum('noms'), conflicts: sum('conflicts'), lonely: sum('lonely'), alerts: sum('alerts') };
   }, [studentsData]);
 
   const Stat = ({ icon: Icon, label, value, tone }) => (
@@ -43,6 +47,7 @@ const TodayActivity = ({ studentsData = [], onOpenStudent }) => {
           <Stat icon={HeartHandshake} label="갈등 언급" value={a.conflicts} tone={a.conflicts ? 'warn' : ''} />
           <Stat icon={CloudRain} label="외로움" value={a.lonely} tone={a.lonely ? 'purple' : ''} />
           <Stat icon={Siren} label="위기" value={a.alerts} tone={a.alerts ? 'red' : ''} />
+          {a.notYet.length > 0 && a.rows.length > 0 && <button className={`ta-stat ta-toggle ${showNotYet ? 'on' : ''}`} onClick={() => setShowNotYet(v => !v)} title="오늘 아직 나무와 이야기하지 않은 학생">아직 {a.notYet.length}명</button>}
         </div>
       </div>
       {a.rows.length === 0 ? (
@@ -63,6 +68,9 @@ const TodayActivity = ({ studentsData = [], onOpenStudent }) => {
             </button>
           ))}
         </div>
+      )}
+      {showNotYet && a.notYet.length > 0 && (
+        <div className="ta-notyet">오늘 아직: {a.notYet.map(s => s.realName || s.nickname).join(', ')} <span className="ta-hint">— 교실에서 이름 없이 "아직 나무 안 만난 사람 5분!"으로만 독려하세요.</span></div>
       )}
     </div>
   );

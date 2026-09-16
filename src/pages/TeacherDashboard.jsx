@@ -8,6 +8,7 @@ import Topbar from '../components/Topbar';
 import TeacherTutorial from '../components/TeacherTutorial';
 import QuickTour from '../components/QuickTour';
 import TodayActivity from '../components/TodayActivity';
+import WeeklyBrief from '../components/WeeklyBrief';
 import ChatbotSettingsModal from '../components/ChatbotSettingsModal';
 import TeacherSettingsModal from '../components/TeacherSettingsModal';
 import ClassAnalysis from '../components/ClassAnalysis';
@@ -283,6 +284,7 @@ const TeacherDashboard = () => {
             <>
               <TodayActivity studentsData={studentsData} onOpenStudent={(id) => { setFocusStudentId(id); setActiveMenu('맞춤 처방'); }} />
               <TodayFeed studentsData={studentsData} teacherProfile={teacherProfile} classCode={currentClassCode} classInfo={activeClass} onOpenStudent={(id) => { setFocusStudentId(id); setActiveMenu('맞춤 처방'); }} />
+              <WeeklyBrief studentsData={studentsData} classInfo={activeClass} teacherProfile={teacherProfile} setActiveMenu={setActiveMenu} />
             </>
           )}
           {activeMenu === '대시보드' && (

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Copy, Check, LogOut, RefreshCw, FileSignature, Sparkles } from 'lucide-react';
+import { Shield, Copy, Check, LogOut, RefreshCw, FileSignature, Sparkles, UserPlus } from 'lucide-react';
 
 /**
  * 교사용 상단바
@@ -16,6 +16,11 @@ const Topbar = ({ teacherProfile, classCode, className, onSwitchClass, onLogout,
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch { /* clipboard 미지원 */ }
+  };
+  const [invited, setInvited] = useState(false);
+  const invite = async () => {
+    const msg = `[SEN SEL 센셀] 우리 반 마음·관계 도우미를 써 보고 있어요.\n학생들이 AI '나무'와 이야기하면 관계망·외로움·갈등 신호가 담임에게만 보이고, 자리 배치·학부모 상담 준비까지 이어집니다. 대화 원문은 저장하지 않아요.\n\n접속: ${window.location.origin}\n[선생님] → 교사용 코드 SENSELSNU 입력 → 구글 로그인 → '데모 학급 체험'으로 먼저 둘러보세요 (1분 체험 버튼).\n학운위·보호자 동의 서식은 [서류함]에 있어요.`;
+    try { await navigator.clipboard.writeText(msg); setInvited(true); setTimeout(() => setInvited(false), 2000); } catch { /* ignore */ }
   };
 
   return (
@@ -39,6 +44,9 @@ const Topbar = ({ teacherProfile, classCode, className, onSwitchClass, onLogout,
             <Sparkles size={14} /> <span>1분 체험</span>
           </button>
         )}
+        <button className="topbar-chip" onClick={invite} title="동학년·동료 선생님께 보낼 소개 문구를 복사합니다 (접속 주소 + 교사용 코드 + 1분 체험 안내)">
+          {invited ? <Check size={14} /> : <UserPlus size={14} />} <span className="hide-sm">{invited ? '복사됨' : '동료 초대'}</span>
+        </button>
         {onOpenConsent && (
           <button className="topbar-chip" onClick={onOpenConsent} title="학부모에게 보낼 안내문·동의서를 새 창으로 엽니다">
             <FileSignature size={14} /> <span className="hide-sm">보호자 안내문</span>

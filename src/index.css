@@ -699,3 +699,51 @@ input:focus, textarea:focus, select:focus { border-color: var(--primary-color) !
 .ta-name { font-size: 0.82rem; font-weight: 700; }
 .ta-meta { display: inline-flex; gap: 6px; font-size: 0.7rem; color: var(--text-faint); }
 .ta-meta .gold { color: #b7791f; font-weight: 700; } .ta-meta .warn { color: #c05621; font-weight: 700; } .ta-meta .purple { color: #6b46c1; font-weight: 700; } .ta-meta .red { color: #c53030; font-weight: 800; }
+
+.ta-toggle { cursor: pointer; font: inherit; font-size: 0.74rem; } .ta-toggle.on { background: var(--primary-light); border-color: var(--primary-color); color: var(--primary-color); }
+.ta-notyet { margin-top: 8px; font-size: 0.78rem; color: var(--text-muted); line-height: 1.5; } .ta-hint { color: var(--text-faint); }
+
+/* ===== 이번 주 브리핑 ===== */
+.wb-card { background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 12px 14px; margin-bottom: 14px; box-shadow: var(--shadow-xs); }
+.wb-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.wb-title { font-size: 0.86rem; font-weight: 800; color: var(--text-strong); display: inline-flex; align-items: center; gap: 6px; }
+.wb-range { font-weight: 500; color: var(--text-faint); font-size: 0.74rem; }
+.wb-actions { margin-left: auto; display: flex; gap: 6px; }
+.wb-btn { display: inline-flex; align-items: center; gap: 5px; font: inherit; font-size: 0.76rem; font-weight: 700; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--border); background: #f7f8fb; color: var(--text-main); cursor: pointer; }
+.wb-btn:hover { border-color: var(--primary-color); color: var(--primary-color); } .wb-btn.ghost { padding: 5px 7px; }
+.wb-body { margin-top: 10px; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 12px; }
+@media (max-width: 1100px) { .wb-body { grid-template-columns: 1fr; } }
+.wb-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.wb-tile { border: 1px solid var(--border); border-radius: 12px; padding: 8px 10px; background: #fbfcfe; min-width: 0; }
+.wb-tile.gold { background: #fffdf3; border-color: #f6e7b0; } .wb-tile.green { background: #f3fbf5; border-color: #c6e9cf; } .wb-tile.warn { background: #fff8ef; border-color: #f7d3a5; } .wb-tile.red { background: #fff5f5; border-color: #feb2b2; }
+.wb-k { font-size: 0.7rem; font-weight: 800; color: var(--text-muted); }
+.wb-v { font-size: 1.25rem; font-weight: 900; color: var(--text-strong); line-height: 1.2; } .wb-v span { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); margin-left: 3px; }
+.wb-s { font-size: 0.7rem; color: var(--text-faint); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wb-todos { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.wb-todo-title { font-size: 0.74rem; font-weight: 800; color: var(--text-muted); }
+.wb-todo { display: flex; align-items: flex-start; gap: 8px; text-align: left; font: inherit; font-size: 0.8rem; line-height: 1.45; color: var(--text-main); background: #fbfcfe; border: 1px solid var(--border); border-left-width: 4px; border-radius: 10px; padding: 7px 10px; cursor: pointer; }
+.wb-todo:hover { background: var(--primary-light); }
+.wb-todo.red { border-left-color: #c53030; } .wb-todo.warn { border-left-color: #dd6b20; } .wb-todo.purple { border-left-color: #805ad5; } .wb-todo.blue { border-left-color: #3182ce; } .wb-todo.gray { border-left-color: #a0aec0; } .wb-todo.green { border-left-color: #38a169; }
+.wb-num { font-weight: 900; color: var(--text-faint); flex-shrink: 0; } .wb-text { flex: 1; min-width: 0; } .wb-go { color: var(--text-faint); flex-shrink: 0; margin-top: 3px; }
+
+/* ===== 학부모 상담 준비 카드 ===== */
+.cp-wrap { border: 1px solid #e9d8fd; background: #fdfbff; border-radius: 16px; padding: 16px; }
+.cp-head { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 12px; }
+.cp-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.68rem; font-weight: 800; color: #6b46c1; background: #f3e8ff; border-radius: 999px; padding: 2px 8px; }
+.cp-tools { margin-left: auto; display: flex; gap: 6px; align-items: center; }
+.cp-select { font: inherit; font-size: 0.82rem; padding: 6px 8px; border-radius: 10px; border: 1px solid var(--border); background: #fff; }
+.cp-grid { display: grid; grid-template-columns: minmax(200px, 240px) 1fr; gap: 12px; align-items: start; }
+@media (max-width: 900px) { .cp-grid { grid-template-columns: 1fr; } }
+.cp-list { display: flex; flex-direction: column; gap: 4px; max-height: 460px; overflow-y: auto; padding-right: 4px; }
+.cp-item { display: flex; align-items: center; gap: 8px; text-align: left; font: inherit; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; cursor: pointer; }
+.cp-item.on { border-color: #805ad5; background: #f3e8ff; }
+.cp-name { font-weight: 700; color: var(--text-strong); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.86rem; }
+.cp-meta { font-size: 0.7rem; color: var(--text-faint); white-space: nowrap; }
+.cp-card { background: #fff; border: 1px solid var(--border); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cp-card-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cp-chips { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.cp-sec { border-radius: 10px; padding: 8px 12px; }
+.cp-sec.good { background: #f0fff4; } .cp-sec.watch { background: #fffaf0; } .cp-sec.ok { background: #f7fafc; } .cp-sec.ask { background: #ebf8ff; }
+.cp-sec-t { font-size: 0.76rem; font-weight: 800; color: var(--text-muted); margin-bottom: 4px; } .cp-sub { font-weight: 500; color: var(--text-faint); margin-left: 6px; }
+.cp-line { font-size: 0.86rem; color: var(--text-main); line-height: 1.55; }
+.cp-no { font-size: 0.74rem; color: var(--text-faint); line-height: 1.5; border-top: 1px dashed var(--border); padding-top: 8px; }

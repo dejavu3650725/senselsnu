@@ -7,6 +7,7 @@ import { assessClass } from '../utils/studentSignals';
 import { seoulGradeLabel } from '../utils/seoulSel';
 import { LETTER_KINDS, buildLetter, buildParentCard, parentCardToText, buildLessonNotice } from '../utils/familyLink';
 import CurriculumEvidence from './CurriculumEvidence';
+import ConsultPrep from './ConsultPrep';
 import { lessonsFor } from '../utils/seoulSel';
 
 /**
@@ -135,6 +136,9 @@ const FamilyLink = ({ studentsData = [], teacherProfile, classCode, classLabel, 
           </div>
         </div>
       </section>
+
+      {/* 0. 학부모 상담 준비 카드 (교사 열람용) */}
+      <ConsultPrep studentsData={studentsData} gradeLabel={gradeLabel} className={className} />
 
       {/* 1. 가정통신문 */}
       <section>
