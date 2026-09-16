@@ -9,6 +9,7 @@ import { seoulGradeLabel } from '../utils/seoulSel';
 import { skillsForLevel, areaOfSkill, monthlySkillCounts, badgeFor, defaultMission, missionById, weekKey, dayKey } from '../utils/growth';
 import GrowthPanel from '../components/GrowthPanel';
 import { studentPromises } from '../utils/aiGuideline';
+import { validateNickname, sanitizeNicknameInput, NICK_MAX } from '../utils/nickname';
 
 const AVATAR_LIST = [
   '🐻', '🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐼', '🐨', '🐯',
@@ -218,6 +219,8 @@ const StudentDashboard = () => {
       setSetupError("성별(남/여)을 선택해주세요!");
       return;
     }
+    const nickErr = validateNickname(nickname);
+    if (nickErr) { setSetupError(nickErr); return; }
     
     setIsLoading(true);
     setSetupError('');
@@ -590,11 +593,13 @@ const StudentDashboard = () => {
             <input 
               type="text" 
               value={nickname} 
-              onChange={e => setNickname(e.target.value)}
+              onChange={e => { setNickname(sanitizeNicknameInput(e.target.value)); setSetupError(''); }}
               placeholder="예: 고민많은 타이거"
+              maxLength={NICK_MAX}
               style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none' }}
             />
-            <p style={{ margin: '8px 0 0 0', fontSize: '0.8rem', color: '#a0aec0' }}>* 이전에 쓰던 실명을 입력하면 내 데이터가 그대로 복원됩니다!</p>
+            <p style={{ margin: '8px 0 0 0', fontSize: '0.8rem', color: '#a0aec0' }}>* {NICK_MAX}글자까지, 한글·영어·숫자만. 욕설·놀리는 말·선생님 흉내는 안 돼요. ({[...nickname].length}/{NICK_MAX})</p>
+            <p style={{ margin: '4px 0 0 0', fontSize: '0.8rem', color: '#a0aec0' }}>* 이전에 쓰던 실명을 입력하면 내 데이터가 그대로 복원됩니다!</p>
           </div>
 
           <div style={{ marginBottom: '20px', textAlign: 'left' }}>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Trash2, Users, UserPlus, ClipboardList, X } from 'lucide-react';
 import { db } from '../firebase';
 import { doc, deleteDoc, updateDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { validateNickname, NICK_MAX } from '../utils/nickname';
 
 // 학생 등록 시 무작위로 부여할 기본 아바타 목록
 const DEFAULT_AVATARS = [
@@ -27,6 +28,32 @@ const StudentManagement = ({ studentsData, classCode }) => {
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState('');
   const [isBulkAdding, setIsBulkAdding] = useState(false);
+
+  // 장난 닉네임 정리: 교사가 직접 바꾼다 (같은 규칙 적용). 지목 기록은 닉네임 문자열로 저장되므로 함께 치환.
+  const handleRenameNick = async (student) => {
+    const next = window.prompt(`${student.realName}의 닉네임을 바꿉니다 (${NICK_MAX}자 이내, 욕설·놀림·선생님 흉내 금지)`, student.nickname || '');
+    if (next === null) return;
+    const nick = next.trim();
+    const err = validateNickname(nick);
+    if (err) { alert(err); return; }
+    if (nick === student.nickname) return;
+    if (studentsData.some(s => s.id !== student.id && s.nickname === nick)) { alert('이미 다른 학생이 쓰는 닉네임이에요.'); return; }
+    try {
+      await updateDoc(doc(db, 'students', student.id), { nickname: nick });
+      const old = student.nickname;
+      if (old) {
+        // 다른 학생들의 지목·갈등 기록 속 옛 닉네임을 새 닉네임으로 치환
+        await Promise.all(studentsData.filter(s => s.id !== student.id).map(async s => {
+          const upd = {};
+          if ((s.nominations || []).includes(old)) upd.nominations = s.nominations.map(n => (n === old ? nick : n));
+          if ((s.conflicts || []).includes(old)) upd.conflicts = s.conflicts.map(n => (n === old ? nick : n));
+          if ((s.nominationLog || []).some(x => x?.target === old)) upd.nominationLog = s.nominationLog.map(x => (x?.target === old ? { ...x, target: nick } : x));
+          if ((s.conflictMentions || []).some(x => x?.target === old)) upd.conflictMentions = s.conflictMentions.map(x => (x?.target === old ? { ...x, target: nick } : x));
+          if (Object.keys(upd).length) await updateDoc(doc(db, 'students', s.id), upd);
+        }));
+      }
+    } catch (e) { console.error('nickname update error', e); alert('변경에 실패했어요. 잠시 후 다시 시도해 주세요.'); }
+  };
 
   const createStudentDoc = async (realName, nickname, gender) => {
     await addDoc(collection(db, 'students'), {
@@ -197,7 +224,7 @@ const StudentManagement = ({ studentsData, classCode }) => {
                   <td className="sm-avatar">{student.avatar || '👤'}</td>
                   <td className="sm-name">{student.realName}</td>
                   <td><div className="sm-gwrap"><G size="sm" g="남" active={student.gender === '남'} onClick={() => handleSetGender(student.id, '남')} /><G size="sm" g="여" active={student.gender === '여'} onClick={() => handleSetGender(student.id, '여')} /></div></td>
-                  <td className="sm-nick" title={student.nickname}>{student.nickname}</td>
+                  <td className="sm-nick" title={`${student.nickname} — 클릭해서 바꾸기`} style={{ cursor: 'pointer' }} onClick={() => handleRenameNick(student)}>{student.nickname}</td>
                   <td><span className={`sm-mood ${student.mood === '건강' ? 'good' : student.mood === '보통' ? 'mid' : student.mood ? 'bad' : ''}`}>{student.mood || '—'}</span></td>
                   <td>
                     <button onClick={() => handleToggleFreeTalk(student)} className={`sm-mode ${student.freeTalk ? 'free' : ''}`} title={student.freeTalk ? '자유 대화 모드: 관계·기술 태그와 하루 상한 없음, 위기 알림만 유지. 클릭하면 일반 모드로' : '일반 모드: 관계 신호·성장 기록 수집. 클릭하면 자유 대화 모드로'}>{student.freeTalk ? '🍃 자유 대화' : '일반'}</button>
